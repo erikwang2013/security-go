@@ -2,11 +2,11 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task.
 
-**Goal:** Build a pure Go attack detection library with 32 detectors across 5 categories, 3 pluggable storage backends, and a unified Engine registry.
+**Goal:** Build a pure Go attack detection library with 32 detectors across 5 categories, 3 pluggable storage backends, and a unified Engine registry. **Status: Complete (2026-07-29).**
 
-**Architecture:** Flat interface design — every detector implements `Detector` (Name + Detect). Pre-compiled regex patterns. Engine provides registry, by-name lookup, and `DetectRequest` for full HTTP request scanning.
+**Architecture:** Flat interface design — every detector implements `Detector` (Name + Detect). Pre-compiled regex patterns. Engine provides registry, by-name lookup, and `DetectRequest` for full HTTP request scanning. RegisterAll lives in `all/all.go` (separate package).
 
-**Tech Stack:** Go 1.21+, stdlib `regexp` + `net/http`, `go-redis` for Redis backend.
+**Tech Stack:** Go 1.21+, stdlib `regexp` + `net/http`, `go-redis` for Redis backend (optional submodule at `storage/redis/`).
 
 ---
 
@@ -16,13 +16,13 @@
 - Create: `go.mod`
 - Create: `security.go`
 
-- [ ] **Step 1: Init Go module**
+- [x] **Step 1: Init Go module**
 
 ```bash
 cd /home/wwwroot/bag/security-go && go mod init github.com/bag/security-go
 ```
 
-- [ ] **Step 2: Create security.go — Result, Severity, Detector interface, Engine**
+- [x] **Step 2: Create security.go — Result, Severity, Detector interface, Engine**
 
 ```go
 package security
@@ -105,8 +105,8 @@ func collectRequestInputs(r *http.Request) []string {
 }
 ```
 
-- [ ] **Step 3: Build** — `go build ./...`
-- [ ] **Step 4: Commit** — `feat: initialize Go module with core types and Engine`
+- [x] **Step 3: Build** — `go build ./...`
+- [x] **Step 4: Commit** — `feat: initialize Go module with core types and Engine`
 
 ---
 
@@ -116,10 +116,10 @@ func collectRequestInputs(r *http.Request) []string {
 - Create: `storage/storage.go`
 - Create: `storage/memory.go`
 
-- [ ] **Step 1: storage/storage.go** — Backend interface (Incr, Get, Block, IsBlocked, Close)
-- [ ] **Step 2: storage/memory.go** — sync.Map based implementation with TTL reap goroutine
-- [ ] **Step 3: Build** — `go build ./storage/...`
-- [ ] **Step 4: Commit** — `feat: add storage interface and memory backend`
+- [x] **Step 1: storage/storage.go** — Backend interface (Incr, Get, Block, IsBlocked, Close)
+- [x] **Step 2: storage/memory.go** — sync.Map based implementation with TTL reap goroutine
+- [x] **Step 3: Build** — `go build ./storage/...`
+- [x] **Step 4: Commit** — `feat: add storage interface and memory backend`
 
 ---
 
@@ -130,10 +130,10 @@ func collectRequestInputs(r *http.Request) []string {
 - Create: `storage/redis.go`
 - Modify: `go.mod` (add go-redis dependency)
 
-- [ ] **Step 1: storage/file.go** — JSON file persistence with lazy flush
-- [ ] **Step 2: storage/redis.go** — Redis backend using go-redis/v9
-- [ ] **Step 3: Build** — `go build ./storage/...`
-- [ ] **Step 4: Commit** — `feat: add file and redis storage backends`
+- [x] **Step 1: storage/file.go** — JSON file persistence with lazy flush
+- [x] **Step 2: storage/redis.go** — Redis backend using go-redis/v9
+- [x] **Step 3: Build** — `go build ./storage/...`
+- [x] **Step 4: Commit** — `feat: add file and redis storage backends`
 
 ---
 
@@ -143,10 +143,10 @@ func collectRequestInputs(r *http.Request) []string {
 - Create: `injection/xss.go`
 - Create: `injection/sql.go`
 
-- [ ] **Step 1: injection/xss.go** — `<script>`, `on[a-z]+=`, `javascript:`, SVG/CSS patterns
-- [ ] **Step 2: injection/sql.go** — UNION SELECT (with `/**/` bypass), sleep/benchmark, boolean blind, schema enum, stored proc
-- [ ] **Step 3: Build** — `go build ./injection/...`
-- [ ] **Step 4: Commit** — `feat: add XSS and SQL injection detectors`
+- [x] **Step 1: injection/xss.go** — `<script>`, `on[a-z]+=`, `javascript:`, SVG/CSS patterns
+- [x] **Step 2: injection/sql.go** — UNION SELECT (with `/**/` bypass), sleep/benchmark, boolean blind, schema enum, stored proc
+- [x] **Step 3: Build** — `go build ./injection/...`
+- [x] **Step 4: Commit** — `feat: add XSS and SQL injection detectors`
 
 ---
 
@@ -158,11 +158,11 @@ func collectRequestInputs(r *http.Request) []string {
 - Create: `injection/ldap.go`
 - Create: `injection/xpath.go`
 
-- [ ] **Step 1: injection/command.go** — backtick, `$()`, pipe, `/dev/tcp`, PHP exec functions
-- [ ] **Step 2: injection/nosql.go** — MongoDB `$ne`/`$gt`/`$regex`/`$where`, auth bypass
-- [ ] **Step 3: injection/ldap.go** — filter operators `(`, `)`, `&`, `|`, `*`
-- [ ] **Step 4: injection/xpath.go** — boolean bypass, string-length, count
-- [ ] **Step 5: Build & Commit**
+- [x] **Step 1: injection/command.go** — backtick, `$()`, pipe, `/dev/tcp`, PHP exec functions
+- [x] **Step 2: injection/nosql.go** — MongoDB `$ne`/`$gt`/`$regex`/`$where`, auth bypass
+- [x] **Step 3: injection/ldap.go** — filter operators `(`, `)`, `&`, `|`, `*`
+- [x] **Step 4: injection/xpath.go** — boolean bypass, string-length, count
+- [x] **Step 5: Build & Commit**
 
 ---
 
@@ -174,11 +174,11 @@ func collectRequestInputs(r *http.Request) []string {
 - Create: `injection/graphql.go`
 - Create: `injection/ssti.go`
 
-- [ ] **Step 1: injection/jndi.go** — `${jndi:ldap://`, `${lower:j}`, `${env:}`, rmi/dns protocols
-- [ ] **Step 2: injection/ssi.go** — `<!--#exec`, `<!--#include`, `<!--#echo`
-- [ ] **Step 3: injection/graphql.go** — `__schema`, `__type`, deep nested query, mutation
-- [ ] **Step 4: injection/ssti.go** — Jinja2 `{{}}`, FreeMarker `${}`, ERB `<% %>`, Python MRO
-- [ ] **Step 5: Build & Commit**
+- [x] **Step 1: injection/jndi.go** — `${jndi:ldap://`, `${lower:j}`, `${env:}`, rmi/dns protocols
+- [x] **Step 2: injection/ssi.go** — `<!--#exec`, `<!--#include`, `<!--#echo`
+- [x] **Step 3: injection/graphql.go** — `__schema`, `__type`, deep nested query, mutation
+- [x] **Step 4: injection/ssti.go** — Jinja2 `{{}}`, FreeMarker `${}`, ERB `<% %>`, Python MRO
+- [x] **Step 5: Build & Commit**
 
 ---
 
@@ -189,10 +189,10 @@ func collectRequestInputs(r *http.Request) []string {
 - Create: `protocol/xxe.go`
 - Create: `protocol/header_injection.go`
 
-- [ ] **Step 1: protocol/ssrf.go** — internal IP, 169.254.169.254, IPv6 loopback, gopher/dict
-- [ ] **Step 2: protocol/xxe.go** — `<!ENTITY SYSTEM/PUBLIC`, parameter entities, DOCTYPE
-- [ ] **Step 3: protocol/header_injection.go** — CRLF, Set-Cookie/Location injection
-- [ ] **Step 4: Build & Commit**
+- [x] **Step 1: protocol/ssrf.go** — internal IP, 169.254.169.254, IPv6 loopback, gopher/dict
+- [x] **Step 2: protocol/xxe.go** — `<!ENTITY SYSTEM/PUBLIC`, parameter entities, DOCTYPE
+- [x] **Step 3: protocol/header_injection.go** — CRLF, Set-Cookie/Location injection
+- [x] **Step 4: Build & Commit**
 
 ---
 
@@ -206,8 +206,8 @@ func collectRequestInputs(r *http.Request) []string {
 - Create: `protocol/websocket.go`
 - Create: `protocol/dns_rebinding.go`
 
-- [ ] **Step 1: All 6 protocol detectors** — one file each, pre-compiled regex patterns
-- [ ] **Step 2: Build & Commit**
+- [x] **Step 1: All 6 protocol detectors** — one file each, pre-compiled regex patterns
+- [x] **Step 2: Build & Commit**
 
 ---
 
@@ -220,12 +220,12 @@ func collectRequestInputs(r *http.Request) []string {
 - Create: `httpval/csrf_origin.go`
 - Create: `httpval/ip_blacklist.go`
 
-- [ ] **Step 1: httpval/method.go** — whitelist GET/POST/PUT/DELETE/HEAD/OPTIONS/PATCH
-- [ ] **Step 2: httpval/body_size.go** — max size check, default 10MB
-- [ ] **Step 3: httpval/content_type.go** — MIME whitelist
-- [ ] **Step 4: httpval/csrf_origin.go** — cross-origin Origin vs Host match
-- [ ] **Step 5: httpval/ip_blacklist.go** — window rate limit (5/60s → 15min ban), uses storage.Backend
-- [ ] **Step 6: Build & Commit**
+- [x] **Step 1: httpval/method.go** — whitelist GET/POST/PUT/DELETE/HEAD/OPTIONS/PATCH
+- [x] **Step 2: httpval/body_size.go** — max size check, default 10MB
+- [x] **Step 3: httpval/content_type.go** — MIME whitelist
+- [x] **Step 4: httpval/csrf_origin.go** — cross-origin Origin vs Host match
+- [x] **Step 5: httpval/ip_blacklist.go** — window rate limit (5/60s → 15min ban), uses storage.Backend
+- [x] **Step 6: Build & Commit**
 
 ---
 
@@ -238,12 +238,12 @@ func collectRequestInputs(r *http.Request) []string {
 - Create: `data/jwt_attack.go`
 - Create: `data/prototype_pollution.go`
 
-- [ ] **Step 1: data/deserialization.go** — PHP `O:数字:`, `C:数字:`, unserialize(), magic methods
-- [ ] **Step 2: data/csv_injection.go** — `=cmd|`, `@SUM(`, `+`, `-` formula prefix
-- [ ] **Step 3: data/mail_header.go** — Bcc/Cc/From/To injection, MIME multipart
-- [ ] **Step 4: data/jwt_attack.go** — alg:none, kid path traversal, empty signature (structural decode)
-- [ ] **Step 5: data/prototype_pollution.go** — `__proto__`, `constructor`, `__defineGetter__/Setter__`
-- [ ] **Step 6: Build & Commit**
+- [x] **Step 1: data/deserialization.go** — PHP `O:数字:`, `C:数字:`, unserialize(), magic methods
+- [x] **Step 2: data/csv_injection.go** — `=cmd|`, `@SUM(`, `+`, `-` formula prefix
+- [x] **Step 3: data/mail_header.go** — Bcc/Cc/From/To injection, MIME multipart
+- [x] **Step 4: data/jwt_attack.go** — alg:none, kid path traversal, empty signature (structural decode)
+- [x] **Step 5: data/prototype_pollution.go** — `__proto__`, `constructor`, `__defineGetter__/Setter__`
+- [x] **Step 6: Build & Commit**
 
 ---
 
@@ -254,10 +254,10 @@ func collectRequestInputs(r *http.Request) []string {
 - Create: `file/upload.go`
 - Create: `file/data_leak.go`
 
-- [ ] **Step 1: file/path_traversal.go** — `../`, `..\\`, php://filter, null byte, URL encoding bypass
-- [ ] **Step 2: file/upload.go** — extension whitelist + PHP tag content scan
-- [ ] **Step 3: file/data_leak.go** — credit card, AWS key, private key, DB conn string, API token, JWT secret
-- [ ] **Step 4: Build & Commit**
+- [x] **Step 1: file/path_traversal.go** — `../`, `..\\`, php://filter, null byte, URL encoding bypass
+- [x] **Step 2: file/upload.go** — extension whitelist + PHP tag content scan
+- [x] **Step 3: file/data_leak.go** — credit card, AWS key, private key, DB conn string, API token, JWT secret
+- [x] **Step 4: Build & Commit**
 
 ---
 
@@ -266,9 +266,9 @@ func collectRequestInputs(r *http.Request) []string {
 **Files:**
 - Modify: `security.go`
 
-- [ ] **Step 1: Add RegisterAll()** — registers all 32 built-in detectors
-- [ ] **Step 2: Build** — `go build ./...`
-- [ ] **Step 3: Commit** — `feat: add RegisterAll for built-in detectors`
+- [x] **Step 1: Add RegisterAll()** — registers all 32 built-in detectors
+- [x] **Step 2: Build** — `go build ./...`
+- [x] **Step 3: Commit** — `feat: add RegisterAll for built-in detectors`
 
 ---
 
@@ -282,6 +282,47 @@ func collectRequestInputs(r *http.Request) []string {
 - Create: `data/jwt_attack_test.go`
 - Create: `storage/memory_test.go`
 
-- [ ] **Step 1: Write tests** — each with positive and negative test cases
-- [ ] **Step 2: Run** — `go test ./... -v`
-- [ ] **Step 3: Commit** — `test: add core engine and detector tests`
+- [x] **Step 1: Write tests** — each with positive and negative test cases
+- [x] **Step 2: Run** — `go test ./... -v`
+- [x] **Step 3: Commit** — `test: add core engine and detector tests`
+
+---
+
+### Task 14: Post-Implementation Code Review & Fixes (2026-07-29)
+
+- [x] **全面代码审查** — 42 个 Go 源文件，8 个包
+- [x] **Bug 修复 #1** — `storage/file.go`: JSON 序列化错误被静默忽略 → 改为检查错误并返回
+- [x] **Bug 修复 #2** — `httpval/content_type.go`: 空 AllowList 放行所有 Content-Type → deny-all 默认值
+- [x] **Bug 修复 #3** — `protocol/xxe.go`: `&[a-z]+;` 误匹配合法 HTML 实体 → 缩小为已知恶意协议列表
+- [x] **补写 httpval 测试** — 32 个测试用例，覆盖 5 个 detector（BodySize、ContentType、CSRFOrigin、IPBlacklist、Method）
+- [x] **全量测试** — `go test -count=1 ./...` 7/7 包通过，`go vet` 零警告
+
+---
+
+## Actual vs Planned Deviations
+
+| 计划 | 实际 | 原因 |
+|------|------|------|
+| RegisterAll 在 `security.go` | `all/all.go` 独立包 | 避免循环引用，httpval 依赖 storage 但其他 detector 不依赖 |
+| Redis 在根 go.mod | `storage/redis/` 子模块 | 隔离可选依赖 |
+| Receiver 统一指针 | protocol 包使用值接收者 | 未统一，列为 P2 改进项 |
+| 任务 4-12 Build & Commit | 未分步提交 | 所有代码一次性实现 |
+
+## Test Coverage Summary
+
+| 包 | 测试文件 | 测试数 |
+|----|---------|--------|
+| security | security_test.go | 5 |
+| data | jwt_attack_test.go | 4 |
+| file | path_traversal_test.go, data_leak_test.go | ~16 |
+| httpval | httpval_test.go | 32 |
+| injection | xss_test.go, sql_test.go, jndi_test.go, ssti_test.go | ~24 |
+| protocol | ssrf_test.go | 11 |
+| storage | memory_test.go | 4 |
+| all | (无) | 0 |
+
+> 完整报告见 `docs/superpowers/reports/2026-07-29-code-review-report.md`
+
+---
+
+Copyright (c) 2026 erik <erik@erik.xyz> — https://erik.xyz

@@ -16,49 +16,45 @@ Go 语言编写的攻击检测包，覆盖 **32 个检测器**、**5 大攻击�
 ### 设计架构
 
 ```
-                    ┌─────────────────────────────┐
-                    │         security.Engine      │
-                    │  ┌─────────────────────────┐ │
-                    │  │   Detector Registry     │ │
-                    │  │   map[string]Detector   │ │
-                    │  └─────────────────────────┘ │
-                    │                              │
-                    │  Detect(name, input)         │
-                    │  DetectAll(input)            │
-                    │  DetectRequest(*http.Request)│
-                    └──────────┬──────────────────┘
-                               │
-          ┌────────────────────┼────────────────────┐
-          │                    │                    │
-   ┌──────▼──────┐   ┌────────▼────────┐   ┌───────▼───────┐
-   │  injection  │   │    protocol     │   │     data      │
-   │  (10 个)    │   │    (9 个)       │   │    (5 个)     │
-   │  xss, sql,  │   │  ssrf, xxe,    │   │  deser, csv,  │
-   │  command,   │   │  header, host, │   │  mail, jwt,   │
-   │  nosql,     │   │  smuggling,    │   │  proto_poll   │
-   │  ldap,      │   │  redirect,     │   │               │
-   │  xpath,     │   │  cors, ws,     │   │               │
-   │  jndi, ssi, │   │  dns_rebind    │   │               │
-   │  graphql,   │   │                │   │               │
-   │  ssti       │   │                │   │               │
-   └─────────────┘   └────────────────┘   └───────────────┘
-          │                    │                    │
-   ┌──────▼──────┐   ┌───────────────────────────────┐
-   │    file     │   │           httpval             │
-   │   (3 个)    │   │           (5 个)              │
-   │  traversal, │   │  method, size, type,          │
-   │  upload,    │   │  csrf, ip_blacklist           │
-   │  data_leak  │   │  (需应用配置参数)               │
-   └─────────────┘   └───────────────┬───────────────┘
-                                     │
-                          ┌──────────▼──────────┐
-                          │      storage        │
-                          │   ┌──────────────┐  │
-                          │   │   Backend    │  │
-                          │   │   interface  │  │
-                          │   └──┬───┬───┬───┘  │
-                          │  Memory File Redis  │
-                          └─────────────────────┘
+                         ┌───────────────────────────────┐
+                         │        security.Engine         │
+                         │  ┌─────────────────────────┐  │
+                         │  │    Detector Registry     │  │
+                         │  │   map[string]Detector    │  │
+                         │  └─────────────────────────┘  │
+                         │                               │
+                         │  Detect(name, input)          │
+                         │  DetectAll(input)             │
+                         │  DetectRequest(*http.Request) │
+                         └──────────────┬────────────────┘
+                                        │
+          ┌─────────────────┬───────────┴───────────┬─────────────────┐
+          │                 │                       │                 │
+   ┌──────▼──────┐   ┌──────▼──────┐   ┌────────────▼────────┐   ┌───▼───────────┐
+   │  injection  │   │  protocol   │   │        data         │   │     file      │
+   │   (10 个)   │   │   (9 个)    │   │       (5 个)        │   │    (3 个)     │
+   │             │   │             │   │                     │   │               │
+   │  xss, sql,  │   │  ssrf, xxe, │   │  deser, csv,        │   │  traversal,   │
+   │  command,   │   │  header,    │   │  mail, jwt,         │   │  upload,      │
+   │  nosql,     │   │  host,      │   │  proto_poll         │   │  data_leak    │
+   │  ldap,      │   │  smuggling, │   │                     │   │               │
+   │  xpath,     │   │  redirect,  │   │                     │   │               │
+   │  jndi, ssi, │   │  cors, ws,  │   │                     │   │               │
+   │  graphql,   │   │  dns_rebind │   │                     │   │               │
+   │  ssti       │   │             │   │                     │   │               │
+   └─────────────┘   └─────────────┘   └─────────────────────┘   └───────────────┘
+                                                                          │
+          ┌───────────────────────────────────────────────────────────────┤
+          │                                                               │
+   ┌──────▼──────────┐                                         ┌──────────▼──────────┐
+   │     httpval     │                                         │       storage       │
+   │     (5 个)      │                                         │  ┌──────────────┐   │
+   │                 │                                         │  │   Backend    │   │
+   │  method, size,  │                                         │  │   interface  │   │
+   │  type, csrf,    │                                         │  └──┬───┬───┬───┘   │
+   │  ip_blacklist   │◄────── 使用 storage.Backend ──────────►│  Memory File Redis │
+   │  (需配置参数)    │                                         │                    │
+   └─────────────────┘                                         └────────────────────┘
 ```
 
 ### 数据流
@@ -246,6 +242,12 @@ func (d *MyDetector) Detect(input string) *security.Result {
 e.Register(&MyDetector{})
 ```
 
+### 相关文档
+
+- [设计规范](docs/superpowers/specs/2026-07-29-attack-detection-design.md) — 包结构、核心 API、检测器目录
+- [实施计划](docs/superpowers/plans/2026-07-29-attack-detection-plan.md) — 分步任务计划与实施偏差对照
+- [代码审查报告](docs/superpowers/reports/2026-07-29-code-review-report.md) — Bug 修复、测试覆盖、架构评估
+
 ---
 
 ## English
@@ -277,3 +279,13 @@ result := e.Detect("xss", "<script>alert(1)</script>")
 - **Redis** — Pipeline Incr + TTL (separate sub-module)
 
 See [Chinese section](#security-go--攻击检测库) above for full API reference and detector details.
+
+### Documentation
+
+- [Design Spec](docs/superpowers/specs/2026-07-29-attack-detection-design-en.md) — Package structure, core API, detector catalog
+- [Implementation Plan](docs/superpowers/plans/2026-07-29-attack-detection-plan-en.md) — Task-by-task plan with actual vs planned deviations
+- [Code Review Report](docs/superpowers/reports/2026-07-29-code-review-report-en.md) — Bug fixes, test coverage, architecture review
+
+---
+
+Copyright (c) 2026 erik <erik@erik.xyz> — https://erik.xyz

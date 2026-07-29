@@ -1,3 +1,5 @@
+// Copyright (c) 2026 erik <erik@erik.xyz> — https://erik.xyz
+
 // Package all provides a convenience function to register all built-in detectors.
 package all
 

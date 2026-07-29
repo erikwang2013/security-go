@@ -178,3 +178,7 @@ npx ruflo@latest doctor --fix
 > by default; `--ttl 0` to disable, `daemon status --all` to audit running daemons).
 
 **Agent tool** handles execution (agents, files, code, git). **MCP tools** handle coordination (swarm, memory, hooks). **CLI** is the same via Bash.
+
+---
+
+Copyright (c) 2026 erik <erik@erik.xyz> — https://erik.xyz

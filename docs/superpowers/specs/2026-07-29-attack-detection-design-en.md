@@ -2,7 +2,7 @@
 
 ## Overview
 
-纯 Go 攻击检测库，提供统一接口 + 注册表模式，覆盖 5 大类 32 个检测器。**实现完成 (2026-07-29)。**
+A pure Go attack detection library providing a unified interface + registry pattern, covering **32 detectors** across **5 categories**. **Implementation complete (2026-07-29).**
 
 ## Package Structure
 
@@ -10,24 +10,24 @@
 security-go/
 ├── go.mod
 ├── security.go              # Result, Severity, Detector interface, Engine
-├── all/all.go               # RegisterAll — 注册所有内置 detector
-├── injection/               # 注入类攻击 (10)
-├── protocol/                # 协议与请求攻击 (9)
-├── httpval/                 # HTTP 协议层校验 (5)
-├── data/                    # 数据与序列化攻击 (5)
-├── file/                    # 文件与敏感数据 (3)
-└── storage/                 # 可插拔存储后端
+├── all/all.go               # RegisterAll — registers all built-in detectors
+├── injection/               # Injection attacks (10)
+├── protocol/                # Protocol & request attacks (9)
+├── httpval/                 # HTTP protocol validation (5)
+├── data/                    # Data & serialization attacks (5)
+├── file/                    # File & sensitive data (3)
+└── storage/                 # Pluggable storage backends
     ├── storage.go           # Backend interface
-    ├── memory.go            # 内存实现 (带 TTL 清理)
-    ├── file.go              # JSON 文件持久化
-    └── redis/               # Redis 子模块 (可选依赖)
+    ├── memory.go            # In-memory (with TTL cleanup)
+    ├── file.go              # JSON file persistence
+    └── redis/               # Redis sub-module (optional dependency)
 ```
 
 ## Core API
 
 - `Result` — Name, Detected, Message, Severity, Details
 - `Detector` interface — `Name() string`, `Detect(input string) *Result`
-- `Engine` — 注册表 + `Detect()` / `DetectAll()` / `DetectRequest(*http.Request)`
+- `Engine` — registry + `Detect()` / `DetectAll()` / `DetectRequest(*http.Request)`
 - All detectors use pre-compiled regex patterns
 
 ## Storage Backend Interface
@@ -42,7 +42,7 @@ type Backend interface {
 }
 ```
 
-Implementations: Memory (sync.Mutex + map + reap goroutine), File (JSON persistence), Redis (go-redis/v9 子模块).
+Implementations: Memory (sync.Mutex + map + reap goroutine), File (JSON persistence), Redis (go-redis/v9 sub-module).
 
 ## Detectors
 
@@ -67,12 +67,12 @@ Implementations: Memory (sync.Mutex + map + reap goroutine), File (JSON persiste
 | protocol | cors | Origin: null, ACA* header injection |
 | protocol | websocket | Upgrade injection, null Origin, ws:// |
 | protocol | dns_rebinding | Host header internal IP, localhost, hostname without TLD |
-| httpval | method | Whitelist GET/POST/PUT/DELETE/HEAD/OPTIONS/PATCH → 405 |
-| httpval | body_size | Max size check → 413 (default 10MB) |
-| httpval | content_type | MIME whitelist → 415 |
+| httpval | method | Whitelist GET/POST/PUT/DELETE/HEAD/OPTIONS/PATCH |
+| httpval | body_size | Max size check (default 10MB) |
+| httpval | content_type | MIME whitelist (empty list = deny-all) |
 | httpval | csrf_origin | Cross-origin Origin vs Host match |
 | httpval | ip_blacklist | Window-based rate limit → auto ban (5/60s → 15min) |
-| data | deserialization | PHP `O:数字:`, `C:数字:`, unserialize() |
+| data | deserialization | PHP `O:digit:`, `C:digit:`, unserialize() |
 | data | csv_injection | `=`, `@`, `+`, `-` formula prefix |
 | data | mail_header | Bcc/Cc/From/To injection, MIME |
 | data | jwt_attack | alg:none, kid path traversal, empty signature |
@@ -89,11 +89,10 @@ Implementations: Memory (sync.Mutex + map + reap goroutine), File (JSON persiste
 
 ## Implementation Status (2026-07-29)
 
-- **32 detector 全部实现** — 注册入口 `all.RegisterAll(engine)`
-- **测试覆盖** — 7/8 包有测试（`all` 包待补），httpval 已补写 32 个测试
-- **代码审查完成** — 修复 3 个 Bug（见审查报告），`go vet` 零警告
-- **已知限制** — `storage/redis/` 子模块需 `go mod tidy`；protocol 包 receiver 风格待统一
-- **报告** — `docs/superpowers/reports/2026-07-29-code-review-report.md`
+- **All 32 detectors implemented** — entry point: `all.RegisterAll(engine)`
+- **Test coverage** — 7/8 packages tested (`all` pending), httpval gained 32 tests
+- **Code review complete** — 3 bugs fixed (see review report), `go vet` zero warnings
+- **Known limitations** — `storage/redis/` sub-module needs `go mod tidy`; protocol package receiver style pending unification
 
 ---
 

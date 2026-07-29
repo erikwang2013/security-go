@@ -9,19 +9,19 @@
 ## 一、测试结果
 
 ```
-ok      github.com/bag/security-go       0.012s
+ok      github.com/bag/security-go       0.004s
 ?       github.com/bag/security-go/all   [no test files]
-ok      github.com/bag/security-go/data  0.015s
-ok      github.com/bag/security-go/file  0.013s
-?       github.com/bag/security-go/httpval [no test files]
+ok      github.com/bag/security-go/data  0.005s
+ok      github.com/bag/security-go/file  0.006s
+ok      github.com/bag/security-go/httpval 0.004s  (已补写 32 个测试)
 ok      github.com/bag/security-go/injection 0.005s
-ok      github.com/bag/security-go/protocol  0.004s
+ok      github.com/bag/security-go/protocol  0.005s
 ok      github.com/bag/security-go/storage   0.159s
 ```
 
 - `go vet ./...` 通过，无警告
 - 所有测试通过
-- **缺失测试的包**：`all`、`httpval`
+- **缺失测试的包**：`all`（仅剩）
 
 ---
 
@@ -86,9 +86,9 @@ regexp.MustCompile(`(?i)&(?:xxe|file|http|ftp|gopher|dict|data|expect);`),
 
 `all/all.go` 的 `RegisterAll()` 函数无任何测试。应添加测试验证所有注册的 detector 可正常调用。
 
-### 问题 #2：`httpval` 包完全无测试（零覆盖）
+### 问题 #2：`httpval` 包测试已补写 ✅（已解决）
 
-`httpval` 包含 `BodySize`、`ContentType`、`CSRFOrigin`、`IPBlacklist`、`Method` 五个 detector，但没有任何测试文件。关键安全组件缺乏测试覆盖。
+已添加 `httpval/httpval_test.go`（32 个测试用例），覆盖 `BodySize`（7 测试）、`ContentType`（7 测试）、`CSRFOrigin`（8 测试）、`IPBlacklist`（6 测试）、`Method`（3 测试）。含边界值、错误输入、空 AllowList deny-all 验证。
 
 ### 问题 #3：`data/data_leak.go` 信用卡号正则过于宽泛
 
@@ -115,7 +115,7 @@ regexp.MustCompile(`(?i)&(?:xxe|file|http|ftp|gopher|dict|data|expect);`),
 | 接口设计 | ★★★★☆ | `Detector` 接口 + `Engine` 编排模式清晰 |
 | 代码一致性 | ★★★☆☆ | receiver 风格不统一 |
 | 错误处理 | ★★★☆☆ | 修复前存在静默错误吞没；修复后改善 |
-| 测试覆盖 | ★★★☆☆ | 核心包覆盖尚可，`httpval`/`all` 无测试 |
+| 测试覆盖 | ★★★★☆ | `httpval` 已补写测试，`all` 包仍缺 |
 | 安全默认值 | ★★★☆☆ | ContentType 空 AllowList 问题已修复 |
 | 检测准确性 | ★★★☆☆ | 部分正则有误报风险（xxe 已部分修复） |
 
@@ -125,8 +125,12 @@ regexp.MustCompile(`(?i)&(?:xxe|file|http|ftp|gopher|dict|data|expect);`),
 
 | 优先级 | 事项 |
 |--------|------|
-| P0 | 补写 `httpval` 包测试（当前零覆盖） |
+| ~~P0~~ | ~~补写 `httpval` 包测试~~ ✅ 已完成（32 个测试，5 个 detector） |
 | P1 | 补写 `all` 包测试 |
 | P1 | 修复 `storage/redis/` 子模块 go.mod |
 | P2 | 统一 receiver 风格为指针接收者 |
 | P2 | 评估信用卡/XSS 正则误报率 |
+
+---
+
+Copyright (c) 2026 erik <erik@erik.xyz> — https://erik.xyz
