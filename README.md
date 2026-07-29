@@ -1,6 +1,6 @@
 # Security Go — 攻击检测库
 
-[English](#english)
+[English](README-EN.md)
 
 Go 语言编写的攻击检测包，覆盖 **32 个检测器**、**5 大攻击类别**、**3 种可插拔存储后端**。统一接口 + 注册表模式，纯检测库，适配任何 Go HTTP 框架。
 
@@ -152,7 +152,7 @@ HTTP Request
 ### 安装
 
 ```bash
-go get github.com/bag/security-go
+go get github.com/erikwang2013/security-go
 ```
 
 ### 快速开始
@@ -162,8 +162,8 @@ package main
 
 import (
     "fmt"
-    "github.com/bag/security-go"
-    "github.com/bag/security-go/all"
+    "github.com/erikwang2013/security-go"
+    "github.com/erikwang2013/security-go/all"
 )
 
 func main() {
@@ -252,39 +252,7 @@ e.Register(&MyDetector{})
 
 ## English
 
-[中文](#security-go--攻击检测库)
-
-A pure Go attack detection library with **32 detectors** across **5 categories**, **3 pluggable storage backends**, and a unified `Detector` interface + `Engine` registry. Zero external dependencies for all detection logic.
-
-### Quick Start
-
-```go
-e := security.NewEngine()
-all.RegisterAll(e)
-result := e.Detect("xss", "<script>alert(1)</script>")
-```
-
-### Categories
-
-- **Injection (10):** XSS, SQLi, Command, NoSQL, LDAP, XPATH, JNDI/Log4Shell, SSI, GraphQL, SSTI
-- **Protocol (9):** SSRF, XXE, Header Injection, Host Header, Request Smuggling, Open Redirect, CORS, WebSocket, DNS Rebinding
-- **HTTP Validation (5):** Method, Body Size, Content-Type, CSRF Origin, IP Blacklist
-- **Data (5):** PHP Deserialization, CSV Injection, Mail Header, JWT Attack, Prototype Pollution
-- **File (3):** Path Traversal, Malicious Upload, Data Leak
-
-### Storage
-
-- **Memory** — `sync.Mutex` + map, 30s TTL cleanup
-- **File** — JSON persistence, flush on Close
-- **Redis** — Pipeline Incr + TTL (separate sub-module)
-
-See [Chinese section](#security-go--攻击检测库) above for full API reference and detector details.
-
-### Documentation
-
-- [Design Spec](docs/superpowers/specs/2026-07-29-attack-detection-design-en.md) — Package structure, core API, detector catalog
-- [Implementation Plan](docs/superpowers/plans/2026-07-29-attack-detection-plan-en.md) — Task-by-task plan with actual vs planned deviations
-- [Code Review Report](docs/superpowers/reports/2026-07-29-code-review-report-en.md) — Bug fixes, test coverage, architecture review
+See [README-EN.md](README-EN.md) for the full English documentation.
 
 ---
 
