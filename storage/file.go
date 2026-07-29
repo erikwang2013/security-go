@@ -98,6 +98,9 @@ func (f *File) Close() error {
 			WindowStart: r.windowStart, BlockUntil: r.blockUntil,
 		})
 	}
-	data, _ := json.Marshal(out)
+	data, err := json.Marshal(out)
+	if err != nil {
+		return err
+	}
 	return os.WriteFile(f.path, data, 0644)
 }

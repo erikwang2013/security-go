@@ -12,7 +12,7 @@ var xxePatterns = []*regexp.Regexp{
 	regexp.MustCompile(`(?i)<!DOCTYPE\s+\w+\s+\[`),
 	regexp.MustCompile(`(?i)<!ENTITY\s+\w+\s+SYSTEM\s+["'](?:file|php|http|ftp|gopher|dict|data|expect)://`),
 	regexp.MustCompile(`(?i)%\w+;`),
-	regexp.MustCompile(`(?i)&[a-z]+;`),
+	regexp.MustCompile(`(?i)&(?:xxe|file|http|ftp|gopher|dict|data|expect);`),
 }
 
 type XXE struct{}

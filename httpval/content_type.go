@@ -31,7 +31,7 @@ func (c *ContentType) Detect(input string) *security.Result {
 	if err != nil {
 		return &security.Result{Name: c.Name(), Detected: false}
 	}
-	if len(c.Allowed) == 0 || c.Allowed[mt] {
+	if c.Allowed[mt] {
 		return &security.Result{Name: c.Name(), Detected: false}
 	}
 	return &security.Result{
