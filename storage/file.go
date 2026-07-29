@@ -29,7 +29,8 @@ type File struct {
 	records map[string]*record
 }
 
-// NewFile creates or loads a file-based storage backend.
+// NewFile creates or loads a file-based storage backend with periodic
+// auto-save every 30 seconds to prevent data loss on crash.
 func NewFile(path string) (*File, error) {
 	f := &File{path: path, records: make(map[string]*record)}
 	data, err := os.ReadFile(path)
@@ -45,6 +46,7 @@ func NewFile(path string) (*File, error) {
 			}
 		}
 	}
+	go f.autoSave(30 * time.Second)
 	return f, nil
 }
 
@@ -93,6 +95,10 @@ func (f *File) IsBlocked(key string) (bool, error) {
 func (f *File) Close() error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
+	return f.saveLocked()
+}
+
+func (f *File) saveLocked() error {
 	var out []fileRecord
 	for k, r := range f.records {
 		out = append(out, fileRecord{
@@ -105,4 +111,14 @@ func (f *File) Close() error {
 		return err
 	}
 	return os.WriteFile(f.path, data, 0644)
+}
+
+func (f *File) autoSave(interval time.Duration) {
+	ticker := time.NewTicker(interval)
+	defer ticker.Stop()
+	for range ticker.C {
+		f.mu.Lock()
+		_ = f.saveLocked()
+		f.mu.Unlock()
+	}
 }

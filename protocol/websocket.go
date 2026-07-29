@@ -19,11 +19,11 @@ var websocketPatterns = []*regexp.Regexp{
 
 type WebSocket struct{}
 
-func (d WebSocket) Name() string {
+func (d *WebSocket) Name() string {
 	return "websocket"
 }
 
-func (d WebSocket) Detect(input string) *security.Result {
+func (d *WebSocket) Detect(input string) *security.Result {
 	for _, p := range websocketPatterns {
 		if p.MatchString(input) {
 			return &security.Result{

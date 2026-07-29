@@ -72,7 +72,8 @@ func HasMaliciousExt(filename string) bool {
 
 // CheckExtension checks the filename extension and returns a detection result.
 func (d *MaliciousFileUpload) CheckExtension(filename string) *security.Result {
-	if strings.LastIndex(filename, ".") == -1 {
+	dotIdx := strings.LastIndex(filename, ".")
+	if dotIdx == -1 {
 		return &security.Result{
 			Name:     d.Name(),
 			Detected: true,
@@ -80,7 +81,8 @@ func (d *MaliciousFileUpload) CheckExtension(filename string) *security.Result {
 			Severity: security.SeverityMedium,
 		}
 	}
-	if HasMaliciousExt(filename) {
+	ext := strings.ToLower(filename[dotIdx:])
+	if !allowedExt[ext] {
 		return &security.Result{
 			Name:     d.Name(),
 			Detected: true,

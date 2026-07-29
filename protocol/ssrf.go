@@ -21,11 +21,11 @@ var ssrfPatterns = []*regexp.Regexp{
 
 type SSRF struct{}
 
-func (d SSRF) Name() string {
+func (d *SSRF) Name() string {
 	return "ssrf"
 }
 
-func (d SSRF) Detect(input string) *security.Result {
+func (d *SSRF) Detect(input string) *security.Result {
 	for _, p := range ssrfPatterns {
 		if p.MatchString(input) {
 			return &security.Result{

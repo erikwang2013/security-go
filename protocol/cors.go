@@ -16,11 +16,11 @@ var corsPatterns = []*regexp.Regexp{
 
 type CORS struct{}
 
-func (d CORS) Name() string {
+func (d *CORS) Name() string {
 	return "cors"
 }
 
-func (d CORS) Detect(input string) *security.Result {
+func (d *CORS) Detect(input string) *security.Result {
 	for _, p := range corsPatterns {
 		if p.MatchString(input) {
 			return &security.Result{

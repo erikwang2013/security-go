@@ -18,11 +18,11 @@ var openRedirectPatterns = []*regexp.Regexp{
 
 type OpenRedirect struct{}
 
-func (d OpenRedirect) Name() string {
+func (d *OpenRedirect) Name() string {
 	return "open_redirect"
 }
 
-func (d OpenRedirect) Detect(input string) *security.Result {
+func (d *OpenRedirect) Detect(input string) *security.Result {
 	for _, p := range openRedirectPatterns {
 		if p.MatchString(input) {
 			return &security.Result{

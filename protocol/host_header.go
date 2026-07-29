@@ -16,11 +16,11 @@ var hostHeaderPatterns = []*regexp.Regexp{
 
 type HostHeader struct{}
 
-func (d HostHeader) Name() string {
+func (d *HostHeader) Name() string {
 	return "host_header"
 }
 
-func (d HostHeader) Detect(input string) *security.Result {
+func (d *HostHeader) Detect(input string) *security.Result {
 	for _, p := range hostHeaderPatterns {
 		if p.MatchString(input) {
 			return &security.Result{

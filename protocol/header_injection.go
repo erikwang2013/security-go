@@ -17,11 +17,11 @@ var headerInjectionPatterns = []*regexp.Regexp{
 
 type HeaderInjection struct{}
 
-func (d HeaderInjection) Name() string {
+func (d *HeaderInjection) Name() string {
 	return "header_injection"
 }
 
-func (d HeaderInjection) Detect(input string) *security.Result {
+func (d *HeaderInjection) Detect(input string) *security.Result {
 	for _, p := range headerInjectionPatterns {
 		if p.MatchString(input) {
 			return &security.Result{

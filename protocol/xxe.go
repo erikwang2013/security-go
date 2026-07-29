@@ -19,11 +19,11 @@ var xxePatterns = []*regexp.Regexp{
 
 type XXE struct{}
 
-func (d XXE) Name() string {
+func (d *XXE) Name() string {
 	return "xxe"
 }
 
-func (d XXE) Detect(input string) *security.Result {
+func (d *XXE) Detect(input string) *security.Result {
 	for _, p := range xxePatterns {
 		if p.MatchString(input) {
 			return &security.Result{

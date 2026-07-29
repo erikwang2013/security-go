@@ -19,11 +19,11 @@ var requestSmugglingPatterns = []*regexp.Regexp{
 
 type RequestSmuggling struct{}
 
-func (d RequestSmuggling) Name() string {
+func (d *RequestSmuggling) Name() string {
 	return "request_smuggling"
 }
 
-func (d RequestSmuggling) Detect(input string) *security.Result {
+func (d *RequestSmuggling) Detect(input string) *security.Result {
 	for _, p := range requestSmugglingPatterns {
 		if p.MatchString(input) {
 			return &security.Result{
