@@ -12,13 +12,13 @@ var hostHeaderPatterns = []*regexp.Regexp{
 	regexp.MustCompile(`(?i)X-(?:Original|Rewrite)-URL:\s*`),
 }
 
-type HostHeaderDetector struct{}
+type HostHeader struct{}
 
-func (d HostHeaderDetector) Name() string {
-	return "Host Header Attack"
+func (d HostHeader) Name() string {
+	return "host_header"
 }
 
-func (d HostHeaderDetector) Detect(input string) *security.Result {
+func (d HostHeader) Detect(input string) *security.Result {
 	for _, p := range hostHeaderPatterns {
 		if p.MatchString(input) {
 			return &security.Result{

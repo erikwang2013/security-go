@@ -3,7 +3,7 @@ package protocol
 import "testing"
 
 func TestSSRF(t *testing.T) {
-	d := &SSRFDetector{}
+	d := &SSRF{}
 	tests := []struct {
 		input  string
 		should bool

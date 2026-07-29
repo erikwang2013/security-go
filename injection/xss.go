@@ -33,7 +33,7 @@ var xssPatterns = []*regexp.Regexp{
 type XSS struct{}
 
 func (d *XSS) Name() string {
-	return "XSS"
+	return "xss"
 }
 
 func (d *XSS) Detect(input string) *security.Result {

@@ -20,7 +20,7 @@ var sstiPatterns = []*regexp.Regexp{
 type SSTI struct{}
 
 func (d *SSTI) Name() string {
-	return "SSTI"
+	return "ssti"
 }
 
 func (d *SSTI) Detect(input string) *security.Result {

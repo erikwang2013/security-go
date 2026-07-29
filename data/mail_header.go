@@ -14,16 +14,16 @@ var mailPatterns = []*regexp.Regexp{
 	regexp.MustCompile(`(?i)boundary=`),
 }
 
-// MailHeaderDetector detects mail header injection attacks.
-type MailHeaderDetector struct{}
+// MailHeader detects mail header injection attacks.
+type MailHeader struct{}
 
 // Name returns the detector name.
-func (m *MailHeaderDetector) Name() string {
-	return "mail_header_injection"
+func (m *MailHeader) Name() string {
+	return "mail_header"
 }
 
 // Detect checks input for mail header injection patterns.
-func (m *MailHeaderDetector) Detect(input string) *security.Result {
+func (m *MailHeader) Detect(input string) *security.Result {
 	for _, p := range mailPatterns {
 		if p.MatchString(input) {
 			return &security.Result{

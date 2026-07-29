@@ -18,7 +18,7 @@ var xpathPatterns = []*regexp.Regexp{
 type XPath struct{}
 
 func (d *XPath) Name() string {
-	return "XPath"
+	return "xpath_injection"
 }
 
 func (d *XPath) Detect(input string) *security.Result {

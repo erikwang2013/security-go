@@ -40,7 +40,7 @@ type MaliciousFileUpload struct{}
 
 // Name returns the detector name.
 func (d *MaliciousFileUpload) Name() string {
-	return "Malicious File Upload"
+	return "upload"
 }
 
 // Detect scans the input for malicious content patterns.
@@ -60,7 +60,11 @@ func (d *MaliciousFileUpload) Detect(input string) *security.Result {
 
 // HasMaliciousExt checks whether the filename has a non-whitelisted extension.
 func HasMaliciousExt(filename string) bool {
-	ext := strings.ToLower(filename[strings.LastIndex(filename, "."):])
+	idx := strings.LastIndex(filename, ".")
+	if idx == -1 {
+		return true
+	}
+	ext := strings.ToLower(filename[idx:])
 	return !allowedExt[ext]
 }
 

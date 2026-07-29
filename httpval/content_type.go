@@ -29,10 +29,10 @@ func (c *ContentType) Name() string {
 func (c *ContentType) Detect(input string) *security.Result {
 	mt, _, err := mime.ParseMediaType(input)
 	if err != nil {
-		return nil
+		return &security.Result{Name: c.Name(), Detected: false}
 	}
 	if len(c.Allowed) == 0 || c.Allowed[mt] {
-		return nil
+		return &security.Result{Name: c.Name(), Detected: false}
 	}
 	return &security.Result{
 		Name:     c.Name(),

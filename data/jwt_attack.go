@@ -8,11 +8,11 @@ import (
 	"github.com/bag/security-go"
 )
 
-// JWTAttackDetector detects JWT-based attacks without using regex.
-type JWTAttackDetector struct{}
+// JWTAttack detects JWT-based attacks without using regex.
+type JWTAttack struct{}
 
 // Name returns the detector name.
-func (j *JWTAttackDetector) Name() string {
+func (j *JWTAttack) Name() string {
 	return "jwt_attack"
 }
 
@@ -20,7 +20,7 @@ func (j *JWTAttackDetector) Name() string {
 //   - alg: "none" in header
 //   - kid containing path traversal (../ or ..\)
 //   - three parts with empty signature
-func (j *JWTAttackDetector) Detect(input string) *security.Result {
+func (j *JWTAttack) Detect(input string) *security.Result {
 	parts := strings.Split(strings.TrimSpace(input), ".")
 	if len(parts) < 2 {
 		return &security.Result{Name: j.Name(), Detected: false}

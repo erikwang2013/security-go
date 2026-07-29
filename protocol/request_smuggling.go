@@ -15,13 +15,13 @@ var requestSmugglingPatterns = []*regexp.Regexp{
 	regexp.MustCompile(`\x0bTransfer-Encoding`),
 }
 
-type RequestSmugglingDetector struct{}
+type RequestSmuggling struct{}
 
-func (d RequestSmugglingDetector) Name() string {
-	return "HTTP Request Smuggling"
+func (d RequestSmuggling) Name() string {
+	return "request_smuggling"
 }
 
-func (d RequestSmugglingDetector) Detect(input string) *security.Result {
+func (d RequestSmuggling) Detect(input string) *security.Result {
 	for _, p := range requestSmugglingPatterns {
 		if p.MatchString(input) {
 			return &security.Result{

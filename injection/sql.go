@@ -25,7 +25,7 @@ var sqlPatterns = []*regexp.Regexp{
 type SQL struct{}
 
 func (d *SQL) Name() string {
-	return "SQL"
+	return "sql_injection"
 }
 
 func (d *SQL) Detect(input string) *security.Result {

@@ -14,13 +14,13 @@ var dnsRebindingPatterns = []*regexp.Regexp{
 	regexp.MustCompile(`(?i)Host:\s*\d+\.\d+\.\d+\.\d+`),
 }
 
-type DNSRebindingDetector struct{}
+type DNSRebinding struct{}
 
-func (d DNSRebindingDetector) Name() string {
-	return "DNS Rebinding"
+func (d DNSRebinding) Name() string {
+	return "dns_rebinding"
 }
 
-func (d DNSRebindingDetector) Detect(input string) *security.Result {
+func (d DNSRebinding) Detect(input string) *security.Result {
 	for _, p := range dnsRebindingPatterns {
 		if p.MatchString(input) {
 			return &security.Result{

@@ -29,7 +29,7 @@ type SensitiveDataLeak struct{}
 
 // Name returns the detector name.
 func (d *SensitiveDataLeak) Name() string {
-	return "Sensitive Data Leak"
+	return "data_leak"
 }
 
 // Detect checks the input for sensitive data patterns.

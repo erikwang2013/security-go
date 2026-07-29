@@ -24,7 +24,7 @@ var jndiPatterns = []*regexp.Regexp{
 type JNDI struct{}
 
 func (d *JNDI) Name() string {
-	return "JNDI"
+	return "jndi_injection"
 }
 
 func (d *JNDI) Detect(input string) *security.Result {

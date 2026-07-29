@@ -12,13 +12,13 @@ var corsPatterns = []*regexp.Regexp{
 	regexp.MustCompile(`(?i)Access-Control-Allow-Credentials:\s*true`),
 }
 
-type CORSDetector struct{}
+type CORS struct{}
 
-func (d CORSDetector) Name() string {
-	return "CORS Bypass"
+func (d CORS) Name() string {
+	return "cors"
 }
 
-func (d CORSDetector) Detect(input string) *security.Result {
+func (d CORS) Detect(input string) *security.Result {
 	for _, p := range corsPatterns {
 		if p.MatchString(input) {
 			return &security.Result{

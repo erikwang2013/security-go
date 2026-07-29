@@ -35,7 +35,7 @@ func (b *IPBlacklist) Name() string {
 func (b *IPBlacklist) Detect(input string) *security.Result {
 	blocked, err := b.Storage.IsBlocked(input)
 	if err != nil {
-		return nil
+		return &security.Result{Name: b.Name(), Detected: false}
 	}
 	if blocked {
 		return &security.Result{
@@ -45,7 +45,7 @@ func (b *IPBlacklist) Detect(input string) *security.Result {
 			Severity: security.SeverityHigh,
 		}
 	}
-	return nil
+	return &security.Result{Name: b.Name(), Detected: false}
 }
 
 // RecordAttack increments the attack counter for the given IP. If the

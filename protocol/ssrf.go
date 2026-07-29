@@ -17,13 +17,13 @@ var ssrfPatterns = []*regexp.Regexp{
 	regexp.MustCompile(`(?i)metadata\.google\.internal`),
 }
 
-type SSRFDetector struct{}
+type SSRF struct{}
 
-func (d SSRFDetector) Name() string {
-	return "SSRF"
+func (d SSRF) Name() string {
+	return "ssrf"
 }
 
-func (d SSRFDetector) Detect(input string) *security.Result {
+func (d SSRF) Detect(input string) *security.Result {
 	for _, p := range ssrfPatterns {
 		if p.MatchString(input) {
 			return &security.Result{

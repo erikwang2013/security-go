@@ -14,16 +14,16 @@ var csvPatterns = []*regexp.Regexp{
 	regexp.MustCompile(`^\s*=\s*\w+\+`),
 }
 
-// CSVInjectionDetector detects CSV/Excel formula injection attacks.
-type CSVInjectionDetector struct{}
+// CSVInjection detects CSV/Excel formula injection attacks.
+type CSVInjection struct{}
 
 // Name returns the detector name.
-func (c *CSVInjectionDetector) Name() string {
+func (c *CSVInjection) Name() string {
 	return "csv_injection"
 }
 
 // Detect checks input for CSV formula injection patterns.
-func (c *CSVInjectionDetector) Detect(input string) *security.Result {
+func (c *CSVInjection) Detect(input string) *security.Result {
 	for _, p := range csvPatterns {
 		if p.MatchString(input) {
 			return &security.Result{

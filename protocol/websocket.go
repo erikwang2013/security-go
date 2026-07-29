@@ -15,13 +15,13 @@ var websocketPatterns = []*regexp.Regexp{
 	regexp.MustCompile(`(?i)Origin:\s*null.*Upgrade:\s*websocket`),
 }
 
-type WebSocketDetector struct{}
+type WebSocket struct{}
 
-func (d WebSocketDetector) Name() string {
-	return "WebSocket Hijacking"
+func (d WebSocket) Name() string {
+	return "websocket"
 }
 
-func (d WebSocketDetector) Detect(input string) *security.Result {
+func (d WebSocket) Detect(input string) *security.Result {
 	for _, p := range websocketPatterns {
 		if p.MatchString(input) {
 			return &security.Result{

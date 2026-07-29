@@ -31,7 +31,7 @@ type PathTraversal struct{}
 
 // Name returns the detector name.
 func (d *PathTraversal) Name() string {
-	return "Path Traversal"
+	return "path_traversal"
 }
 
 // Detect checks the input for path traversal patterns.

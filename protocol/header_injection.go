@@ -13,13 +13,13 @@ var headerInjectionPatterns = []*regexp.Regexp{
 	regexp.MustCompile(`(?i)%0d%0a(?:Set-Cookie|Location|Content-Length|Content-Type|Transfer-Encoding|X-):`),
 }
 
-type HeaderInjectionDetector struct{}
+type HeaderInjection struct{}
 
-func (d HeaderInjectionDetector) Name() string {
-	return "HTTP Header Injection"
+func (d HeaderInjection) Name() string {
+	return "header_injection"
 }
 
-func (d HeaderInjectionDetector) Detect(input string) *security.Result {
+func (d HeaderInjection) Detect(input string) *security.Result {
 	for _, p := range headerInjectionPatterns {
 		if p.MatchString(input) {
 			return &security.Result{

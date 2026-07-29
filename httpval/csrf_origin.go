@@ -22,22 +22,22 @@ func (c *CSRFOrigin) Name() string {
 // and allowlist. An empty origin returns no detection.
 func (c *CSRFOrigin) Detect(input string) *security.Result {
 	if input == "" {
-		return nil
+		return &security.Result{Name: c.Name(), Detected: false}
 	}
 	u, err := url.Parse(input)
 	if err != nil {
-		return nil
+		return &security.Result{Name: c.Name(), Detected: false}
 	}
 	host := u.Host
 	if host == "" {
 		host = u.Hostname()
 	}
 	if strings.EqualFold(host, c.Host) {
-		return nil
+		return &security.Result{Name: c.Name(), Detected: false}
 	}
 	for _, allowed := range c.AllowList {
 		if strings.EqualFold(host, allowed) {
-			return nil
+			return &security.Result{Name: c.Name(), Detected: false}
 		}
 	}
 	return &security.Result{

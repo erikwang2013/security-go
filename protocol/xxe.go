@@ -15,13 +15,13 @@ var xxePatterns = []*regexp.Regexp{
 	regexp.MustCompile(`(?i)&[a-z]+;`),
 }
 
-type XXEDetector struct{}
+type XXE struct{}
 
-func (d XXEDetector) Name() string {
-	return "XXE"
+func (d XXE) Name() string {
+	return "xxe"
 }
 
-func (d XXEDetector) Detect(input string) *security.Result {
+func (d XXE) Detect(input string) *security.Result {
 	for _, p := range xxePatterns {
 		if p.MatchString(input) {
 			return &security.Result{

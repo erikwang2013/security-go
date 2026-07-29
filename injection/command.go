@@ -25,7 +25,7 @@ var commandPatterns = []*regexp.Regexp{
 type Command struct{}
 
 func (d *Command) Name() string {
-	return "Command"
+	return "command_injection"
 }
 
 func (d *Command) Detect(input string) *security.Result {

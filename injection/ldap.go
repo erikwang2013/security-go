@@ -20,7 +20,7 @@ var ldapPatterns = []*regexp.Regexp{
 type LDAP struct{}
 
 func (d *LDAP) Name() string {
-	return "LDAP"
+	return "ldap_injection"
 }
 
 func (d *LDAP) Detect(input string) *security.Result {

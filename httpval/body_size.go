@@ -29,7 +29,7 @@ func (b *BodySize) Name() string {
 func (b *BodySize) Detect(input string) *security.Result {
 	size, err := strconv.ParseInt(input, 10, 64)
 	if err != nil {
-		return nil
+		return &security.Result{Name: b.Name(), Detected: false}
 	}
 	if size > b.MaxSize {
 		return &security.Result{
@@ -39,5 +39,5 @@ func (b *BodySize) Detect(input string) *security.Result {
 			Severity: security.SeverityLow,
 		}
 	}
-	return nil
+	return &security.Result{Name: b.Name(), Detected: false}
 }

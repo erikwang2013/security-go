@@ -15,16 +15,16 @@ var deserPatterns = []*regexp.Regexp{
 	regexp.MustCompile(`(?i)__PHP_Incomplete_Class`),
 }
 
-// DeserializationDetector detects PHP deserialization attacks.
-type DeserializationDetector struct{}
+// Deserialization detects PHP deserialization attacks.
+type Deserialization struct{}
 
 // Name returns the detector name.
-func (d *DeserializationDetector) Name() string {
+func (d *Deserialization) Name() string {
 	return "deserialization"
 }
 
 // Detect checks input for PHP deserialization attack patterns.
-func (d *DeserializationDetector) Detect(input string) *security.Result {
+func (d *Deserialization) Detect(input string) *security.Result {
 	for _, p := range deserPatterns {
 		if p.MatchString(input) {
 			return &security.Result{

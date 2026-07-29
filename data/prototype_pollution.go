@@ -19,16 +19,16 @@ var protoPollutionPatterns = []*regexp.Regexp{
 	regexp.MustCompile(`(?i)\bconstructor\b\s*\[\s*['"]prototype['"]\s*\]`),
 }
 
-// PrototypePollutionDetector detects JavaScript prototype pollution attacks.
-type PrototypePollutionDetector struct{}
+// PrototypePollution detects JavaScript prototype pollution attacks.
+type PrototypePollution struct{}
 
 // Name returns the detector name.
-func (p *PrototypePollutionDetector) Name() string {
+func (p *PrototypePollution) Name() string {
 	return "prototype_pollution"
 }
 
 // Detect checks input for JavaScript prototype pollution patterns.
-func (p *PrototypePollutionDetector) Detect(input string) *security.Result {
+func (p *PrototypePollution) Detect(input string) *security.Result {
 	for _, pat := range protoPollutionPatterns {
 		if pat.MatchString(input) {
 			return &security.Result{

@@ -30,5 +30,5 @@ func (m *Method) Detect(input string) *security.Result {
 			Severity: security.SeverityLow,
 		}
 	}
-	return nil
+	return &security.Result{Name: m.Name(), Detected: false}
 }

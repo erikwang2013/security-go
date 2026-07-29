@@ -16,7 +16,7 @@ var nosqlPatterns = []*regexp.Regexp{
 type NoSQL struct{}
 
 func (d *NoSQL) Name() string {
-	return "NoSQL"
+	return "nosql_injection"
 }
 
 func (d *NoSQL) Detect(input string) *security.Result {

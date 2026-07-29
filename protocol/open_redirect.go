@@ -14,13 +14,13 @@ var openRedirectPatterns = []*regexp.Regexp{
 	regexp.MustCompile(`(?i)%2[fF].*%2[fF]`),
 }
 
-type OpenRedirectDetector struct{}
+type OpenRedirect struct{}
 
-func (d OpenRedirectDetector) Name() string {
-	return "Open Redirect"
+func (d OpenRedirect) Name() string {
+	return "open_redirect"
 }
 
-func (d OpenRedirectDetector) Detect(input string) *security.Result {
+func (d OpenRedirect) Detect(input string) *security.Result {
 	for _, p := range openRedirectPatterns {
 		if p.MatchString(input) {
 			return &security.Result{

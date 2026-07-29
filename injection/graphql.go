@@ -18,7 +18,7 @@ var graphqlPatterns = []*regexp.Regexp{
 type GraphQL struct{}
 
 func (d *GraphQL) Name() string {
-	return "GraphQL"
+	return "graphql_injection"
 }
 
 func (d *GraphQL) Detect(input string) *security.Result {

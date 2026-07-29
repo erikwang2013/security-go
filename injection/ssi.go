@@ -17,7 +17,7 @@ var ssiPatterns = []*regexp.Regexp{
 type SSI struct{}
 
 func (d *SSI) Name() string {
-	return "SSI"
+	return "ssi_injection"
 }
 
 func (d *SSI) Detect(input string) *security.Result {
