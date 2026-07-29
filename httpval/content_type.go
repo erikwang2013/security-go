@@ -5,7 +5,7 @@ package httpval
 import (
 	"mime"
 
-	"github.com/bag/security-go"
+	"github.com/erikwang2013/security-go"
 )
 
 // ContentType validates the request Content-Type header against a whitelist.

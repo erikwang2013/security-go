@@ -6,7 +6,7 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/bag/security-go"
+	"github.com/erikwang2013/security-go"
 )
 
 // CSRFOrigin validates the Origin header against a configured host and allowlist.

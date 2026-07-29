@@ -5,8 +5,8 @@ package httpval
 import (
 	"time"
 
-	"github.com/bag/security-go"
-	"github.com/bag/security-go/storage"
+	"github.com/erikwang2013/security-go"
+	"github.com/erikwang2013/security-go/storage"
 )
 
 // IPBlacklist detects and blocks IPs that exceed an attack threshold.

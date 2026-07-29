@@ -6,7 +6,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/bag/security-go"
+	"github.com/erikwang2013/security-go"
 )
 
 var allowedExt = map[string]bool{

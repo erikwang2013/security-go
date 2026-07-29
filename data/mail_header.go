@@ -5,7 +5,7 @@ package data
 import (
 	"regexp"
 
-	"github.com/bag/security-go"
+	"github.com/erikwang2013/security-go"
 )
 
 var mailPatterns = []*regexp.Regexp{

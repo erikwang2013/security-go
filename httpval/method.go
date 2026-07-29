@@ -2,7 +2,7 @@
 
 package httpval
 
-import "github.com/bag/security-go"
+import "github.com/erikwang2013/security-go"
 
 var allowedMethods = map[string]bool{
 	"GET":     true,

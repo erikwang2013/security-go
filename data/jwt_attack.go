@@ -7,7 +7,7 @@ import (
 	"encoding/json"
 	"strings"
 
-	"github.com/bag/security-go"
+	"github.com/erikwang2013/security-go"
 )
 
 // JWTAttack detects JWT-based attacks without using regex.

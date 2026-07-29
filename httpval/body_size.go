@@ -5,7 +5,7 @@ package httpval
 import (
 	"strconv"
 
-	"github.com/bag/security-go"
+	"github.com/erikwang2013/security-go"
 )
 
 // BodySize validates the request body size against a maximum limit.

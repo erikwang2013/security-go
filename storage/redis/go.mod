@@ -1,4 +1,4 @@
-module github.com/bag/security-go/storage/redis
+module github.com/erikwang2013/security-go/storage/redis
 
 go 1.21
 

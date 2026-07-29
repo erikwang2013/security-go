@@ -4,11 +4,11 @@
 package all
 
 import (
-	"github.com/bag/security-go"
-	"github.com/bag/security-go/data"
-	"github.com/bag/security-go/file"
-	"github.com/bag/security-go/injection"
-	"github.com/bag/security-go/protocol"
+	"github.com/erikwang2013/security-go"
+	"github.com/erikwang2013/security-go/data"
+	"github.com/erikwang2013/security-go/file"
+	"github.com/erikwang2013/security-go/injection"
+	"github.com/erikwang2013/security-go/protocol"
 )
 
 // RegisterAll registers all built-in detectors that do not require

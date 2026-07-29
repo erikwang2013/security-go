@@ -5,7 +5,7 @@ package injection
 import (
 	"regexp"
 
-	"github.com/bag/security-go"
+	"github.com/erikwang2013/security-go"
 )
 
 var commandPatterns = []*regexp.Regexp{

@@ -5,7 +5,7 @@ package protocol
 import (
 	"regexp"
 
-	"github.com/bag/security-go"
+	"github.com/erikwang2013/security-go"
 )
 
 var headerInjectionPatterns = []*regexp.Regexp{
