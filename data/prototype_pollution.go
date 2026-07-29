@@ -1,0 +1,46 @@
+package data
+
+import (
+	"regexp"
+
+	"github.com/bag/security-go"
+)
+
+var protoPollutionPatterns = []*regexp.Regexp{
+	regexp.MustCompile(`(?i)["']__proto__["']\s*:`),
+	regexp.MustCompile(`(?i)["']constructor["']\s*:`),
+	regexp.MustCompile(`(?i)["']prototype["']\s*:`),
+	regexp.MustCompile(`(?i)__defineGetter__\s*\(`),
+	regexp.MustCompile(`(?i)__defineSetter__\s*\(`),
+	regexp.MustCompile(`(?i)__lookupGetter__\s*\(`),
+	regexp.MustCompile(`(?i)__lookupSetter__\s*\(`),
+	regexp.MustCompile(`(?i)\[\[__proto__\]\]`),
+	regexp.MustCompile(`\.__proto__\s*=`),
+	regexp.MustCompile(`(?i)\bconstructor\b\s*\[\s*['"]prototype['"]\s*\]`),
+}
+
+// PrototypePollutionDetector detects JavaScript prototype pollution attacks.
+type PrototypePollutionDetector struct{}
+
+// Name returns the detector name.
+func (p *PrototypePollutionDetector) Name() string {
+	return "prototype_pollution"
+}
+
+// Detect checks input for JavaScript prototype pollution patterns.
+func (p *PrototypePollutionDetector) Detect(input string) *security.Result {
+	for _, pat := range protoPollutionPatterns {
+		if pat.MatchString(input) {
+			return &security.Result{
+				Name:     p.Name(),
+				Detected: true,
+				Message:  "JavaScript prototype pollution pattern detected: " + pat.String(),
+				Severity: security.SeverityCritical,
+				Details: map[string]interface{}{
+					"pattern": pat.String(),
+				},
+			}
+		}
+	}
+	return &security.Result{Name: p.Name(), Detected: false}
+}

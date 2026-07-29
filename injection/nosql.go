@@ -1,0 +1,37 @@
+package injection
+
+import (
+	"regexp"
+
+	"github.com/bag/security-go"
+)
+
+var nosqlPatterns = []*regexp.Regexp{
+	regexp.MustCompile(`(?i)"?\$(?:ne|gt|gte|lt|lte|eq|in|nin|regex|where|or|and|nor|not|exists|type|mod|text|search|expr)\b"?:?\s*["'\[]`),
+	regexp.MustCompile(`(?i)\{.*"\$(?:ne|gt|regex|where)"\s*:`),
+	regexp.MustCompile(`(?i)"\$where"\s*:\s*"`),
+}
+
+// NoSQL detects NoSQL injection attempts (MongoDB operators, $where).
+type NoSQL struct{}
+
+func (d *NoSQL) Name() string {
+	return "NoSQL"
+}
+
+func (d *NoSQL) Detect(input string) *security.Result {
+	for _, p := range nosqlPatterns {
+		if p.MatchString(input) {
+			return &security.Result{
+				Name:     d.Name(),
+				Detected: true,
+				Message:  "NoSQL injection pattern detected: " + p.String(),
+				Severity: security.SeverityHigh,
+				Details: map[string]interface{}{
+					"pattern": p.String(),
+				},
+			}
+		}
+	}
+	return &security.Result{Name: d.Name(), Detected: false}
+}
