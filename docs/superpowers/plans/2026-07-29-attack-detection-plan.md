@@ -19,7 +19,7 @@
 - [x] **Step 1: Init Go module**
 
 ```bash
-cd /home/wwwroot/bag/security-go && go mod init github.com/bag/security-go
+cd /home/wwwroot/erikwang2013/security-go && go mod init github.com/erikwang2013/security-go
 ```
 
 - [x] **Step 2: Create security.go — Result, Severity, Detector interface, Engine**

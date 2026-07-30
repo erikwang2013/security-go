@@ -1,7 +1,7 @@
 # Security-Go Code Review Report
 
 **Date:** 2026-07-29  
-**Project:** github.com/bag/security-go  
+**Project:** github.com/erikwang2013/security-go  
 **Scope:** 42 Go source files, 8 packages (security, all, data, file, httpval, injection, protocol, storage)  
 
 ---
@@ -9,14 +9,14 @@
 ## 1. Test Results
 
 ```
-ok      github.com/bag/security-go       0.004s
-?       github.com/bag/security-go/all   [no test files]
-ok      github.com/bag/security-go/data  0.005s
-ok      github.com/bag/security-go/file  0.006s
-ok      github.com/bag/security-go/httpval 0.004s  (32 tests added)
-ok      github.com/bag/security-go/injection 0.005s
-ok      github.com/bag/security-go/protocol  0.005s
-ok      github.com/bag/security-go/storage   0.159s
+ok      github.com/erikwang2013/security-go       0.004s
+?       github.com/erikwang2013/security-go/all   [no test files]
+ok      github.com/erikwang2013/security-go/data  0.005s
+ok      github.com/erikwang2013/security-go/file  0.006s
+ok      github.com/erikwang2013/security-go/httpval 0.004s  (32 tests added)
+ok      github.com/erikwang2013/security-go/injection 0.005s
+ok      github.com/erikwang2013/security-go/protocol  0.005s
+ok      github.com/erikwang2013/security-go/storage   0.159s
 ```
 
 - `go vet ./...` passed, zero warnings

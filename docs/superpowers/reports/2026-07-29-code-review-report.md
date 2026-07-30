@@ -1,7 +1,7 @@
 # Security-Go 代码审查报告
 
 **日期**：2026-07-29  
-**项目**：github.com/bag/security-go  
+**项目**：github.com/erikwang2013/security-go  
 **审查范围**：42 个 Go 源文件，8 个包（security、all、data、file、httpval、injection、protocol、storage）  
 
 ---
@@ -9,14 +9,14 @@
 ## 一、测试结果
 
 ```
-ok      github.com/bag/security-go       0.004s
-?       github.com/bag/security-go/all   [no test files]
-ok      github.com/bag/security-go/data  0.005s
-ok      github.com/bag/security-go/file  0.006s
-ok      github.com/bag/security-go/httpval 0.004s  (已补写 32 个测试)
-ok      github.com/bag/security-go/injection 0.005s
-ok      github.com/bag/security-go/protocol  0.005s
-ok      github.com/bag/security-go/storage   0.159s
+ok      github.com/erikwang2013/security-go       0.004s
+?       github.com/erikwang2013/security-go/all   [no test files]
+ok      github.com/erikwang2013/security-go/data  0.005s
+ok      github.com/erikwang2013/security-go/file  0.006s
+ok      github.com/erikwang2013/security-go/httpval 0.004s  (已补写 32 个测试)
+ok      github.com/erikwang2013/security-go/injection 0.005s
+ok      github.com/erikwang2013/security-go/protocol  0.005s
+ok      github.com/erikwang2013/security-go/storage   0.159s
 ```
 
 - `go vet ./...` 通过，无警告
