@@ -148,7 +148,7 @@ Any string works as a custom agent type.
 - ALWAYS verify build succeeds before committing
 
 ```bash
-npm run build && npm test
+go build ./... && go test ./...
 ```
 
 ## CLI Quick Reference

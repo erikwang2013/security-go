@@ -42,7 +42,7 @@ All 32 detectors implemented across 5 packages plus `all/all.go` for one-shot re
 |---------|--------|--------|
 | RegisterAll in `security.go` | `all/all.go` separate package | Avoid circular imports |
 | Redis in root go.mod | `storage/redis/` sub-module | Isolate optional dependency |
-| Unified pointer receivers | protocol uses value receivers | Not yet unified (P2 item) |
+| Unified pointer receivers | protocol uses value receivers | ✅ Fixed in v2 review — all changed to pointer receivers |
 | Per-task commits | Single implementation pass | All code implemented at once |
 
 ## Test Coverage Summary
@@ -50,15 +50,15 @@ All 32 detectors implemented across 5 packages plus `all/all.go` for one-shot re
 | Package | Tests | Status |
 |---------|-------|--------|
 | security | 5 | OK |
-| data | 4 | OK |
-| file | ~16 | OK |
+| data | 8 | OK |
+| file | 5 | OK |
 | httpval | 32 | OK (added post-review) |
-| injection | ~24 | OK |
-| protocol | 11 | OK |
+| injection | 10 | OK |
+| protocol | 9 | OK |
 | storage | 4 | OK |
 | all | 0 | Pending |
 
-> Full report: `docs/superpowers/reports/2026-07-29-code-review-report-en.md`
+> Full report: `docs/superpowers/reports/2026-07-29-code-review-report-v2.md`
 
 ---
 

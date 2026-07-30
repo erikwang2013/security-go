@@ -19,7 +19,7 @@
 - [x] **Step 1: Init Go module**
 
 ```bash
-cd /home/wwwroot/erikwang2013/security-go && go mod init github.com/erikwang2013/security-go
+cd /home/wwwroot/bag/security-go && go mod init github.com/erikwang2013/security-go
 ```
 
 - [x] **Step 2: Create security.go — Result, Severity, Detector interface, Engine**
@@ -305,7 +305,7 @@ func collectRequestInputs(r *http.Request) []string {
 |------|------|------|
 | RegisterAll 在 `security.go` | `all/all.go` 独立包 | 避免循环引用，httpval 依赖 storage 但其他 detector 不依赖 |
 | Redis 在根 go.mod | `storage/redis/` 子模块 | 隔离可选依赖 |
-| Receiver 统一指针 | protocol 包使用值接收者 | 未统一，列为 P2 改进项 |
+| Receiver 统一指针 | protocol 包使用值接收者 | ✅ 已在 v2 审查中全部改为指针接收者 |
 | 任务 4-12 Build & Commit | 未分步提交 | 所有代码一次性实现 |
 
 ## Test Coverage Summary
@@ -313,15 +313,15 @@ func collectRequestInputs(r *http.Request) []string {
 | 包 | 测试文件 | 测试数 |
 |----|---------|--------|
 | security | security_test.go | 5 |
-| data | jwt_attack_test.go | 4 |
-| file | path_traversal_test.go, data_leak_test.go | ~16 |
+| data | deserialization_test.go, csv_injection_test.go, mail_header_test.go, jwt_attack_test.go, prototype_pollution_test.go | 8 |
+| file | path_traversal_test.go, data_leak_test.go, upload_test.go | 5 |
 | httpval | httpval_test.go | 32 |
-| injection | xss_test.go, sql_test.go, jndi_test.go, ssti_test.go | ~24 |
-| protocol | ssrf_test.go | 11 |
+| injection | xss_test.go, sql_test.go, command_test.go, nosql_test.go, ldap_test.go, xpath_test.go, jndi_test.go, ssi_test.go, graphql_test.go, ssti_test.go | 10 |
+| protocol | ssrf_test.go, xxe_test.go, header_injection_test.go, host_header_test.go, request_smuggling_test.go, open_redirect_test.go, cors_test.go, websocket_test.go, dns_rebinding_test.go | 9 |
 | storage | memory_test.go | 4 |
 | all | (无) | 0 |
 
-> 完整报告见 `docs/superpowers/reports/2026-07-29-code-review-report.md`
+> 完整报告见 `docs/superpowers/reports/2026-07-29-code-review-report-v2.md`
 
 ---
 
