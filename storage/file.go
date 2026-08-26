@@ -27,12 +27,14 @@ type File struct {
 	mu      sync.Mutex
 	path    string
 	records map[string]*record
+	done    chan struct{}
+	closed  bool
 }
 
 // NewFile creates or loads a file-based storage backend with periodic
 // auto-save every 30 seconds to prevent data loss on crash.
 func NewFile(path string) (*File, error) {
-	f := &File{path: path, records: make(map[string]*record)}
+	f := &File{path: path, records: make(map[string]*record), done: make(chan struct{})}
 	data, err := os.ReadFile(path)
 	if err == nil {
 		var loaded []fileRecord
@@ -95,6 +97,10 @@ func (f *File) IsBlocked(key string) (bool, error) {
 func (f *File) Close() error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
+	if !f.closed {
+		close(f.done)
+		f.closed = true
+	}
 	return f.saveLocked()
 }
 
@@ -116,9 +122,14 @@ func (f *File) saveLocked() error {
 func (f *File) autoSave(interval time.Duration) {
 	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
-	for range ticker.C {
-		f.mu.Lock()
-		_ = f.saveLocked()
-		f.mu.Unlock()
+	for {
+		select {
+		case <-f.done:
+			return
+		case <-ticker.C:
+			f.mu.Lock()
+			_ = f.saveLocked()
+			f.mu.Unlock()
+		}
 	}
 }

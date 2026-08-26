@@ -74,9 +74,14 @@ func (e *Engine) DetectRequest(r *http.Request) []*Result {
 }
 
 func collectRequestInputs(r *http.Request) []string {
+	if r == nil {
+		return nil
+	}
 	var inputs []string
-	inputs = append(inputs, r.URL.String())
-	inputs = append(inputs, r.URL.Query().Encode())
+	if r.URL != nil {
+		inputs = append(inputs, r.URL.String())
+		inputs = append(inputs, r.URL.Query().Encode())
+	}
 	for key, vals := range r.Header {
 		for _, v := range vals {
 			inputs = append(inputs, key+": "+v)

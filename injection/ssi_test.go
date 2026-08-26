@@ -2,26 +2,63 @@
 
 package injection
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/erikwang2013/security-go"
+)
 
 func TestSSI(t *testing.T) {
 	d := &SSI{}
+	if got := d.Name(); got != "ssi_injection" {
+		t.Fatalf("Name() = %q, want %q", got, "ssi_injection")
+	}
 	tests := []struct {
 		input  string
 		should bool
 	}{
+		// payloads
 		{"<!--#exec cmd=\"cat /etc/passwd\"-->", true},
+		{"<!--#EXEC cmd=\"id\"-->", true},
+		{"<!--#exec cgi=\"/cgi-bin/evil\"-->", true},
 		{"<!--#include file=\"menu.html\"-->", true},
+		{"<!--#include virtual=\"/cgi-bin/x\"-->", true},
 		{"<!--#echo var=\"DATE_LOCAL\"-->", true},
 		{"<!--#config timefmt=\"%B %Y\"-->", true},
-		{"<!--#exec cgi=\"/cgi-bin/evil\"-->", true},
+		{"<!--#fsize file=\"secret\"-->", true},
+		{"<!--#flastmod file=\"secret\"-->", true},
+		{"<!--#printenv-->", true},
+		{"<!--#set var=\"x\" value=\"y\"-->", true},
+		{"<!--#if expr=\"$REMOTE_ADDR\"-->", true},
+		// benign / boundary
 		{"normal text", false},
 		{"<!-- just a comment -->", false},
+		{"<!--# not-a-directive -->", false},
+		{"", false},
 	}
+	var meta *security.Result
 	for _, tc := range tests {
 		r := d.Detect(tc.input)
 		if r.Detected != tc.should {
 			t.Errorf("input=%q: got detected=%v, want %v", tc.input, r.Detected, tc.should)
 		}
+		if tc.should && meta == nil {
+			meta = r
+		}
+	}
+	if meta == nil {
+		t.Fatal("no detected case to verify metadata")
+	}
+	if meta.Severity != security.SeverityHigh {
+		t.Errorf("detected severity = %v, want SeverityHigh", meta.Severity)
+	}
+	if meta.Message == "" {
+		t.Error("detected Message must not be empty")
+	}
+	if meta.Details["pattern"] == nil {
+		t.Error("detected Details must contain pattern")
+	}
+	if r := d.Detect("hello"); r.Name != d.Name() || r.Detected {
+		t.Errorf("undetected result: Name=%q Detected=%v, want %q/false", r.Name, r.Detected, d.Name())
 	}
 }

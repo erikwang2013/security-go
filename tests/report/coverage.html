@@ -1,0 +1,2145 @@
+
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+		<title>all: Go Coverage Report</title>
+		<style>
+			body {
+				background: black;
+				color: rgb(80, 80, 80);
+			}
+			body, pre, #legend span {
+				font-family: Menlo, monospace;
+				font-weight: bold;
+			}
+			#topbar {
+				background: black;
+				position: fixed;
+				top: 0; left: 0; right: 0;
+				height: 42px;
+				border-bottom: 1px solid rgb(80, 80, 80);
+			}
+			#content {
+				margin-top: 50px;
+			}
+			#nav, #legend {
+				float: left;
+				margin-left: 10px;
+			}
+			#legend {
+				margin-top: 12px;
+			}
+			#nav {
+				margin-top: 10px;
+			}
+			#legend span {
+				margin: 0 5px;
+			}
+			.cov0 { color: rgb(192, 0, 0) }
+.cov1 { color: rgb(128, 128, 128) }
+.cov2 { color: rgb(116, 140, 131) }
+.cov3 { color: rgb(104, 152, 134) }
+.cov4 { color: rgb(92, 164, 137) }
+.cov5 { color: rgb(80, 176, 140) }
+.cov6 { color: rgb(68, 188, 143) }
+.cov7 { color: rgb(56, 200, 146) }
+.cov8 { color: rgb(44, 212, 149) }
+.cov9 { color: rgb(32, 224, 152) }
+.cov10 { color: rgb(20, 236, 155) }
+
+		</style>
+	</head>
+	<body>
+		<div id="topbar">
+			<div id="nav">
+				<select id="files">
+				
+				<option value="file0">github.com/erikwang2013/security-go/all/all.go (100.0%)</option>
+				
+				<option value="file1">github.com/erikwang2013/security-go/data/csv_injection.go (100.0%)</option>
+				
+				<option value="file2">github.com/erikwang2013/security-go/data/deserialization.go (100.0%)</option>
+				
+				<option value="file3">github.com/erikwang2013/security-go/data/jwt_attack.go (100.0%)</option>
+				
+				<option value="file4">github.com/erikwang2013/security-go/data/mail_header.go (100.0%)</option>
+				
+				<option value="file5">github.com/erikwang2013/security-go/data/prototype_pollution.go (100.0%)</option>
+				
+				<option value="file6">github.com/erikwang2013/security-go/file/data_leak.go (100.0%)</option>
+				
+				<option value="file7">github.com/erikwang2013/security-go/file/path_traversal.go (100.0%)</option>
+				
+				<option value="file8">github.com/erikwang2013/security-go/file/upload.go (100.0%)</option>
+				
+				<option value="file9">github.com/erikwang2013/security-go/httpval/body_size.go (100.0%)</option>
+				
+				<option value="file10">github.com/erikwang2013/security-go/httpval/content_type.go (100.0%)</option>
+				
+				<option value="file11">github.com/erikwang2013/security-go/httpval/csrf_origin.go (100.0%)</option>
+				
+				<option value="file12">github.com/erikwang2013/security-go/httpval/ip_blacklist.go (100.0%)</option>
+				
+				<option value="file13">github.com/erikwang2013/security-go/httpval/method.go (100.0%)</option>
+				
+				<option value="file14">github.com/erikwang2013/security-go/injection/command.go (100.0%)</option>
+				
+				<option value="file15">github.com/erikwang2013/security-go/injection/graphql.go (100.0%)</option>
+				
+				<option value="file16">github.com/erikwang2013/security-go/injection/jndi.go (100.0%)</option>
+				
+				<option value="file17">github.com/erikwang2013/security-go/injection/ldap.go (100.0%)</option>
+				
+				<option value="file18">github.com/erikwang2013/security-go/injection/nosql.go (100.0%)</option>
+				
+				<option value="file19">github.com/erikwang2013/security-go/injection/sql.go (100.0%)</option>
+				
+				<option value="file20">github.com/erikwang2013/security-go/injection/ssi.go (100.0%)</option>
+				
+				<option value="file21">github.com/erikwang2013/security-go/injection/ssti.go (100.0%)</option>
+				
+				<option value="file22">github.com/erikwang2013/security-go/injection/xpath.go (100.0%)</option>
+				
+				<option value="file23">github.com/erikwang2013/security-go/injection/xss.go (100.0%)</option>
+				
+				<option value="file24">github.com/erikwang2013/security-go/protocol/cors.go (100.0%)</option>
+				
+				<option value="file25">github.com/erikwang2013/security-go/protocol/dns_rebinding.go (100.0%)</option>
+				
+				<option value="file26">github.com/erikwang2013/security-go/protocol/header_injection.go (100.0%)</option>
+				
+				<option value="file27">github.com/erikwang2013/security-go/protocol/host_header.go (100.0%)</option>
+				
+				<option value="file28">github.com/erikwang2013/security-go/protocol/open_redirect.go (100.0%)</option>
+				
+				<option value="file29">github.com/erikwang2013/security-go/protocol/request_smuggling.go (100.0%)</option>
+				
+				<option value="file30">github.com/erikwang2013/security-go/protocol/ssrf.go (100.0%)</option>
+				
+				<option value="file31">github.com/erikwang2013/security-go/protocol/websocket.go (100.0%)</option>
+				
+				<option value="file32">github.com/erikwang2013/security-go/protocol/xxe.go (100.0%)</option>
+				
+				<option value="file33">github.com/erikwang2013/security-go/security.go (100.0%)</option>
+				
+				<option value="file34">github.com/erikwang2013/security-go/storage/file.go (90.9%)</option>
+				
+				<option value="file35">github.com/erikwang2013/security-go/storage/memory.go (76.9%)</option>
+				
+				</select>
+			</div>
+			<div id="legend">
+				<span>not tracked</span>
+			
+				<span class="cov0">not covered</span>
+				<span class="cov8">covered</span>
+			
+			</div>
+		</div>
+		<div id="content">
+		
+		<pre class="file" id="file0" style="display: none">// Copyright (c) 2026 erik &lt;erik@erik.xyz&gt; — https://erik.xyz
+
+// Package all provides a convenience function to register all built-in detectors.
+package all
+
+import (
+        "github.com/erikwang2013/security-go"
+        "github.com/erikwang2013/security-go/data"
+        "github.com/erikwang2013/security-go/file"
+        "github.com/erikwang2013/security-go/injection"
+        "github.com/erikwang2013/security-go/protocol"
+)
+
+// RegisterAll registers all built-in detectors that do not require
+// external configuration (injection, protocol, data, file).
+// HTTP validation detectors (httpval) must be registered individually
+// as they require application-specific settings.
+func RegisterAll(e *security.Engine) <span class="cov8" title="1">{
+        e.Register(&amp;injection.XSS{})
+        e.Register(&amp;injection.SQL{})
+        e.Register(&amp;injection.Command{})
+        e.Register(&amp;injection.NoSQL{})
+        e.Register(&amp;injection.LDAP{})
+        e.Register(&amp;injection.XPath{})
+        e.Register(&amp;injection.JNDI{})
+        e.Register(&amp;injection.SSI{})
+        e.Register(&amp;injection.GraphQL{})
+        e.Register(&amp;injection.SSTI{})
+        e.Register(&amp;protocol.SSRF{})
+        e.Register(&amp;protocol.XXE{})
+        e.Register(&amp;protocol.HeaderInjection{})
+        e.Register(&amp;protocol.HostHeader{})
+        e.Register(&amp;protocol.RequestSmuggling{})
+        e.Register(&amp;protocol.OpenRedirect{})
+        e.Register(&amp;protocol.CORS{})
+        e.Register(&amp;protocol.WebSocket{})
+        e.Register(&amp;protocol.DNSRebinding{})
+        e.Register(&amp;data.Deserialization{})
+        e.Register(&amp;data.CSVInjection{})
+        e.Register(&amp;data.MailHeader{})
+        e.Register(&amp;data.JWTAttack{})
+        e.Register(&amp;data.PrototypePollution{})
+        e.Register(&amp;file.PathTraversal{})
+        e.Register(&amp;file.MaliciousFileUpload{})
+        e.Register(&amp;file.SensitiveDataLeak{})
+}</span>
+</pre>
+		
+		<pre class="file" id="file1" style="display: none">// Copyright (c) 2026 erik &lt;erik@erik.xyz&gt; — https://erik.xyz
+
+package data
+
+import (
+        "regexp"
+
+        "github.com/erikwang2013/security-go"
+)
+
+var csvPatterns = []*regexp.Regexp{
+        regexp.MustCompile(`^\s*=(?:cmd|HYPERLINK|DDE|IMPORTXML|IMPORTDATA|WEBSERVICE|IMPORTFEED)\s*\(`),
+        regexp.MustCompile(`^\s*@(?:SUM|AVERAGE|COUNT|MAX|MIN|ROUND|IF|VLOOKUP|HLOOKUP)\s*\(`),
+        regexp.MustCompile(`^\s*\+\s*(?:SUM|AVERAGE|COUNT|MAX|MIN)\s*\(`),
+        regexp.MustCompile(`^\s*-\s*(?:SUM|AVERAGE|COUNT|MAX|MIN)\s*\(`),
+        regexp.MustCompile(`^\s*=\s*\w+\+`),
+}
+
+// CSVInjection detects CSV/Excel formula injection attacks.
+type CSVInjection struct{}
+
+// Name returns the detector name.
+func (c *CSVInjection) Name() string <span class="cov8" title="1">{
+        return "csv_injection"
+}</span>
+
+// Detect checks input for CSV formula injection patterns.
+func (c *CSVInjection) Detect(input string) *security.Result <span class="cov8" title="1">{
+        for _, p := range csvPatterns </span><span class="cov8" title="1">{
+                if p.MatchString(input) </span><span class="cov8" title="1">{
+                        return &amp;security.Result{
+                                Name:     c.Name(),
+                                Detected: true,
+                                Message:  "CSV formula injection pattern detected: " + p.String(),
+                                Severity: security.SeverityHigh,
+                                Details: map[string]interface{}{
+                                        "pattern": p.String(),
+                                },
+                        }
+                }</span>
+        }
+        <span class="cov8" title="1">return &amp;security.Result{Name: c.Name(), Detected: false}</span>
+}
+</pre>
+		
+		<pre class="file" id="file2" style="display: none">// Copyright (c) 2026 erik &lt;erik@erik.xyz&gt; — https://erik.xyz
+
+package data
+
+import (
+        "regexp"
+
+        "github.com/erikwang2013/security-go"
+)
+
+var deserPatterns = []*regexp.Regexp{
+        regexp.MustCompile(`(?i)O:\d+:`),
+        regexp.MustCompile(`(?i)C:\d+:`),
+        regexp.MustCompile(`(?i)a:\d+:\{`),
+        regexp.MustCompile(`(?i)(?:unserialize|__wakeup|__destruct|__toString|__call|__get|__set|__isset|__unset|__sleep)\s*\(`),
+        regexp.MustCompile(`(?i)s:\d+:"`),
+        regexp.MustCompile(`(?i)__PHP_Incomplete_Class`),
+}
+
+// Deserialization detects PHP deserialization attacks.
+type Deserialization struct{}
+
+// Name returns the detector name.
+func (d *Deserialization) Name() string <span class="cov8" title="1">{
+        return "deserialization"
+}</span>
+
+// Detect checks input for PHP deserialization attack patterns.
+func (d *Deserialization) Detect(input string) *security.Result <span class="cov8" title="1">{
+        for _, p := range deserPatterns </span><span class="cov8" title="1">{
+                if p.MatchString(input) </span><span class="cov8" title="1">{
+                        return &amp;security.Result{
+                                Name:     d.Name(),
+                                Detected: true,
+                                Message:  "PHP deserialization attack pattern detected: " + p.String(),
+                                Severity: security.SeverityCritical,
+                                Details: map[string]interface{}{
+                                        "pattern": p.String(),
+                                },
+                        }
+                }</span>
+        }
+        <span class="cov8" title="1">return &amp;security.Result{Name: d.Name(), Detected: false}</span>
+}
+</pre>
+		
+		<pre class="file" id="file3" style="display: none">// Copyright (c) 2026 erik &lt;erik@erik.xyz&gt; — https://erik.xyz
+
+package data
+
+import (
+        "encoding/base64"
+        "encoding/json"
+        "strings"
+
+        "github.com/erikwang2013/security-go"
+)
+
+// JWTAttack detects JWT-based attacks without using regex.
+type JWTAttack struct{}
+
+// Name returns the detector name.
+func (j *JWTAttack) Name() string <span class="cov8" title="1">{
+        return "jwt_attack"
+}</span>
+
+// Detect checks a JWT token for attack indicators:
+//   - alg: "none" in header
+//   - kid containing path traversal (../ or ..\)
+//   - three parts with empty signature
+func (j *JWTAttack) Detect(input string) *security.Result <span class="cov8" title="1">{
+        parts := strings.Split(strings.TrimSpace(input), ".")
+        if len(parts) &lt; 2 </span><span class="cov8" title="1">{
+                return &amp;security.Result{Name: j.Name(), Detected: false}
+        }</span>
+
+        <span class="cov8" title="1">headerJSON, err := decodeBase64URL(parts[0])
+        if err != nil </span><span class="cov8" title="1">{
+                return &amp;security.Result{Name: j.Name(), Detected: false}
+        }</span>
+
+        <span class="cov8" title="1">var header map[string]interface{}
+        if err := json.Unmarshal(headerJSON, &amp;header); err != nil </span><span class="cov8" title="1">{
+                return &amp;security.Result{Name: j.Name(), Detected: false}
+        }</span>
+
+        // Check alg: "none"
+        <span class="cov8" title="1">if alg, ok := header["alg"].(string); ok &amp;&amp; strings.EqualFold(alg, "none") </span><span class="cov8" title="1">{
+                return &amp;security.Result{
+                        Name:     j.Name(),
+                        Detected: true,
+                        Message:  "JWT token uses alg=none, allowing signature bypass",
+                        Severity: security.SeverityCritical,
+                        Details: map[string]interface{}{
+                                "reason": "alg_none",
+                                "alg":    alg,
+                        },
+                }
+        }</span>
+
+        // Check kid for path traversal
+        <span class="cov8" title="1">if kid, ok := header["kid"].(string); ok </span><span class="cov8" title="1">{
+                if strings.Contains(kid, "../") || strings.Contains(kid, `..\`) </span><span class="cov8" title="1">{
+                        return &amp;security.Result{
+                                Name:     j.Name(),
+                                Detected: true,
+                                Message:  "JWT kid contains path traversal sequence",
+                                Severity: security.SeverityCritical,
+                                Details: map[string]interface{}{
+                                        "reason": "kid_path_traversal",
+                                        "kid":    kid,
+                                },
+                        }
+                }</span>
+        }
+
+        // Check three parts with empty signature
+        <span class="cov8" title="1">if len(parts) == 3 &amp;&amp; parts[2] == "" </span><span class="cov8" title="1">{
+                return &amp;security.Result{
+                        Name:     j.Name(),
+                        Detected: true,
+                        Message:  "JWT token has three parts but empty signature",
+                        Severity: security.SeverityCritical,
+                        Details: map[string]interface{}{
+                                "reason": "empty_signature",
+                        },
+                }
+        }</span>
+
+        <span class="cov8" title="1">return &amp;security.Result{Name: j.Name(), Detected: false}</span>
+}
+
+// decodeBase64URL decodes a base64url-encoded string to raw bytes.
+func decodeBase64URL(s string) ([]byte, error) <span class="cov8" title="1">{
+        // Pad and convert to standard base64
+        s = strings.TrimRight(s, "=")
+        switch len(s) % 4 </span>{
+        case 2:<span class="cov8" title="1">
+                s += "=="</span>
+        case 3:<span class="cov8" title="1">
+                s += "="</span>
+        }
+        <span class="cov8" title="1">s = strings.NewReplacer("-", "+", "_", "/").Replace(s)
+        return base64.StdEncoding.DecodeString(s)</span>
+}
+</pre>
+		
+		<pre class="file" id="file4" style="display: none">// Copyright (c) 2026 erik &lt;erik@erik.xyz&gt; — https://erik.xyz
+
+package data
+
+import (
+        "regexp"
+
+        "github.com/erikwang2013/security-go"
+)
+
+var mailPatterns = []*regexp.Regexp{
+        regexp.MustCompile(`(?i)\n\s*(?:Bcc|Cc|To|From|Reply-To|Subject|Content-Type|MIME-Version):\s*`),
+        regexp.MustCompile(`(?i)%0[dD]%0[aA](?:Bcc|Cc|To|From|Reply-To):`),
+        regexp.MustCompile(`(?i)\r\n(?:Bcc|Cc|To|From|Reply-To):`),
+        regexp.MustCompile(`(?i)Content-Type:\s*multipart/`),
+        regexp.MustCompile(`(?i)boundary=`),
+}
+
+// MailHeader detects mail header injection attacks.
+type MailHeader struct{}
+
+// Name returns the detector name.
+func (m *MailHeader) Name() string <span class="cov8" title="1">{
+        return "mail_header"
+}</span>
+
+// Detect checks input for mail header injection patterns.
+func (m *MailHeader) Detect(input string) *security.Result <span class="cov8" title="1">{
+        for _, p := range mailPatterns </span><span class="cov8" title="1">{
+                if p.MatchString(input) </span><span class="cov8" title="1">{
+                        return &amp;security.Result{
+                                Name:     m.Name(),
+                                Detected: true,
+                                Message:  "Mail header injection pattern detected: " + p.String(),
+                                Severity: security.SeverityCritical,
+                                Details: map[string]interface{}{
+                                        "pattern": p.String(),
+                                },
+                        }
+                }</span>
+        }
+        <span class="cov8" title="1">return &amp;security.Result{Name: m.Name(), Detected: false}</span>
+}
+</pre>
+		
+		<pre class="file" id="file5" style="display: none">// Copyright (c) 2026 erik &lt;erik@erik.xyz&gt; — https://erik.xyz
+
+package data
+
+import (
+        "regexp"
+
+        "github.com/erikwang2013/security-go"
+)
+
+var protoPollutionPatterns = []*regexp.Regexp{
+        regexp.MustCompile(`(?i)["']__proto__["']\s*:`),
+        regexp.MustCompile(`(?i)["']constructor["']\s*:`),
+        regexp.MustCompile(`(?i)["']prototype["']\s*:`),
+        regexp.MustCompile(`(?i)__defineGetter__\s*\(`),
+        regexp.MustCompile(`(?i)__defineSetter__\s*\(`),
+        regexp.MustCompile(`(?i)__lookupGetter__\s*\(`),
+        regexp.MustCompile(`(?i)__lookupSetter__\s*\(`),
+        regexp.MustCompile(`(?i)\[\[__proto__\]\]`),
+        regexp.MustCompile(`\.__proto__\s*=`),
+        regexp.MustCompile(`(?i)\bconstructor\b\s*\[\s*['"]prototype['"]\s*\]`),
+}
+
+// PrototypePollution detects JavaScript prototype pollution attacks.
+type PrototypePollution struct{}
+
+// Name returns the detector name.
+func (p *PrototypePollution) Name() string <span class="cov8" title="1">{
+        return "prototype_pollution"
+}</span>
+
+// Detect checks input for JavaScript prototype pollution patterns.
+func (p *PrototypePollution) Detect(input string) *security.Result <span class="cov8" title="1">{
+        for _, pat := range protoPollutionPatterns </span><span class="cov8" title="1">{
+                if pat.MatchString(input) </span><span class="cov8" title="1">{
+                        return &amp;security.Result{
+                                Name:     p.Name(),
+                                Detected: true,
+                                Message:  "JavaScript prototype pollution pattern detected: " + pat.String(),
+                                Severity: security.SeverityCritical,
+                                Details: map[string]interface{}{
+                                        "pattern": pat.String(),
+                                },
+                        }
+                }</span>
+        }
+        <span class="cov8" title="1">return &amp;security.Result{Name: p.Name(), Detected: false}</span>
+}
+</pre>
+		
+		<pre class="file" id="file6" style="display: none">// Copyright (c) 2026 erik &lt;erik@erik.xyz&gt; — https://erik.xyz
+
+package file
+
+import (
+        "regexp"
+
+        "github.com/erikwang2013/security-go"
+)
+
+var leakPatterns = []struct {
+        pattern *regexp.Regexp
+        name    string
+}{
+        {regexp.MustCompile(`\b(?:\d[ -]*?){13,16}\b`), "Credit Card Number"},
+        {regexp.MustCompile(`(?i)AKIA[0-9A-Z]{16}`), "AWS Access Key"},
+        {regexp.MustCompile(`-----BEGIN\s+(?:RSA\s+)?PRIVATE\s+KEY-----`), "Private Key"},
+        {regexp.MustCompile(`-----BEGIN\s+CERTIFICATE-----`), "Certificate"},
+        {regexp.MustCompile(`(?i)(?:jdbc|mysql|postgres|mongodb|redis|sqlserver)://[^/\s]+`), "DB Connection String"},
+        {regexp.MustCompile(`(?i)(?:api[_-]?key|apikey|api[_-]?secret|secret[_-]?key)\s*[:=]\s*['"]?\w+`), "API Key"},
+        {regexp.MustCompile(`(?i)(?:access[_-]?token|auth[_-]?token|bearer)\s*[:=]\s*['"]?\w+`), "Access Token"},
+        {regexp.MustCompile(`(?i)eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]*`), "JWT Token"},
+        {regexp.MustCompile(`(?i)(?:password|passwd|pwd)\s*[:=]\s*['"][^'"]+['"]`), "Password in plaintext"},
+        {regexp.MustCompile(`(?i)sk-[A-Za-z0-9]{32,}`), "OpenAI API Key"},
+        {regexp.MustCompile(`(?i)github[_-]?(?:token|pat)\s*[:=]\s*['"]?[A-Za-z0-9_]+`), "GitHub Token"},
+        {regexp.MustCompile(`(?i)ghp_[A-Za-z0-9]{36}`), "GitHub Personal Access Token"},
+}
+
+// SensitiveDataLeak is a detector for sensitive data leaks.
+type SensitiveDataLeak struct{}
+
+// Name returns the detector name.
+func (d *SensitiveDataLeak) Name() string <span class="cov8" title="1">{
+        return "data_leak"
+}</span>
+
+// Detect checks the input for sensitive data patterns.
+func (d *SensitiveDataLeak) Detect(input string) *security.Result <span class="cov8" title="1">{
+        for _, lp := range leakPatterns </span><span class="cov8" title="1">{
+                if lp.pattern.MatchString(input) </span><span class="cov8" title="1">{
+                        return &amp;security.Result{
+                                Name:     d.Name(),
+                                Detected: true,
+                                Message:  "Sensitive data detected: " + lp.name,
+                                Severity: security.SeverityCritical,
+                        }
+                }</span>
+        }
+        <span class="cov8" title="1">return &amp;security.Result{Name: d.Name(), Detected: false}</span>
+}
+</pre>
+		
+		<pre class="file" id="file7" style="display: none">// Copyright (c) 2026 erik &lt;erik@erik.xyz&gt; — https://erik.xyz
+
+package file
+
+import (
+        "regexp"
+
+        "github.com/erikwang2013/security-go"
+)
+
+var pathTraversalPatterns = []*regexp.Regexp{
+        regexp.MustCompile(`\.\./`),
+        regexp.MustCompile(`\.\.\\`),
+        regexp.MustCompile(`%2e%2e[/\\]`),
+        regexp.MustCompile(`%252e%252e[/\\]`),
+        regexp.MustCompile(`(?i)\.\.%2f`),
+        regexp.MustCompile(`(?i)\.\.%5c`),
+        regexp.MustCompile(`(?i)php://filter`),
+        regexp.MustCompile(`(?i)php://input`),
+        regexp.MustCompile(`(?i)data://`),
+        regexp.MustCompile(`(?i)expect://`),
+        regexp.MustCompile(`(?i)phar://`),
+        regexp.MustCompile(`(?i)zip://`),
+        regexp.MustCompile(`(?i)file:///`),
+        regexp.MustCompile(`/etc/(?:passwd|shadow|hosts|group)`),
+        regexp.MustCompile(`(?i)C:\\Windows\\(?:System32|win\.ini)`),
+        regexp.MustCompile(`%00`),
+        regexp.MustCompile(`\x00`),
+}
+
+// PathTraversal is a detector for path traversal attacks.
+type PathTraversal struct{}
+
+// Name returns the detector name.
+func (d *PathTraversal) Name() string <span class="cov8" title="1">{
+        return "path_traversal"
+}</span>
+
+// Detect checks the input for path traversal patterns.
+func (d *PathTraversal) Detect(input string) *security.Result <span class="cov8" title="1">{
+        for _, p := range pathTraversalPatterns </span><span class="cov8" title="1">{
+                if p.MatchString(input) </span><span class="cov8" title="1">{
+                        return &amp;security.Result{
+                                Name:     d.Name(),
+                                Detected: true,
+                                Message:  "Path traversal attack detected: " + p.String(),
+                                Severity: security.SeverityHigh,
+                        }
+                }</span>
+        }
+        <span class="cov8" title="1">return &amp;security.Result{Name: d.Name(), Detected: false}</span>
+}
+</pre>
+		
+		<pre class="file" id="file8" style="display: none">// Copyright (c) 2026 erik &lt;erik@erik.xyz&gt; — https://erik.xyz
+
+package file
+
+import (
+        "regexp"
+        "strings"
+
+        "github.com/erikwang2013/security-go"
+)
+
+var allowedExt = map[string]bool{
+        ".jpg":  true,
+        ".jpeg": true,
+        ".png":  true,
+        ".gif":  true,
+        ".webp": true,
+        ".pdf":  true,
+        ".doc":  true,
+        ".docx": true,
+        ".xls":  true,
+        ".xlsx": true,
+        ".txt":  true,
+        ".csv":  true,
+        ".mp4":  true,
+        ".mp3":  true,
+        ".zip":  true,
+}
+
+var maliciousContentPatterns = []*regexp.Regexp{
+        regexp.MustCompile(`(?i)&lt;\?php`),
+        regexp.MustCompile(`&lt;\?=`),
+        regexp.MustCompile(`&lt;%[^%]*%&gt;`),
+        regexp.MustCompile(`(?i)&lt;script`),
+        regexp.MustCompile(`(?i)eval\s*\(`),
+        regexp.MustCompile(`(?i)system\s*\(`),
+        regexp.MustCompile(`(?i)exec\s*\(`),
+}
+
+// MaliciousFileUpload is a detector for malicious file uploads.
+type MaliciousFileUpload struct{}
+
+// Name returns the detector name.
+func (d *MaliciousFileUpload) Name() string <span class="cov8" title="1">{
+        return "upload"
+}</span>
+
+// Detect scans the input for malicious content patterns.
+func (d *MaliciousFileUpload) Detect(input string) *security.Result <span class="cov8" title="1">{
+        for _, p := range maliciousContentPatterns </span><span class="cov8" title="1">{
+                if p.MatchString(input) </span><span class="cov8" title="1">{
+                        return &amp;security.Result{
+                                Name:     d.Name(),
+                                Detected: true,
+                                Message:  "Malicious content detected: " + p.String(),
+                                Severity: security.SeverityHigh,
+                        }
+                }</span>
+        }
+        <span class="cov8" title="1">return &amp;security.Result{Name: d.Name(), Detected: false}</span>
+}
+
+// HasMaliciousExt checks whether the filename has a non-whitelisted extension.
+func HasMaliciousExt(filename string) bool <span class="cov8" title="1">{
+        idx := strings.LastIndex(filename, ".")
+        if idx == -1 </span><span class="cov8" title="1">{
+                return true
+        }</span>
+        <span class="cov8" title="1">ext := strings.ToLower(filename[idx:])
+        return !allowedExt[ext]</span>
+}
+
+// CheckExtension checks the filename extension and returns a detection result.
+func (d *MaliciousFileUpload) CheckExtension(filename string) *security.Result <span class="cov8" title="1">{
+        dotIdx := strings.LastIndex(filename, ".")
+        if dotIdx == -1 </span><span class="cov8" title="1">{
+                return &amp;security.Result{
+                        Name:     d.Name(),
+                        Detected: true,
+                        Message:  "File has no extension",
+                        Severity: security.SeverityMedium,
+                }
+        }</span>
+        <span class="cov8" title="1">ext := strings.ToLower(filename[dotIdx:])
+        if !allowedExt[ext] </span><span class="cov8" title="1">{
+                return &amp;security.Result{
+                        Name:     d.Name(),
+                        Detected: true,
+                        Message:  "File extension not allowed: " + filename,
+                        Severity: security.SeverityMedium,
+                }
+        }</span>
+        <span class="cov8" title="1">return &amp;security.Result{Name: d.Name(), Detected: false}</span>
+}
+</pre>
+		
+		<pre class="file" id="file9" style="display: none">// Copyright (c) 2026 erik &lt;erik@erik.xyz&gt; — https://erik.xyz
+
+package httpval
+
+import (
+        "strconv"
+
+        "github.com/erikwang2013/security-go"
+)
+
+// BodySize validates the request body size against a maximum limit.
+type BodySize struct {
+        MaxSize int64
+}
+
+// NewBodySize creates a BodySize detector. If maxSize &lt;= 0, defaults to 10MB.
+func NewBodySize(maxSize int64) *BodySize <span class="cov8" title="1">{
+        if maxSize &lt;= 0 </span><span class="cov8" title="1">{
+                maxSize = 10 * 1024 * 1024
+        }</span>
+        <span class="cov8" title="1">return &amp;BodySize{MaxSize: maxSize}</span>
+}
+
+// Name returns the detector name.
+func (b *BodySize) Name() string <span class="cov8" title="1">{
+        return "body_size"
+}</span>
+
+// Detect parses input as an int64 body size and checks it against the limit.
+// If parsing fails, no detection is returned.
+func (b *BodySize) Detect(input string) *security.Result <span class="cov8" title="1">{
+        size, err := strconv.ParseInt(input, 10, 64)
+        if err != nil </span><span class="cov8" title="1">{
+                return &amp;security.Result{Name: b.Name(), Detected: false}
+        }</span>
+        <span class="cov8" title="1">if size &gt; b.MaxSize </span><span class="cov8" title="1">{
+                return &amp;security.Result{
+                        Name:     b.Name(),
+                        Detected: true,
+                        Message:  "Request body exceeds maximum size",
+                        Severity: security.SeverityLow,
+                }
+        }</span>
+        <span class="cov8" title="1">return &amp;security.Result{Name: b.Name(), Detected: false}</span>
+}
+</pre>
+		
+		<pre class="file" id="file10" style="display: none">// Copyright (c) 2026 erik &lt;erik@erik.xyz&gt; — https://erik.xyz
+
+package httpval
+
+import (
+        "mime"
+
+        "github.com/erikwang2013/security-go"
+)
+
+// ContentType validates the request Content-Type header against a whitelist.
+type ContentType struct {
+        Allowed map[string]bool
+}
+
+// NewContentType creates a ContentType detector with the given allowed types.
+func NewContentType(allowed []string) *ContentType <span class="cov8" title="1">{
+        ct := &amp;ContentType{Allowed: make(map[string]bool)}
+        for _, a := range allowed </span><span class="cov8" title="1">{
+                ct.Allowed[a] = true
+        }</span>
+        <span class="cov8" title="1">return ct</span>
+}
+
+// Name returns the detector name.
+func (c *ContentType) Name() string <span class="cov8" title="1">{
+        return "content_type"
+}</span>
+
+// Detect parses the Content-Type header and checks it against the allowed map.
+func (c *ContentType) Detect(input string) *security.Result <span class="cov8" title="1">{
+        mt, _, err := mime.ParseMediaType(input)
+        if err != nil </span><span class="cov8" title="1">{
+                return &amp;security.Result{Name: c.Name(), Detected: false}
+        }</span>
+        <span class="cov8" title="1">if c.Allowed[mt] </span><span class="cov8" title="1">{
+                return &amp;security.Result{Name: c.Name(), Detected: false}
+        }</span>
+        <span class="cov8" title="1">return &amp;security.Result{
+                Name:     c.Name(),
+                Detected: true,
+                Message:  "Content-Type not allowed: " + mt,
+                Severity: security.SeverityLow,
+        }</span>
+}
+</pre>
+		
+		<pre class="file" id="file11" style="display: none">// Copyright (c) 2026 erik &lt;erik@erik.xyz&gt; — https://erik.xyz
+
+package httpval
+
+import (
+        "net/url"
+        "strings"
+
+        "github.com/erikwang2013/security-go"
+)
+
+// CSRFOrigin validates the Origin header against a configured host and allowlist.
+type CSRFOrigin struct {
+        Host      string
+        AllowList []string
+}
+
+// Name returns the detector name.
+func (c *CSRFOrigin) Name() string <span class="cov8" title="1">{
+        return "csrf_origin"
+}</span>
+
+// Detect parses the Origin header and compares it against the configured host
+// and allowlist. An empty origin returns no detection.
+func (c *CSRFOrigin) Detect(input string) *security.Result <span class="cov8" title="1">{
+        if input == "" </span><span class="cov8" title="1">{
+                return &amp;security.Result{Name: c.Name(), Detected: false}
+        }</span>
+        <span class="cov8" title="1">u, err := url.Parse(input)
+        if err != nil </span><span class="cov8" title="1">{
+                return &amp;security.Result{Name: c.Name(), Detected: false}
+        }</span>
+        <span class="cov8" title="1">host := u.Host
+        if host == "" </span><span class="cov8" title="1">{
+                host = u.Hostname()
+        }</span>
+        <span class="cov8" title="1">if strings.EqualFold(host, c.Host) </span><span class="cov8" title="1">{
+                return &amp;security.Result{Name: c.Name(), Detected: false}
+        }</span>
+        <span class="cov8" title="1">for _, allowed := range c.AllowList </span><span class="cov8" title="1">{
+                if strings.EqualFold(host, allowed) </span><span class="cov8" title="1">{
+                        return &amp;security.Result{Name: c.Name(), Detected: false}
+                }</span>
+        }
+        <span class="cov8" title="1">return &amp;security.Result{
+                Name:     c.Name(),
+                Detected: true,
+                Message:  "CSRF origin mismatch: " + host,
+                Severity: security.SeverityMedium,
+        }</span>
+}
+</pre>
+		
+		<pre class="file" id="file12" style="display: none">// Copyright (c) 2026 erik &lt;erik@erik.xyz&gt; — https://erik.xyz
+
+package httpval
+
+import (
+        "time"
+
+        "github.com/erikwang2013/security-go"
+        "github.com/erikwang2013/security-go/storage"
+)
+
+// IPBlacklist detects and blocks IPs that exceed an attack threshold.
+type IPBlacklist struct {
+        Storage     storage.Backend
+        Threshold   int
+        Window      time.Duration
+        BanDuration time.Duration
+}
+
+// NewIPBlacklist creates an IPBlacklist detector. Defaults: Threshold=5,
+// Window=60s, BanDuration=15min.
+func NewIPBlacklist(s storage.Backend) *IPBlacklist <span class="cov8" title="1">{
+        return &amp;IPBlacklist{
+                Storage:     s,
+                Threshold:   5,
+                Window:      60 * time.Second,
+                BanDuration: 15 * time.Minute,
+        }
+}</span>
+
+// Name returns the detector name.
+func (b *IPBlacklist) Name() string <span class="cov8" title="1">{
+        return "ip_blacklist"
+}</span>
+
+// Detect checks whether the given IP is currently blocked.
+func (b *IPBlacklist) Detect(input string) *security.Result <span class="cov8" title="1">{
+        blocked, err := b.Storage.IsBlocked(input)
+        if err != nil </span><span class="cov8" title="1">{
+                return &amp;security.Result{Name: b.Name(), Detected: false}
+        }</span>
+        <span class="cov8" title="1">if blocked </span><span class="cov8" title="1">{
+                return &amp;security.Result{
+                        Name:     b.Name(),
+                        Detected: true,
+                        Message:  "IP is blocked: " + input,
+                        Severity: security.SeverityHigh,
+                }
+        }</span>
+        <span class="cov8" title="1">return &amp;security.Result{Name: b.Name(), Detected: false}</span>
+}
+
+// RecordAttack increments the attack counter for the given IP. If the
+// threshold is reached within the window, the IP is blocked and returns true.
+func (b *IPBlacklist) RecordAttack(ip string) (bool, error) <span class="cov8" title="1">{
+        count, err := b.Storage.Incr(ip, b.Window)
+        if err != nil </span><span class="cov8" title="1">{
+                return false, err
+        }</span>
+        <span class="cov8" title="1">if count &gt;= b.Threshold </span><span class="cov8" title="1">{
+                if err := b.Storage.Block(ip, b.BanDuration); err != nil </span><span class="cov8" title="1">{
+                        return false, err
+                }</span>
+                <span class="cov8" title="1">return true, nil</span>
+        }
+        <span class="cov8" title="1">return false, nil</span>
+}
+</pre>
+		
+		<pre class="file" id="file13" style="display: none">// Copyright (c) 2026 erik &lt;erik@erik.xyz&gt; — https://erik.xyz
+
+package httpval
+
+import "github.com/erikwang2013/security-go"
+
+var allowedMethods = map[string]bool{
+        "GET":     true,
+        "POST":    true,
+        "PUT":     true,
+        "DELETE":  true,
+        "HEAD":    true,
+        "OPTIONS": true,
+        "PATCH":   true,
+}
+
+// Method validates the HTTP request method against a fixed whitelist.
+type Method struct{}
+
+// Name returns the detector name.
+func (m *Method) Name() string <span class="cov8" title="1">{
+        return "http_method"
+}</span>
+
+// Detect checks whether the HTTP method is in the allowed list.
+func (m *Method) Detect(input string) *security.Result <span class="cov8" title="1">{
+        if !allowedMethods[input] </span><span class="cov8" title="1">{
+                return &amp;security.Result{
+                        Name:     m.Name(),
+                        Detected: true,
+                        Message:  "Invalid HTTP method: " + input,
+                        Severity: security.SeverityLow,
+                }
+        }</span>
+        <span class="cov8" title="1">return &amp;security.Result{Name: m.Name(), Detected: false}</span>
+}
+</pre>
+		
+		<pre class="file" id="file14" style="display: none">// Copyright (c) 2026 erik &lt;erik@erik.xyz&gt; — https://erik.xyz
+
+package injection
+
+import (
+        "regexp"
+
+        "github.com/erikwang2013/security-go"
+)
+
+var commandPatterns = []*regexp.Regexp{
+        regexp.MustCompile("`[^`]+`"),
+        regexp.MustCompile(`\$\([^)]*\)`),
+        regexp.MustCompile(`(?i)\|\s*(?:cat|ls|id|whoami|uname|wget|curl|nc|bash|sh)`),
+        regexp.MustCompile(`(?i)/dev/tcp/`),
+        regexp.MustCompile(`(?i)\b(?:system|exec|shell_exec|passthru|popen|proc_open|pcntl_exec)\s*\(`),
+        regexp.MustCompile(`(?i)&amp;&amp;\s*(?:cat|ls|id|whoami|wget|curl)`),
+        regexp.MustCompile(`(?i);\s*(?:cat|ls|id|whoami)`),
+        regexp.MustCompile(`\|\|`),
+        regexp.MustCompile(`(?i)%0a`),
+        regexp.MustCompile(`(?i)\bping\s+-c`),
+        regexp.MustCompile(`(?i)\bnslookup\s+`),
+        regexp.MustCompile(`&gt;/dev/null`),
+}
+
+// Command detects command injection attempts.
+type Command struct{}
+
+func (d *Command) Name() string <span class="cov8" title="1">{
+        return "command_injection"
+}</span>
+
+func (d *Command) Detect(input string) *security.Result <span class="cov8" title="1">{
+        for _, p := range commandPatterns </span><span class="cov8" title="1">{
+                if p.MatchString(input) </span><span class="cov8" title="1">{
+                        return &amp;security.Result{
+                                Name:     d.Name(),
+                                Detected: true,
+                                Message:  "Command injection pattern detected: " + p.String(),
+                                Severity: security.SeverityCritical,
+                                Details: map[string]interface{}{
+                                        "pattern": p.String(),
+                                },
+                        }
+                }</span>
+        }
+        <span class="cov8" title="1">return &amp;security.Result{Name: d.Name(), Detected: false}</span>
+}
+</pre>
+		
+		<pre class="file" id="file15" style="display: none">// Copyright (c) 2026 erik &lt;erik@erik.xyz&gt; — https://erik.xyz
+
+package injection
+
+import (
+        "regexp"
+
+        "github.com/erikwang2013/security-go"
+)
+
+var graphqlPatterns = []*regexp.Regexp{
+        regexp.MustCompile(`(?i)\b__schema\b`),
+        regexp.MustCompile(`(?i)\b__type\b`),
+        regexp.MustCompile(`(?i)\b__typename\b`),
+        regexp.MustCompile(`\{[^}]*\{[^}]*\{[^}]*\{[^}]*\{[^}]*\{`),
+        regexp.MustCompile(`(?i)\bmutation\s*\{`),
+}
+
+// GraphQL detects GraphQL injection/introspection attempts.
+type GraphQL struct{}
+
+func (d *GraphQL) Name() string <span class="cov8" title="1">{
+        return "graphql_injection"
+}</span>
+
+func (d *GraphQL) Detect(input string) *security.Result <span class="cov8" title="1">{
+        for _, p := range graphqlPatterns </span><span class="cov8" title="1">{
+                if p.MatchString(input) </span><span class="cov8" title="1">{
+                        return &amp;security.Result{
+                                Name:     d.Name(),
+                                Detected: true,
+                                Message:  "GraphQL injection/introspection pattern detected: " + p.String(),
+                                Severity: security.SeverityMedium,
+                                Details: map[string]interface{}{
+                                        "pattern": p.String(),
+                                },
+                        }
+                }</span>
+        }
+        <span class="cov8" title="1">return &amp;security.Result{Name: d.Name(), Detected: false}</span>
+}
+</pre>
+		
+		<pre class="file" id="file16" style="display: none">// Copyright (c) 2026 erik &lt;erik@erik.xyz&gt; — https://erik.xyz
+
+package injection
+
+import (
+        "regexp"
+
+        "github.com/erikwang2013/security-go"
+)
+
+var jndiPatterns = []*regexp.Regexp{
+        regexp.MustCompile(`(?i)\$\{jndi:`),
+        regexp.MustCompile(`(?i)\$\{lower:j\}`),
+        regexp.MustCompile(`(?i)\$\{upper:j\}`),
+        regexp.MustCompile(`(?i)\$\{env:`),
+        regexp.MustCompile(`(?i)\$\{(?:sys|java):`),
+        regexp.MustCompile(`(?i)\$\{::-j\}`),
+        regexp.MustCompile(`(?i)\$\{date:`),
+        regexp.MustCompile(`(?i)\$\{(?:lower|upper):[^}]*[jJ][nN][dD][iI]`),
+        regexp.MustCompile(`(?i)ldaps?://`),
+        regexp.MustCompile(`(?i)rmi://`),
+        regexp.MustCompile(`(?i)dns://`),
+}
+
+// JNDI detects JNDI/Log4Shell injection attempts.
+type JNDI struct{}
+
+func (d *JNDI) Name() string <span class="cov8" title="1">{
+        return "jndi_injection"
+}</span>
+
+func (d *JNDI) Detect(input string) *security.Result <span class="cov8" title="1">{
+        for _, p := range jndiPatterns </span><span class="cov8" title="1">{
+                if p.MatchString(input) </span><span class="cov8" title="1">{
+                        return &amp;security.Result{
+                                Name:     d.Name(),
+                                Detected: true,
+                                Message:  "JNDI/Log4Shell injection pattern detected: " + p.String(),
+                                Severity: security.SeverityCritical,
+                                Details: map[string]interface{}{
+                                        "pattern": p.String(),
+                                },
+                        }
+                }</span>
+        }
+        <span class="cov8" title="1">return &amp;security.Result{Name: d.Name(), Detected: false}</span>
+}
+</pre>
+		
+		<pre class="file" id="file17" style="display: none">// Copyright (c) 2026 erik &lt;erik@erik.xyz&gt; — https://erik.xyz
+
+package injection
+
+import (
+        "regexp"
+
+        "github.com/erikwang2013/security-go"
+)
+
+var ldapPatterns = []*regexp.Regexp{
+        regexp.MustCompile(`(?i)\(\s*(?:\||&amp;|!|=|&gt;=?|&lt;=?|~=)`),
+        regexp.MustCompile(`(?i)\(\s*objectClass\s*=\s*\*?\)`),
+        regexp.MustCompile(`(?i)\(\s*cn\s*=\s*\*\)`),
+        regexp.MustCompile(`\(\s*\|\(`),
+        regexp.MustCompile(`\(\s*&amp;\(`),
+        regexp.MustCompile(`\(\s*!\s*\(\s*`),
+        regexp.MustCompile(`%28(?:\||&amp;|\*|%29)`),
+}
+
+// LDAP detects LDAP injection attempts.
+type LDAP struct{}
+
+func (d *LDAP) Name() string <span class="cov8" title="1">{
+        return "ldap_injection"
+}</span>
+
+func (d *LDAP) Detect(input string) *security.Result <span class="cov8" title="1">{
+        for _, p := range ldapPatterns </span><span class="cov8" title="1">{
+                if p.MatchString(input) </span><span class="cov8" title="1">{
+                        return &amp;security.Result{
+                                Name:     d.Name(),
+                                Detected: true,
+                                Message:  "LDAP injection pattern detected: " + p.String(),
+                                Severity: security.SeverityHigh,
+                                Details: map[string]interface{}{
+                                        "pattern": p.String(),
+                                },
+                        }
+                }</span>
+        }
+        <span class="cov8" title="1">return &amp;security.Result{Name: d.Name(), Detected: false}</span>
+}
+</pre>
+		
+		<pre class="file" id="file18" style="display: none">// Copyright (c) 2026 erik &lt;erik@erik.xyz&gt; — https://erik.xyz
+
+package injection
+
+import (
+        "regexp"
+
+        "github.com/erikwang2013/security-go"
+)
+
+var nosqlPatterns = []*regexp.Regexp{
+        regexp.MustCompile(`(?i)"?\$(?:ne|gt|gte|lt|lte|eq|in|nin|regex|where|or|and|nor|not|exists|type|mod|text|search|expr)\b"?:?\s*["'\[]`),
+        regexp.MustCompile(`(?i)\{.*"\$(?:ne|gt|regex|where)"\s*:`),
+        regexp.MustCompile(`(?i)"\$where"\s*:\s*"`),
+}
+
+// NoSQL detects NoSQL injection attempts (MongoDB operators, $where).
+type NoSQL struct{}
+
+func (d *NoSQL) Name() string <span class="cov8" title="1">{
+        return "nosql_injection"
+}</span>
+
+func (d *NoSQL) Detect(input string) *security.Result <span class="cov8" title="1">{
+        for _, p := range nosqlPatterns </span><span class="cov8" title="1">{
+                if p.MatchString(input) </span><span class="cov8" title="1">{
+                        return &amp;security.Result{
+                                Name:     d.Name(),
+                                Detected: true,
+                                Message:  "NoSQL injection pattern detected: " + p.String(),
+                                Severity: security.SeverityHigh,
+                                Details: map[string]interface{}{
+                                        "pattern": p.String(),
+                                },
+                        }
+                }</span>
+        }
+        <span class="cov8" title="1">return &amp;security.Result{Name: d.Name(), Detected: false}</span>
+}
+</pre>
+		
+		<pre class="file" id="file19" style="display: none">// Copyright (c) 2026 erik &lt;erik@erik.xyz&gt; — https://erik.xyz
+
+package injection
+
+import (
+        "regexp"
+
+        "github.com/erikwang2013/security-go"
+)
+
+var sqlPatterns = []*regexp.Regexp{
+        regexp.MustCompile(`(?i)union\s+(?:/\*.*?\*/\s*)*select`),
+        regexp.MustCompile(`(?i)union\s*\(\s*select`),
+        regexp.MustCompile(`(?i)\b(?:sleep|benchmark|pg_sleep)\s*\(`),
+        regexp.MustCompile(`(?i)\b(?:information_schema|mysql\.|pg_catalog|sys\.tables|sqlite_master)\b`),
+        regexp.MustCompile(`(?i)\b(?:load_file|into\s+(?:out|dump)file)\b`),
+        regexp.MustCompile(`(?i)(?:'|\s)(?:or|and)\s+\d+\s*=\s*\d+`),
+        regexp.MustCompile(`(?i)'\s*(?:or|and)\s+'[^']*'\s*=\s*'[^']*'?`),
+        regexp.MustCompile(`(?i)waitfor\s+delay`),
+        regexp.MustCompile(`(?i)\b(?:exec|execute)\s+(?:master\.\.|xp_)`),
+        regexp.MustCompile(`(?i)\b(?:exec|execute)\s*\(\s*(?:master\.\.|xp_)`),
+        regexp.MustCompile(`(?i)(?:--|#|/\*).*$`),
+        regexp.MustCompile(`(?i)\b(?:hex|char|ascii|concat)\s*\(`),
+}
+
+// SQL detects SQL injection attempts.
+type SQL struct{}
+
+func (d *SQL) Name() string <span class="cov8" title="1">{
+        return "sql_injection"
+}</span>
+
+func (d *SQL) Detect(input string) *security.Result <span class="cov8" title="1">{
+        for _, p := range sqlPatterns </span><span class="cov8" title="1">{
+                if p.MatchString(input) </span><span class="cov8" title="1">{
+                        return &amp;security.Result{
+                                Name:     d.Name(),
+                                Detected: true,
+                                Message:  "SQL injection pattern detected: " + p.String(),
+                                Severity: security.SeverityCritical,
+                                Details: map[string]interface{}{
+                                        "pattern": p.String(),
+                                },
+                        }
+                }</span>
+        }
+        <span class="cov8" title="1">return &amp;security.Result{Name: d.Name(), Detected: false}</span>
+}
+</pre>
+		
+		<pre class="file" id="file20" style="display: none">// Copyright (c) 2026 erik &lt;erik@erik.xyz&gt; — https://erik.xyz
+
+package injection
+
+import (
+        "regexp"
+
+        "github.com/erikwang2013/security-go"
+)
+
+var ssiPatterns = []*regexp.Regexp{
+        regexp.MustCompile(`(?i)&lt;!--\s*#(?:exec|include|echo|config|fsize|flastmod|printenv|set|if)\b`),
+        regexp.MustCompile(`(?i)&lt;!--\s*#exec\s+(?:cmd|cgi)=`),
+        regexp.MustCompile(`(?i)&lt;!--\s*#include\s+(?:file|virtual)=`),
+        regexp.MustCompile(`(?i)&lt;!--\s*#echo\s+var=`),
+}
+
+// SSI detects Server-Side Include injection attempts.
+type SSI struct{}
+
+func (d *SSI) Name() string <span class="cov8" title="1">{
+        return "ssi_injection"
+}</span>
+
+func (d *SSI) Detect(input string) *security.Result <span class="cov8" title="1">{
+        for _, p := range ssiPatterns </span><span class="cov8" title="1">{
+                if p.MatchString(input) </span><span class="cov8" title="1">{
+                        return &amp;security.Result{
+                                Name:     d.Name(),
+                                Detected: true,
+                                Message:  "SSI injection pattern detected: " + p.String(),
+                                Severity: security.SeverityHigh,
+                                Details: map[string]interface{}{
+                                        "pattern": p.String(),
+                                },
+                        }
+                }</span>
+        }
+        <span class="cov8" title="1">return &amp;security.Result{Name: d.Name(), Detected: false}</span>
+}
+</pre>
+		
+		<pre class="file" id="file21" style="display: none">// Copyright (c) 2026 erik &lt;erik@erik.xyz&gt; — https://erik.xyz
+
+package injection
+
+import (
+        "regexp"
+
+        "github.com/erikwang2013/security-go"
+)
+
+var sstiPatterns = []*regexp.Regexp{
+        regexp.MustCompile(`\{\{[^}]*\}\}`),
+        regexp.MustCompile(`(?i)\$\{[^}]*\}`),
+        regexp.MustCompile(`&lt;%[^%]*%&gt;`),
+        regexp.MustCompile(`(?i)\{\#[^}]*\#\}`),
+        regexp.MustCompile(`(?i)\{\{[^}]*__(?:class|mro|subclasses|globals|builtins)__[^}]*\}\}`),
+        regexp.MustCompile(`(?i)\{\{[^}]*config[^}]*\}\}`),
+        regexp.MustCompile(`(?i)\.getClass\b`),
+}
+
+// SSTI detects Server-Side Template Injection attempts.
+type SSTI struct{}
+
+func (d *SSTI) Name() string <span class="cov8" title="1">{
+        return "ssti"
+}</span>
+
+func (d *SSTI) Detect(input string) *security.Result <span class="cov8" title="1">{
+        for _, p := range sstiPatterns </span><span class="cov8" title="1">{
+                if p.MatchString(input) </span><span class="cov8" title="1">{
+                        return &amp;security.Result{
+                                Name:     d.Name(),
+                                Detected: true,
+                                Message:  "SSTI injection pattern detected: " + p.String(),
+                                Severity: security.SeverityCritical,
+                                Details: map[string]interface{}{
+                                        "pattern": p.String(),
+                                },
+                        }
+                }</span>
+        }
+        <span class="cov8" title="1">return &amp;security.Result{Name: d.Name(), Detected: false}</span>
+}
+</pre>
+		
+		<pre class="file" id="file22" style="display: none">// Copyright (c) 2026 erik &lt;erik@erik.xyz&gt; — https://erik.xyz
+
+package injection
+
+import (
+        "regexp"
+
+        "github.com/erikwang2013/security-go"
+)
+
+var xpathPatterns = []*regexp.Regexp{
+        regexp.MustCompile(`(?i)'\s*(?:or|and)\s+'?\d+'?\s*=\s*'?\d+'?`),
+        regexp.MustCompile(`(?i)'\s*(?:or|and)\s+\d+\s*=\s*\d+`),
+        regexp.MustCompile(`(?i)\bstring-length\s*\(`),
+        regexp.MustCompile(`(?i)\bcount\s*\(`),
+        regexp.MustCompile(`\|.*/.*\|`),
+}
+
+// XPath detects XPath injection attempts.
+type XPath struct{}
+
+func (d *XPath) Name() string <span class="cov8" title="1">{
+        return "xpath_injection"
+}</span>
+
+func (d *XPath) Detect(input string) *security.Result <span class="cov8" title="1">{
+        for _, p := range xpathPatterns </span><span class="cov8" title="1">{
+                if p.MatchString(input) </span><span class="cov8" title="1">{
+                        return &amp;security.Result{
+                                Name:     d.Name(),
+                                Detected: true,
+                                Message:  "XPath injection pattern detected: " + p.String(),
+                                Severity: security.SeverityHigh,
+                                Details: map[string]interface{}{
+                                        "pattern": p.String(),
+                                },
+                        }
+                }</span>
+        }
+        <span class="cov8" title="1">return &amp;security.Result{Name: d.Name(), Detected: false}</span>
+}
+</pre>
+		
+		<pre class="file" id="file23" style="display: none">// Copyright (c) 2026 erik &lt;erik@erik.xyz&gt; — https://erik.xyz
+
+package injection
+
+import (
+        "regexp"
+
+        "github.com/erikwang2013/security-go"
+)
+
+var xssPatterns = []*regexp.Regexp{
+        regexp.MustCompile(`(?i)&lt;script`),
+        regexp.MustCompile(`(?i)&lt;/script&gt;`),
+        regexp.MustCompile(`(?i)on[a-z]+\s*=`),
+        regexp.MustCompile(`(?i)javascript\s*:`),
+        regexp.MustCompile(`(?i)&lt;iframe`),
+        regexp.MustCompile(`(?i)&lt;embed`),
+        regexp.MustCompile(`(?i)&lt;object`),
+        regexp.MustCompile(`(?i)&lt;svg[^&gt;]*onload`),
+        regexp.MustCompile(`(?i)&lt;img[^&gt;]*onerror`),
+        regexp.MustCompile(`(?i)&lt;body[^&gt;]*onload`),
+        regexp.MustCompile(`(?i)&lt;input[^&gt;]*onfocus`),
+        regexp.MustCompile(`(?i)expression\s*\(`),
+        regexp.MustCompile(`(?i)url\s*\(\s*["']?\s*(?:javascript|data):`),
+        regexp.MustCompile(`(?i)&lt;link`),
+        regexp.MustCompile(`(?i)&lt;meta`),
+        regexp.MustCompile(`(?i)eval\s*\(`),
+        regexp.MustCompile(`(?i)document\.(?:write|cookie)`),
+        regexp.MustCompile(`(?i)&lt;base[^&gt;]*href`),
+        regexp.MustCompile(`(?i)fromCharCode\s*\(`),
+        regexp.MustCompile(`(?i)&amp;#x?[0-9a-f]+;?`),
+}
+
+// XSS detects Cross-Site Scripting injection attempts.
+type XSS struct{}
+
+func (d *XSS) Name() string <span class="cov8" title="1">{
+        return "xss"
+}</span>
+
+func (d *XSS) Detect(input string) *security.Result <span class="cov8" title="1">{
+        for _, p := range xssPatterns </span><span class="cov8" title="1">{
+                if p.MatchString(input) </span><span class="cov8" title="1">{
+                        return &amp;security.Result{
+                                Name:     d.Name(),
+                                Detected: true,
+                                Message:  "XSS injection pattern detected: " + p.String(),
+                                Severity: security.SeverityHigh,
+                                Details: map[string]interface{}{
+                                        "pattern": p.String(),
+                                },
+                        }
+                }</span>
+        }
+        <span class="cov8" title="1">return &amp;security.Result{Name: d.Name(), Detected: false}</span>
+}
+</pre>
+		
+		<pre class="file" id="file24" style="display: none">// Copyright (c) 2026 erik &lt;erik@erik.xyz&gt; — https://erik.xyz
+
+package protocol
+
+import (
+        "regexp"
+
+        "github.com/erikwang2013/security-go"
+)
+
+var corsPatterns = []*regexp.Regexp{
+        regexp.MustCompile(`(?i)Origin:\s*null`),
+        regexp.MustCompile(`(?i)Access-Control-Allow-Origin:\s*\*`),
+        regexp.MustCompile(`(?i)Access-Control-Allow-Credentials:\s*true`),
+}
+
+type CORS struct{}
+
+func (d *CORS) Name() string <span class="cov8" title="1">{
+        return "cors"
+}</span>
+
+func (d *CORS) Detect(input string) *security.Result <span class="cov8" title="1">{
+        for _, p := range corsPatterns </span><span class="cov8" title="1">{
+                if p.MatchString(input) </span><span class="cov8" title="1">{
+                        return &amp;security.Result{
+                                Name:     d.Name(),
+                                Detected: true,
+                                Severity: security.SeverityMedium,
+                                Message:  "CORS bypass pattern detected: overly permissive CORS configuration",
+                                Details: map[string]interface{}{
+                                        "matched_pattern": p.String(),
+                                        "input":           input,
+                                },
+                        }
+                }</span>
+        }
+        <span class="cov8" title="1">return &amp;security.Result{Name: d.Name(), Detected: false}</span>
+}
+</pre>
+		
+		<pre class="file" id="file25" style="display: none">// Copyright (c) 2026 erik &lt;erik@erik.xyz&gt; — https://erik.xyz
+
+package protocol
+
+import (
+        "regexp"
+
+        "github.com/erikwang2013/security-go"
+)
+
+var dnsRebindingPatterns = []*regexp.Regexp{
+        regexp.MustCompile(`(?i)Host:\s*(?:127\.|10\.|192\.168\.|172\.(?:1[6-9]|2\d|3[01])\.)`),
+        regexp.MustCompile(`(?i)Host:\s*localhost`),
+        regexp.MustCompile(`(?i)Host:\s*\[?::1\]?`),
+        regexp.MustCompile(`(?i)Host:\s*\w+$`),
+        regexp.MustCompile(`(?i)Host:\s*\d+\.\d+\.\d+\.\d+`),
+}
+
+type DNSRebinding struct{}
+
+func (d *DNSRebinding) Name() string <span class="cov8" title="1">{
+        return "dns_rebinding"
+}</span>
+
+func (d *DNSRebinding) Detect(input string) *security.Result <span class="cov8" title="1">{
+        for _, p := range dnsRebindingPatterns </span><span class="cov8" title="1">{
+                if p.MatchString(input) </span><span class="cov8" title="1">{
+                        return &amp;security.Result{
+                                Name:     d.Name(),
+                                Detected: true,
+                                Severity: security.SeverityHigh,
+                                Message:  "DNS rebinding pattern detected: Host header targeting internal network",
+                                Details: map[string]interface{}{
+                                        "matched_pattern": p.String(),
+                                        "input":           input,
+                                },
+                        }
+                }</span>
+        }
+        <span class="cov8" title="1">return &amp;security.Result{Name: d.Name(), Detected: false}</span>
+}
+</pre>
+		
+		<pre class="file" id="file26" style="display: none">// Copyright (c) 2026 erik &lt;erik@erik.xyz&gt; — https://erik.xyz
+
+package protocol
+
+import (
+        "regexp"
+
+        "github.com/erikwang2013/security-go"
+)
+
+var headerInjectionPatterns = []*regexp.Regexp{
+        regexp.MustCompile(`%0[dD]%0[aA]`),
+        regexp.MustCompile(`\\r\\n`),
+        regexp.MustCompile(`\r\n`),
+        regexp.MustCompile(`(?i)%0d%0a(?:Set-Cookie|Location|Content-Length|Content-Type|Transfer-Encoding|X-):`),
+}
+
+type HeaderInjection struct{}
+
+func (d *HeaderInjection) Name() string <span class="cov8" title="1">{
+        return "header_injection"
+}</span>
+
+func (d *HeaderInjection) Detect(input string) *security.Result <span class="cov8" title="1">{
+        for _, p := range headerInjectionPatterns </span><span class="cov8" title="1">{
+                if p.MatchString(input) </span><span class="cov8" title="1">{
+                        return &amp;security.Result{
+                                Name:     d.Name(),
+                                Detected: true,
+                                Severity: security.SeverityHigh,
+                                Message:  "HTTP header injection pattern detected: CRLF injection or header manipulation",
+                                Details: map[string]interface{}{
+                                        "matched_pattern": p.String(),
+                                        "input":           input,
+                                },
+                        }
+                }</span>
+        }
+        <span class="cov8" title="1">return &amp;security.Result{Name: d.Name(), Detected: false}</span>
+}
+</pre>
+		
+		<pre class="file" id="file27" style="display: none">// Copyright (c) 2026 erik &lt;erik@erik.xyz&gt; — https://erik.xyz
+
+package protocol
+
+import (
+        "regexp"
+
+        "github.com/erikwang2013/security-go"
+)
+
+var hostHeaderPatterns = []*regexp.Regexp{
+        regexp.MustCompile(`(?i)Host:\s*.*\r\n`),
+        regexp.MustCompile(`(?i)X-Forwarded-(?:Host|Server):\s*`),
+        regexp.MustCompile(`(?i)X-(?:Original|Rewrite)-URL:\s*`),
+}
+
+type HostHeader struct{}
+
+func (d *HostHeader) Name() string <span class="cov8" title="1">{
+        return "host_header"
+}</span>
+
+func (d *HostHeader) Detect(input string) *security.Result <span class="cov8" title="1">{
+        for _, p := range hostHeaderPatterns </span><span class="cov8" title="1">{
+                if p.MatchString(input) </span><span class="cov8" title="1">{
+                        return &amp;security.Result{
+                                Name:     d.Name(),
+                                Detected: true,
+                                Severity: security.SeverityMedium,
+                                Message:  "Host header attack pattern detected: malicious host or forwarding header",
+                                Details: map[string]interface{}{
+                                        "matched_pattern": p.String(),
+                                        "input":           input,
+                                },
+                        }
+                }</span>
+        }
+        <span class="cov8" title="1">return &amp;security.Result{Name: d.Name(), Detected: false}</span>
+}
+</pre>
+		
+		<pre class="file" id="file28" style="display: none">// Copyright (c) 2026 erik &lt;erik@erik.xyz&gt; — https://erik.xyz
+
+package protocol
+
+import (
+        "regexp"
+
+        "github.com/erikwang2013/security-go"
+)
+
+var openRedirectPatterns = []*regexp.Regexp{
+        regexp.MustCompile(`(?i)^\s*//[^/]`),
+        regexp.MustCompile(`(?i)^\s*(?:javascript|data|vbscript):`),
+        regexp.MustCompile(`(?i)redirect(?:ed)?(?:_to|_url)?\s*=\s*(?:https?:)?//`),
+        regexp.MustCompile(`(?i)(?:dest|target|next|return|goto|url)\s*=\s*(?:https?:)?//`),
+        regexp.MustCompile(`(?i)%2[fF].*%2[fF]`),
+}
+
+type OpenRedirect struct{}
+
+func (d *OpenRedirect) Name() string <span class="cov8" title="1">{
+        return "open_redirect"
+}</span>
+
+func (d *OpenRedirect) Detect(input string) *security.Result <span class="cov8" title="1">{
+        for _, p := range openRedirectPatterns </span><span class="cov8" title="1">{
+                if p.MatchString(input) </span><span class="cov8" title="1">{
+                        return &amp;security.Result{
+                                Name:     d.Name(),
+                                Detected: true,
+                                Severity: security.SeverityMedium,
+                                Message:  "Open redirect pattern detected: external or protocol-based redirect",
+                                Details: map[string]interface{}{
+                                        "matched_pattern": p.String(),
+                                        "input":           input,
+                                },
+                        }
+                }</span>
+        }
+        <span class="cov8" title="1">return &amp;security.Result{Name: d.Name(), Detected: false}</span>
+}
+</pre>
+		
+		<pre class="file" id="file29" style="display: none">// Copyright (c) 2026 erik &lt;erik@erik.xyz&gt; — https://erik.xyz
+
+package protocol
+
+import (
+        "regexp"
+
+        "github.com/erikwang2013/security-go"
+)
+
+var requestSmugglingPatterns = []*regexp.Regexp{
+        regexp.MustCompile(`(?i)Transfer-Encoding:\s*chunked.*\r\n.*Content-Length:`),
+        regexp.MustCompile(`(?i)Transfer-Encoding:\s*.*,\s*chunked`),
+        regexp.MustCompile(`(?i)Transfer-Encoding\s*:\s*chunked`),
+        regexp.MustCompile(`(?i)Content-Length:\s*\d+.*\r\n.*Transfer-Encoding:`),
+        regexp.MustCompile(`(?i)Transfer-encoding:\s*chunked`),
+        regexp.MustCompile(`\x0bTransfer-Encoding`),
+}
+
+type RequestSmuggling struct{}
+
+func (d *RequestSmuggling) Name() string <span class="cov8" title="1">{
+        return "request_smuggling"
+}</span>
+
+func (d *RequestSmuggling) Detect(input string) *security.Result <span class="cov8" title="1">{
+        for _, p := range requestSmugglingPatterns </span><span class="cov8" title="1">{
+                if p.MatchString(input) </span><span class="cov8" title="1">{
+                        return &amp;security.Result{
+                                Name:     d.Name(),
+                                Detected: true,
+                                Severity: security.SeverityCritical,
+                                Message:  "HTTP request smuggling pattern detected: content-length / transfer-encoding conflict",
+                                Details: map[string]interface{}{
+                                        "matched_pattern": p.String(),
+                                        "input":           input,
+                                },
+                        }
+                }</span>
+        }
+        <span class="cov8" title="1">return &amp;security.Result{Name: d.Name(), Detected: false}</span>
+}
+</pre>
+		
+		<pre class="file" id="file30" style="display: none">// Copyright (c) 2026 erik &lt;erik@erik.xyz&gt; — https://erik.xyz
+
+package protocol
+
+import (
+        "regexp"
+
+        "github.com/erikwang2013/security-go"
+)
+
+var ssrfPatterns = []*regexp.Regexp{
+        regexp.MustCompile(`(?i)https?://(?:127\.|10\.|172\.(?:1[6-9]|2\d|3[01])\.|192\.168\.|169\.254\.)`),
+        regexp.MustCompile(`(?i)https?://localhost`),
+        regexp.MustCompile(`(?i)https?://\[?::1\]?`),
+        regexp.MustCompile(`(?i)https?://0\.0\.0\.0`),
+        regexp.MustCompile(`(?i)(?:gopher|dict|file|ftp)://`),
+        regexp.MustCompile(`(?i)169\.254\.169\.254`),
+        regexp.MustCompile(`(?i)/latest/meta-data`),
+        regexp.MustCompile(`(?i)metadata\.google\.internal`),
+}
+
+type SSRF struct{}
+
+func (d *SSRF) Name() string <span class="cov8" title="1">{
+        return "ssrf"
+}</span>
+
+func (d *SSRF) Detect(input string) *security.Result <span class="cov8" title="1">{
+        for _, p := range ssrfPatterns </span><span class="cov8" title="1">{
+                if p.MatchString(input) </span><span class="cov8" title="1">{
+                        return &amp;security.Result{
+                                Name:     d.Name(),
+                                Detected: true,
+                                Severity: security.SeverityHigh,
+                                Message:  "SSRF attack pattern detected: internal or restricted URL target",
+                                Details: map[string]interface{}{
+                                        "matched_pattern": p.String(),
+                                        "input":           input,
+                                },
+                        }
+                }</span>
+        }
+        <span class="cov8" title="1">return &amp;security.Result{Name: d.Name(), Detected: false}</span>
+}
+</pre>
+		
+		<pre class="file" id="file31" style="display: none">// Copyright (c) 2026 erik &lt;erik@erik.xyz&gt; — https://erik.xyz
+
+package protocol
+
+import (
+        "regexp"
+
+        "github.com/erikwang2013/security-go"
+)
+
+var websocketPatterns = []*regexp.Regexp{
+        regexp.MustCompile(`(?i)Upgrade:\s*websocket`),
+        regexp.MustCompile(`(?i)Connection:\s*Upgrade`),
+        regexp.MustCompile(`(?i)Sec-WebSocket-Key:\s*`),
+        regexp.MustCompile(`ws://`),
+        regexp.MustCompile(`wss://`),
+        regexp.MustCompile(`(?i)Origin:\s*null.*Upgrade:\s*websocket`),
+}
+
+type WebSocket struct{}
+
+func (d *WebSocket) Name() string <span class="cov8" title="1">{
+        return "websocket"
+}</span>
+
+func (d *WebSocket) Detect(input string) *security.Result <span class="cov8" title="1">{
+        for _, p := range websocketPatterns </span><span class="cov8" title="1">{
+                if p.MatchString(input) </span><span class="cov8" title="1">{
+                        return &amp;security.Result{
+                                Name:     d.Name(),
+                                Detected: true,
+                                Severity: security.SeverityMedium,
+                                Message:  "WebSocket hijacking pattern detected: potential cross-site WebSocket hijack",
+                                Details: map[string]interface{}{
+                                        "matched_pattern": p.String(),
+                                        "input":           input,
+                                },
+                        }
+                }</span>
+        }
+        <span class="cov8" title="1">return &amp;security.Result{Name: d.Name(), Detected: false}</span>
+}
+</pre>
+		
+		<pre class="file" id="file32" style="display: none">// Copyright (c) 2026 erik &lt;erik@erik.xyz&gt; — https://erik.xyz
+
+package protocol
+
+import (
+        "regexp"
+
+        "github.com/erikwang2013/security-go"
+)
+
+var xxePatterns = []*regexp.Regexp{
+        regexp.MustCompile(`(?i)&lt;!ENTITY\s+\w+\s+(?:SYSTEM|PUBLIC)\s+["']`),
+        regexp.MustCompile(`(?i)&lt;!ENTITY\s+%\s+\w+\s+`),
+        regexp.MustCompile(`(?i)&lt;!DOCTYPE\s+\w+\s+\[`),
+        regexp.MustCompile(`(?i)&lt;!ENTITY\s+\w+\s+SYSTEM\s+["'](?:file|php|http|ftp|gopher|dict|data|expect)://`),
+        regexp.MustCompile(`(?i)%\w+;`),
+        regexp.MustCompile(`(?i)&amp;(?:xxe|file|http|ftp|gopher|dict|data|expect);`),
+}
+
+type XXE struct{}
+
+func (d *XXE) Name() string <span class="cov8" title="1">{
+        return "xxe"
+}</span>
+
+func (d *XXE) Detect(input string) *security.Result <span class="cov8" title="1">{
+        for _, p := range xxePatterns </span><span class="cov8" title="1">{
+                if p.MatchString(input) </span><span class="cov8" title="1">{
+                        return &amp;security.Result{
+                                Name:     d.Name(),
+                                Detected: true,
+                                Severity: security.SeverityHigh,
+                                Message:  "XXE attack pattern detected: XML external entity injection",
+                                Details: map[string]interface{}{
+                                        "matched_pattern": p.String(),
+                                        "input":           input,
+                                },
+                        }
+                }</span>
+        }
+        <span class="cov8" title="1">return &amp;security.Result{Name: d.Name(), Detected: false}</span>
+}
+</pre>
+		
+		<pre class="file" id="file33" style="display: none">// Copyright (c) 2026 erik &lt;erik@erik.xyz&gt; — https://erik.xyz
+
+package security
+
+import "net/http"
+
+// Severity represents the severity level of a detection result.
+type Severity int
+
+const (
+        SeverityLow Severity = iota
+        SeverityMedium
+        SeverityHigh
+        SeverityCritical
+)
+
+// Result is the unified detection result from any detector.
+type Result struct {
+        Name     string
+        Detected bool
+        Message  string
+        Severity Severity
+        Details  map[string]interface{}
+}
+
+// Detector is the interface all attack detectors implement.
+type Detector interface {
+        Name() string
+        Detect(input string) *Result
+}
+
+// Engine manages detector registration and orchestration.
+type Engine struct {
+        detectors map[string]Detector
+}
+
+// NewEngine creates a new Engine.
+func NewEngine() *Engine <span class="cov8" title="1">{
+        return &amp;Engine{detectors: make(map[string]Detector)}
+}</span>
+
+// Register adds a detector to the engine.
+func (e *Engine) Register(d Detector) <span class="cov8" title="1">{
+        e.detectors[d.Name()] = d
+}</span>
+
+// Detect runs a named detector against input.
+func (e *Engine) Detect(name, input string) *Result <span class="cov8" title="1">{
+        if d, ok := e.detectors[name]; ok </span><span class="cov8" title="1">{
+                return d.Detect(input)
+        }</span>
+        <span class="cov8" title="1">return nil</span>
+}
+
+// DetectAll runs all registered detectors against input.
+func (e *Engine) DetectAll(input string) []*Result <span class="cov8" title="1">{
+        var results []*Result
+        for _, d := range e.detectors </span><span class="cov8" title="1">{
+                if r := d.Detect(input); r != nil &amp;&amp; r.Detected </span><span class="cov8" title="1">{
+                        results = append(results, r)
+                }</span>
+        }
+        <span class="cov8" title="1">return results</span>
+}
+
+// DetectRequest runs all registered detectors against an HTTP request.
+func (e *Engine) DetectRequest(r *http.Request) []*Result <span class="cov8" title="1">{
+        var results []*Result
+        inputs := collectRequestInputs(r)
+        for _, input := range inputs </span><span class="cov8" title="1">{
+                results = append(results, e.DetectAll(input)...)
+        }</span>
+        <span class="cov8" title="1">return results</span>
+}
+
+func collectRequestInputs(r *http.Request) []string <span class="cov8" title="1">{
+        if r == nil </span><span class="cov8" title="1">{
+                return nil
+        }</span>
+        <span class="cov8" title="1">var inputs []string
+        if r.URL != nil </span><span class="cov8" title="1">{
+                inputs = append(inputs, r.URL.String())
+                inputs = append(inputs, r.URL.Query().Encode())
+        }</span>
+        <span class="cov8" title="1">for key, vals := range r.Header </span><span class="cov8" title="1">{
+                for _, v := range vals </span><span class="cov8" title="1">{
+                        inputs = append(inputs, key+": "+v)
+                }</span>
+        }
+        <span class="cov8" title="1">for _, c := range r.Cookies() </span><span class="cov8" title="1">{
+                inputs = append(inputs, c.Name+"="+c.Value)
+        }</span>
+        <span class="cov8" title="1">return inputs</span>
+}
+</pre>
+		
+		<pre class="file" id="file34" style="display: none">// Copyright (c) 2026 erik &lt;erik@erik.xyz&gt; — https://erik.xyz
+
+package storage
+
+import (
+        "encoding/json"
+        "os"
+        "sync"
+        "time"
+)
+
+type fileRecord struct {
+        Key         string    `json:"key"`
+        Count       int       `json:"count"`
+        WindowStart time.Time `json:"window_start"`
+        BlockUntil  time.Time `json:"block_until,omitempty"`
+}
+
+type record struct {
+        count       int
+        windowStart time.Time
+        blockUntil  time.Time
+}
+
+// File is a file-based persistent storage backend.
+type File struct {
+        mu      sync.Mutex
+        path    string
+        records map[string]*record
+        done    chan struct{}
+        closed  bool
+}
+
+// NewFile creates or loads a file-based storage backend with periodic
+// auto-save every 30 seconds to prevent data loss on crash.
+func NewFile(path string) (*File, error) <span class="cov8" title="1">{
+        f := &amp;File{path: path, records: make(map[string]*record), done: make(chan struct{})}
+        data, err := os.ReadFile(path)
+        if err == nil </span><span class="cov8" title="1">{
+                var loaded []fileRecord
+                if json.Unmarshal(data, &amp;loaded) == nil </span><span class="cov8" title="1">{
+                        for _, r := range loaded </span><span class="cov8" title="1">{
+                                f.records[r.Key] = &amp;record{
+                                        count:       r.Count,
+                                        windowStart: r.WindowStart,
+                                        blockUntil:  r.BlockUntil,
+                                }
+                        }</span>
+                }
+        }
+        <span class="cov8" title="1">go f.autoSave(30 * time.Second)
+        return f, nil</span>
+}
+
+func (f *File) Incr(key string, window time.Duration) (int, error) <span class="cov8" title="1">{
+        f.mu.Lock()
+        defer f.mu.Unlock()
+        now := time.Now()
+        r, ok := f.records[key]
+        if !ok || now.Sub(r.windowStart) &gt; window </span><span class="cov8" title="1">{
+                f.records[key] = &amp;record{count: 1, windowStart: now}
+                return 1, nil
+        }</span>
+        <span class="cov8" title="1">r.count++
+        return r.count, nil</span>
+}
+
+func (f *File) Get(key string) (int, error) <span class="cov8" title="1">{
+        f.mu.Lock()
+        defer f.mu.Unlock()
+        if r, ok := f.records[key]; ok </span><span class="cov8" title="1">{
+                return r.count, nil
+        }</span>
+        <span class="cov8" title="1">return 0, nil</span>
+}
+
+func (f *File) Block(key string, duration time.Duration) error <span class="cov8" title="1">{
+        f.mu.Lock()
+        defer f.mu.Unlock()
+        if r, ok := f.records[key]; ok </span><span class="cov0" title="0">{
+                r.blockUntil = time.Now().Add(duration)
+        }</span> else<span class="cov8" title="1"> {
+                f.records[key] = &amp;record{blockUntil: time.Now().Add(duration)}
+        }</span>
+        <span class="cov8" title="1">return nil</span>
+}
+
+func (f *File) IsBlocked(key string) (bool, error) <span class="cov8" title="1">{
+        f.mu.Lock()
+        defer f.mu.Unlock()
+        if r, ok := f.records[key]; ok </span><span class="cov8" title="1">{
+                return time.Now().Before(r.blockUntil), nil
+        }</span>
+        <span class="cov8" title="1">return false, nil</span>
+}
+
+func (f *File) Close() error <span class="cov8" title="1">{
+        f.mu.Lock()
+        defer f.mu.Unlock()
+        if !f.closed </span><span class="cov8" title="1">{
+                close(f.done)
+                f.closed = true
+        }</span>
+        <span class="cov8" title="1">return f.saveLocked()</span>
+}
+
+func (f *File) saveLocked() error <span class="cov8" title="1">{
+        var out []fileRecord
+        for k, r := range f.records </span><span class="cov8" title="1">{
+                out = append(out, fileRecord{
+                        Key: k, Count: r.count,
+                        WindowStart: r.windowStart, BlockUntil: r.blockUntil,
+                })
+        }</span>
+        <span class="cov8" title="1">data, err := json.Marshal(out)
+        if err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+        <span class="cov8" title="1">return os.WriteFile(f.path, data, 0644)</span>
+}
+
+func (f *File) autoSave(interval time.Duration) <span class="cov8" title="1">{
+        ticker := time.NewTicker(interval)
+        defer ticker.Stop()
+        for </span><span class="cov8" title="1">{
+                select </span>{
+                case &lt;-f.done:<span class="cov8" title="1">
+                        return</span>
+                case &lt;-ticker.C:<span class="cov0" title="0">
+                        f.mu.Lock()
+                        _ = f.saveLocked()
+                        f.mu.Unlock()</span>
+                }
+        }
+}
+</pre>
+		
+		<pre class="file" id="file35" style="display: none">// Copyright (c) 2026 erik &lt;erik@erik.xyz&gt; — https://erik.xyz
+
+package storage
+
+import (
+        "sync"
+        "time"
+)
+
+type event struct {
+        count       int
+        windowStart time.Time
+}
+
+type blocked struct {
+        until time.Time
+}
+
+// Memory is an in-memory storage backend with automatic TTL cleanup.
+type Memory struct {
+        mu      sync.Mutex
+        events  map[string]*event
+        blocked map[string]*blocked
+}
+
+// NewMemory creates a new in-memory storage backend.
+func NewMemory() *Memory <span class="cov8" title="1">{
+        m := &amp;Memory{
+                events:  make(map[string]*event),
+                blocked: make(map[string]*blocked),
+        }
+        go m.reap(30 * time.Second)
+        return m
+}</span>
+
+func (m *Memory) Incr(key string, window time.Duration) (int, error) <span class="cov8" title="1">{
+        m.mu.Lock()
+        defer m.mu.Unlock()
+        now := time.Now()
+        ev, ok := m.events[key]
+        if !ok || now.Sub(ev.windowStart) &gt; window </span><span class="cov8" title="1">{
+                m.events[key] = &amp;event{count: 1, windowStart: now}
+                return 1, nil
+        }</span>
+        <span class="cov8" title="1">ev.count++
+        return ev.count, nil</span>
+}
+
+func (m *Memory) Get(key string) (int, error) <span class="cov8" title="1">{
+        m.mu.Lock()
+        defer m.mu.Unlock()
+        if ev, ok := m.events[key]; ok </span><span class="cov8" title="1">{
+                return ev.count, nil
+        }</span>
+        <span class="cov8" title="1">return 0, nil</span>
+}
+
+func (m *Memory) Block(key string, duration time.Duration) error <span class="cov8" title="1">{
+        m.mu.Lock()
+        defer m.mu.Unlock()
+        m.blocked[key] = &amp;blocked{until: time.Now().Add(duration)}
+        return nil
+}</span>
+
+func (m *Memory) IsBlocked(key string) (bool, error) <span class="cov8" title="1">{
+        m.mu.Lock()
+        defer m.mu.Unlock()
+        if b, ok := m.blocked[key]; ok </span><span class="cov8" title="1">{
+                return time.Now().Before(b.until), nil
+        }</span>
+        <span class="cov8" title="1">return false, nil</span>
+}
+
+func (m *Memory) Close() error <span class="cov8" title="1">{ return nil }</span>
+
+func (m *Memory) reap(interval time.Duration) <span class="cov8" title="1">{
+        ticker := time.NewTicker(interval)
+        defer ticker.Stop()
+        for range ticker.C </span><span class="cov0" title="0">{
+                m.mu.Lock()
+                now := time.Now()
+                for k, v := range m.events </span><span class="cov0" title="0">{
+                        if now.Sub(v.windowStart) &gt; 5*time.Minute </span><span class="cov0" title="0">{
+                                delete(m.events, k)
+                        }</span>
+                }
+                <span class="cov0" title="0">for k, v := range m.blocked </span><span class="cov0" title="0">{
+                        if now.After(v.until) </span><span class="cov0" title="0">{
+                                delete(m.blocked, k)
+                        }</span>
+                }
+                <span class="cov0" title="0">m.mu.Unlock()</span>
+        }
+}
+</pre>
+		
+		</div>
+	</body>
+	<script>
+	(function() {
+		var files = document.getElementById('files');
+		var visible;
+		files.addEventListener('change', onChange, false);
+		function select(part) {
+			if (visible)
+				visible.style.display = 'none';
+			visible = document.getElementById(part);
+			if (!visible)
+				return;
+			files.value = part;
+			visible.style.display = 'block';
+			location.hash = part;
+		}
+		function onChange() {
+			select(files.value);
+			window.scrollTo(0, 0);
+		}
+		if (location.hash != "") {
+			select(location.hash.substr(1));
+		}
+		if (!visible) {
+			select("file0");
+		}
+	})();
+	</script>
+</html>

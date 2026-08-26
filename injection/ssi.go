@@ -9,10 +9,10 @@ import (
 )
 
 var ssiPatterns = []*regexp.Regexp{
-	regexp.MustCompile(`<!--\s*#(?:exec|include|echo|config|fsize|flastmod|printenv|set|if)\b`),
-	regexp.MustCompile(`<!--\s*#exec\s+(?:cmd|cgi)=`),
-	regexp.MustCompile(`<!--\s*#include\s+(?:file|virtual)=`),
-	regexp.MustCompile(`<!--\s*#echo\s+var=`),
+	regexp.MustCompile(`(?i)<!--\s*#(?:exec|include|echo|config|fsize|flastmod|printenv|set|if)\b`),
+	regexp.MustCompile(`(?i)<!--\s*#exec\s+(?:cmd|cgi)=`),
+	regexp.MustCompile(`(?i)<!--\s*#include\s+(?:file|virtual)=`),
+	regexp.MustCompile(`(?i)<!--\s*#echo\s+var=`),
 }
 
 // SSI detects Server-Side Include injection attempts.

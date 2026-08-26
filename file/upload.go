@@ -28,7 +28,7 @@ var allowedExt = map[string]bool{
 }
 
 var maliciousContentPatterns = []*regexp.Regexp{
-	regexp.MustCompile(`<\?php`),
+	regexp.MustCompile(`(?i)<\?php`),
 	regexp.MustCompile(`<\?=`),
 	regexp.MustCompile(`<%[^%]*%>`),
 	regexp.MustCompile(`(?i)<script`),

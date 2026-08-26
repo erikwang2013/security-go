@@ -12,7 +12,7 @@ var requestSmugglingPatterns = []*regexp.Regexp{
 	regexp.MustCompile(`(?i)Transfer-Encoding:\s*chunked.*\r\n.*Content-Length:`),
 	regexp.MustCompile(`(?i)Transfer-Encoding:\s*.*,\s*chunked`),
 	regexp.MustCompile(`(?i)Transfer-Encoding\s*:\s*chunked`),
-	regexp.MustCompile(`(?i)Content-Length:\s*0.*\r\n.*Transfer-Encoding:`),
+	regexp.MustCompile(`(?i)Content-Length:\s*\d+.*\r\n.*Transfer-Encoding:`),
 	regexp.MustCompile(`(?i)Transfer-encoding:\s*chunked`),
 	regexp.MustCompile(`\x0bTransfer-Encoding`),
 }
