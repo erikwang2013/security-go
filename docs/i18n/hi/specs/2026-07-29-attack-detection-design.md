@@ -1,10 +1,10 @@
-# Attack Detection Package — Design Spec
+# Attack Detection Package — डिज़ाइन स्पेक
 
-## Overview
+## अवलोकन
 
-纯 Go 攻击检测库，提供统一接口 + 注册表模式，覆盖 5 大类 32 个检测器。**实现完成 (2026-07-29)。**
+शुद्ध Go आक्रमण-पता लगाने वाली लाइब्रेरी, एकीकृत इंटरफ़ेस + रजिस्ट्री पैटर्न के साथ, 5 प्रमुख श्रेणियों में 32 डिटेक्टर कवर करती है। **कार्यान्वयन पूर्ण (2026-07-29)।**
 
-## Package Structure
+## पैकेज संरचना
 
 ```
 security-go/
@@ -23,15 +23,15 @@ security-go/
     └── redis/               # Redis 子模块 (可选依赖)
 ```
 
-## Core API
+## मुख्य API
 
-完整 API 接口（`Result`、`Detector`、`Engine`、存储后端 `Backend`、HTTP 校验器）见独立文档：**[API 接口文档](../../api.md)**
+संपूर्ण API इंटरफ़ेस (`Result`, `Detector`, `Engine`, स्टोरेज बैकएंड `Backend`, HTTP वैलिडेटर) के लिए अलग दस्तावेज़ देखें: **[API दस्तावेज़](../api.md)**
 
-- All detectors use pre-compiled regex patterns
+- सभी डिटेक्टर प्री-कंपाइल्ड regex पैटर्न का उपयोग करते हैं
 
-## Detectors
+## डिटेक्टर
 
-| Category | Name | Key Patterns |
+| श्रेणी | नाम | मुख्य पैटर्न |
 |----------|------|-------------|
 | injection | xss | `<script>`, `on[a-z]+=`, `javascript:`, SVG/CSS vectors |
 | injection | sql | UNION SELECT, `/**/`, sleep/benchmark, boolean blind, schema enum |
@@ -57,7 +57,7 @@ security-go/
 | httpval | content_type | MIME whitelist → 415 |
 | httpval | csrf_origin | Cross-origin Origin vs Host match |
 | httpval | ip_blacklist | Window-based rate limit → auto ban (5/60s → 15min) |
-| data | deserialization | PHP `O:数字:`, `C:数字:`, unserialize() |
+| data | deserialization | PHP `O:अंक:`, `C:अंक:`, unserialize() |
 | data | csv_injection | `=`, `@`, `+`, `-` formula prefix |
 | data | mail_header | Bcc/Cc/From/To injection, MIME |
 | data | jwt_attack | alg:none, kid path traversal, empty signature |
@@ -66,19 +66,19 @@ security-go/
 | file | upload | Extension whitelist + PHP tag content scan |
 | file | data_leak | Credit card, AWS key, private key, connection string, JWT secret |
 
-## Non-Goals
+## गैर-लक्ष्य (Non-Goals)
 
-- No HTTP middleware (pure detection library)
-- No real-time request interception (caller invokes detection)
-- No attack blocking (detection only; ip_blacklist provides block-listing support)
+- कोई HTTP मिडलवेयर नहीं (शुद्ध डिटेक्शन लाइब्रेरी)
+- कोई रीयल-टाइम रिक्वेस्ट इंटरसेप्शन नहीं (कॉलर स्वयं डिटेक्शन बुलाता है)
+- कोई आक्रमण-रोकथाम नहीं (केवल डिटेक्शन; ip_blacklist ब्लॉक-लिस्टिंग सहायता प्रदान करता है)
 
-## Implementation Status (2026-07-29)
+## कार्यान्वयन स्थिति (2026-07-29)
 
-- **32 detector 全部实现** — 注册入口 `all.RegisterAll(engine)`
-- **测试覆盖** — 7/8 包有测试（`all` 包待补），httpval 已补写 32 个测试
-- **代码审查完成** — 修复 3 个 Bug（见审查报告），`go vet` 零警告
-- **已知限制** — `storage/redis/` 子模块需 `go mod tidy`；protocol 包 receiver 风格待统一
-- **报告** — `docs/superpowers/reports/2026-07-29-code-review-report.md`
+- **सभी 32 डिटेक्टर लागू** — पंजीकरण प्रवेश बिंदु `all.RegisterAll(engine)`
+- **टेस्ट कवरेज** — 7/8 पैकेज में टेस्ट हैं (`all` पैकेज बाकी है), httpval के लिए 32 टेस्ट जोड़े गए
+- **कोड समीक्षा पूर्ण** — 3 Bug फिक्स किए (समीक्षा रिपोर्ट देखें), `go vet` शून्य चेतावनी
+- **ज्ञात सीमाएँ** — `storage/redis/` सबमॉड्यूल को `go mod tidy` की आवश्यकता है; protocol पैकेज की receiver शैली अभी एकरूप नहीं है
+- **रिपोर्ट** — `docs/superpowers/reports/2026-07-29-code-review-report.md`
 
 ---
 

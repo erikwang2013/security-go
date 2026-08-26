@@ -1,10 +1,10 @@
 # Attack Detection Package — Design Spec
 
-## Overview
+## 概要
 
-纯 Go 攻击检测库，提供统一接口 + 注册表模式，覆盖 5 大类 32 个检测器。**实现完成 (2026-07-29)。**
+純粋な Go 攻撃検出ライブラリ。統一インターフェース + レジストリパターンを提供し、5 大カテゴリ 32 個の検出器をカバーします。**実装完了 (2026-07-29)。**
 
-## Package Structure
+## パッケージ構造
 
 ```
 security-go/
@@ -23,15 +23,15 @@ security-go/
     └── redis/               # Redis 子模块 (可选依赖)
 ```
 
-## Core API
+## コア API
 
-完整 API 接口（`Result`、`Detector`、`Engine`、存储后端 `Backend`、HTTP 校验器）见独立文档：**[API 接口文档](../../api.md)**
+完全な API インターフェース（`Result`、`Detector`、`Engine`、ストレージバックエンド `Backend`、HTTP バリデータ）については独立ドキュメントを参照してください：**[API インターフェースドキュメント](../api.md)**
 
-- All detectors use pre-compiled regex patterns
+- すべての検出器はプリコンパイル済みの正規表現パターンを使用します
 
-## Detectors
+## 検出器
 
-| Category | Name | Key Patterns |
+| カテゴリ | 名前 | 主要パターン |
 |----------|------|-------------|
 | injection | xss | `<script>`, `on[a-z]+=`, `javascript:`, SVG/CSS vectors |
 | injection | sql | UNION SELECT, `/**/`, sleep/benchmark, boolean blind, schema enum |
@@ -66,19 +66,19 @@ security-go/
 | file | upload | Extension whitelist + PHP tag content scan |
 | file | data_leak | Credit card, AWS key, private key, connection string, JWT secret |
 
-## Non-Goals
+## 対象外 (Non-Goals)
 
-- No HTTP middleware (pure detection library)
-- No real-time request interception (caller invokes detection)
-- No attack blocking (detection only; ip_blacklist provides block-listing support)
+- HTTP ミドルウェアは提供しない（純粋な検出ライブラリ）
+- リアルタイムのリクエスト傍受はしない（検出は呼び出し側が実行）
+- 攻撃のブロックはしない（検出のみ。ip_blacklist がブロック機能を提供）
 
-## Implementation Status (2026-07-29)
+## 実装状況 (2026-07-29)
 
-- **32 detector 全部实现** — 注册入口 `all.RegisterAll(engine)`
-- **测试覆盖** — 7/8 包有测试（`all` 包待补），httpval 已补写 32 个测试
-- **代码审查完成** — 修复 3 个 Bug（见审查报告），`go vet` 零警告
-- **已知限制** — `storage/redis/` 子模块需 `go mod tidy`；protocol 包 receiver 风格待统一
-- **报告** — `docs/superpowers/reports/2026-07-29-code-review-report.md`
+- **32 個の検出器をすべて実装** — 登録エントリポイント `all.RegisterAll(engine)`
+- **テストカバレッジ** — 7/8 パッケージにテストあり（`all` パッケージは未対応）、httpval には 32 個のテストを追加済み
+- **コードレビュー完了** — 3 個のバグを修正（レビュー報告参照）、`go vet` 警告ゼロ
+- **既知の制限** — `storage/redis/` サブモジュールには `go mod tidy` が必要。protocol パッケージの receiver スタイルは統一待ち
+- **レポート** — [`../reports/2026-07-29-code-review-report.md`](../reports/2026-07-29-code-review-report.md)
 
 ---
 

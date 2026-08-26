@@ -2,7 +2,7 @@
 
 ## Overview
 
-A pure Go attack detection library providing a unified interface + registry pattern, covering **32 detectors** across **5 categories**. **Implementation complete (2026-07-29).**
+Pustaka deteksi serangan murni Go, menyediakan antarmuka terpadu + pola registry, mencakup 5 kategori besar dengan 32 detektor. **Implementasi selesai (2026-07-29).**
 
 ## Package Structure
 
@@ -10,22 +10,22 @@ A pure Go attack detection library providing a unified interface + registry patt
 security-go/
 ├── go.mod
 ├── security.go              # Result, Severity, Detector interface, Engine
-├── all/all.go               # RegisterAll — registers all built-in detectors
-├── injection/               # Injection attacks (10)
-├── protocol/                # Protocol & request attacks (9)
-├── httpval/                 # HTTP protocol validation (5)
-├── data/                    # Data & serialization attacks (5)
-├── file/                    # File & sensitive data (3)
-└── storage/                 # Pluggable storage backends
+├── all/all.go               # RegisterAll — 注册所有内置 detector
+├── injection/               # 注入类攻击 (10)
+├── protocol/                # 协议与请求攻击 (9)
+├── httpval/                 # HTTP 协议层校验 (5)
+├── data/                    # 数据与序列化攻击 (5)
+├── file/                    # 文件与敏感数据 (3)
+└── storage/                 # 可插拔存储后端
     ├── storage.go           # Backend interface
-    ├── memory.go            # In-memory (with TTL cleanup)
-    ├── file.go              # JSON file persistence
-    └── redis/               # Redis sub-module (optional dependency)
+    ├── memory.go            # 内存实现 (带 TTL 清理)
+    ├── file.go              # JSON 文件持久化
+    └── redis/               # Redis 子模块 (可选依赖)
 ```
 
 ## Core API
 
-Full API reference (`Result`, `Detector`, `Engine`, storage `Backend`, HTTP validators) is in the standalone document: **[API Reference](../../api.md)**
+Antarmuka API lengkap (`Result`, `Detector`, `Engine`, backend penyimpanan `Backend`, validator HTTP) tersedia di dokumen terpisah: **[Dokumentasi API](../api.md)**
 
 - All detectors use pre-compiled regex patterns
 
@@ -52,12 +52,12 @@ Full API reference (`Result`, `Detector`, `Engine`, storage `Backend`, HTTP vali
 | protocol | cors | Origin: null, ACA* header injection |
 | protocol | websocket | Upgrade injection, null Origin, ws:// |
 | protocol | dns_rebinding | Host header internal IP, localhost, hostname without TLD |
-| httpval | method | Whitelist GET/POST/PUT/DELETE/HEAD/OPTIONS/PATCH |
-| httpval | body_size | Max size check (default 10MB) |
-| httpval | content_type | MIME whitelist (empty list = deny-all) |
+| httpval | method | Whitelist GET/POST/PUT/DELETE/HEAD/OPTIONS/PATCH → 405 |
+| httpval | body_size | Max size check → 413 (default 10MB) |
+| httpval | content_type | MIME whitelist → 415 |
 | httpval | csrf_origin | Cross-origin Origin vs Host match |
 | httpval | ip_blacklist | Window-based rate limit → auto ban (5/60s → 15min) |
-| data | deserialization | PHP `O:digit:`, `C:digit:`, unserialize() |
+| data | deserialization | PHP `O:数字:`, `C:数字:`, unserialize() |
 | data | csv_injection | `=`, `@`, `+`, `-` formula prefix |
 | data | mail_header | Bcc/Cc/From/To injection, MIME |
 | data | jwt_attack | alg:none, kid path traversal, empty signature |
@@ -72,12 +72,13 @@ Full API reference (`Result`, `Detector`, `Engine`, storage `Backend`, HTTP vali
 - No real-time request interception (caller invokes detection)
 - No attack blocking (detection only; ip_blacklist provides block-listing support)
 
-## Implementation Status (2026-07-29)
+## Status Implementasi (2026-07-29)
 
-- **All 32 detectors implemented** — entry point: `all.RegisterAll(engine)`
-- **Test coverage** — 7/8 packages tested (`all` pending), httpval gained 32 tests
-- **Code review complete** — 3 bugs fixed (see review report), `go vet` zero warnings
-- **Known limitations** — `storage/redis/` sub-module needs `go mod tidy`; protocol package receiver style pending unification
+- **32 detektor semuanya diimplementasikan** — titik masuk registrasi `all.RegisterAll(engine)`
+- **Cakupan pengujian** — 7/8 paket memiliki pengujian (paket `all` menunggu dilengkapi), httpval telah dilengkapi 32 pengujian
+- **Code review selesai** — 3 Bug diperbaiki (lihat laporan review), `go vet` nol peringatan
+- **Keterbatasan yang diketahui** — submodul `storage/redis/` memerlukan `go mod tidy`; gaya receiver paket protocol menunggu penyatuan
+- **Laporan** — `docs/superpowers/reports/2026-07-29-code-review-report.md`
 
 ---
 

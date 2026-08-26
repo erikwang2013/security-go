@@ -1,10 +1,10 @@
-# Attack Detection Package — Design Spec
+# Paket zur Angriffserkennung — Design-Spezifikation
 
-## Overview
+## Übersicht
 
-纯 Go 攻击检测库，提供统一接口 + 注册表模式，覆盖 5 大类 32 个检测器。**实现完成 (2026-07-29)。**
+Eine reine Go-Bibliothek zur Angriffserkennung mit einheitlicher Schnittstelle + Registry-Muster, die 32 Detektoren in 5 Kategorien abdeckt. **Implementierung abgeschlossen (2026-07-29).**
 
-## Package Structure
+## Paketstruktur
 
 ```
 security-go/
@@ -23,16 +23,16 @@ security-go/
     └── redis/               # Redis 子模块 (可选依赖)
 ```
 
-## Core API
+## Kern-API
 
-完整 API 接口（`Result`、`Detector`、`Engine`、存储后端 `Backend`、HTTP 校验器）见独立文档：**[API 接口文档](../../api.md)**
+Die vollständigen API-Schnittstellen (`Result`, `Detector`, `Engine`, Storage-Backend `Backend`, HTTP-Validator) finden Sie im separaten Dokument: **[API-Referenz](../api.md)**
 
-- All detectors use pre-compiled regex patterns
+- Alle Detektoren verwenden vorkompilierte Regex-Muster
 
-## Detectors
+## Detektoren
 
-| Category | Name | Key Patterns |
-|----------|------|-------------|
+| Kategorie | Name | Wichtige Muster |
+|-----------|------|-----------------|
 | injection | xss | `<script>`, `on[a-z]+=`, `javascript:`, SVG/CSS vectors |
 | injection | sql | UNION SELECT, `/**/`, sleep/benchmark, boolean blind, schema enum |
 | injection | command | backtick, `$()`, pipe, `/dev/tcp`, PHP exec functions |
@@ -66,19 +66,19 @@ security-go/
 | file | upload | Extension whitelist + PHP tag content scan |
 | file | data_leak | Credit card, AWS key, private key, connection string, JWT secret |
 
-## Non-Goals
+## Nicht-Ziele
 
-- No HTTP middleware (pure detection library)
-- No real-time request interception (caller invokes detection)
-- No attack blocking (detection only; ip_blacklist provides block-listing support)
+- Kein HTTP-Middleware (reine Erkennungsbibliothek)
+- Keine Echtzeit-Anfrageabfangung (der Aufrufer führt die Erkennung aus)
+- Keine Angriffsblockierung (nur Erkennung; ip_blacklist bietet Unterstützung für Sperrlisten)
 
-## Implementation Status (2026-07-29)
+## Implementierungsstatus (2026-07-29)
 
-- **32 detector 全部实现** — 注册入口 `all.RegisterAll(engine)`
-- **测试覆盖** — 7/8 包有测试（`all` 包待补），httpval 已补写 32 个测试
-- **代码审查完成** — 修复 3 个 Bug（见审查报告），`go vet` 零警告
-- **已知限制** — `storage/redis/` 子模块需 `go mod tidy`；protocol 包 receiver 风格待统一
-- **报告** — `docs/superpowers/reports/2026-07-29-code-review-report.md`
+- **Alle 32 Detektoren implementiert** — Registrierungseinstieg `all.RegisterAll(engine)`
+- **Testabdeckung** — 7/8 Pakete haben Tests (Paket `all` fehlt noch), für httpval wurden 32 Tests ergänzt
+- **Code-Review abgeschlossen** — 3 Bugs behoben (siehe Review-Bericht), `go vet` ohne Warnungen
+- **Bekannte Einschränkungen** — Untermodul `storage/redis/` benötigt `go mod tidy`; der Receiver-Stil im protocol-Paket muss noch vereinheitlicht werden
+- **Bericht** — `docs/superpowers/reports/2026-07-29-code-review-report.md`
 
 ---
 

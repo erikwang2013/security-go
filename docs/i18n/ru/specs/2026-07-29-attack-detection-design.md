@@ -1,10 +1,10 @@
-# Attack Detection Package — Design Spec
+# Пакет обнаружения атак — спецификация дизайна
 
-## Overview
+## Обзор
 
-纯 Go 攻击检测库，提供统一接口 + 注册表模式，覆盖 5 大类 32 个检测器。**实现完成 (2026-07-29)。**
+Чистая библиотека обнаружения атак на Go с единым интерфейсом + паттерном реестра, охватывающая 5 основных категорий и 32 детектора. **Реализация завершена (2026-07-29).**
 
-## Package Structure
+## Структура пакета
 
 ```
 security-go/
@@ -23,15 +23,16 @@ security-go/
     └── redis/               # Redis 子模块 (可选依赖)
 ```
 
-## Core API
+## Основной API
 
-完整 API 接口（`Result`、`Detector`、`Engine`、存储后端 `Backend`、HTTP 校验器）见独立文档：**[API 接口文档](../../api.md)**
+Полный перечень API (`Result`, `Detector`, `Engine`, бэкенд хранилища `Backend`, HTTP-валидаторы) см. в отдельном документе: **[Документация API](../api.md)**
 
+- Все детекторы используют предкомпилированные регулярные выражения
 - All detectors use pre-compiled regex patterns
 
-## Detectors
+## Детекторы
 
-| Category | Name | Key Patterns |
+| Категория | Имя | Ключевые шаблоны |
 |----------|------|-------------|
 | injection | xss | `<script>`, `on[a-z]+=`, `javascript:`, SVG/CSS vectors |
 | injection | sql | UNION SELECT, `/**/`, sleep/benchmark, boolean blind, schema enum |
@@ -66,19 +67,19 @@ security-go/
 | file | upload | Extension whitelist + PHP tag content scan |
 | file | data_leak | Credit card, AWS key, private key, connection string, JWT secret |
 
-## Non-Goals
+## Вне рамок проекта
 
-- No HTTP middleware (pure detection library)
-- No real-time request interception (caller invokes detection)
-- No attack blocking (detection only; ip_blacklist provides block-listing support)
+- Нет HTTP-мидлвара (чистая библиотека обнаружения)
+- Нет перехвата запросов в реальном времени (обнаружение вызывает вызывающий код)
+- Нет блокировки атак (только обнаружение; ip_blacklist предоставляет поддержку блокировки)
 
-## Implementation Status (2026-07-29)
+## Статус реализации (2026-07-29)
 
-- **32 detector 全部实现** — 注册入口 `all.RegisterAll(engine)`
-- **测试覆盖** — 7/8 包有测试（`all` 包待补），httpval 已补写 32 个测试
-- **代码审查完成** — 修复 3 个 Bug（见审查报告），`go vet` 零警告
-- **已知限制** — `storage/redis/` 子模块需 `go mod tidy`；protocol 包 receiver 风格待统一
-- **报告** — `docs/superpowers/reports/2026-07-29-code-review-report.md`
+- **Все 32 детектора реализованы** — точка регистрации `all.RegisterAll(engine)`
+- **Покрытие тестами** — тесты есть в 7 из 8 пакетов (пакет `all` ожидает дополнения), для httpval добавлено 32 теста
+- **Ревью кода завершено** — исправлено 3 бага (см. отчёт о ревью), `go vet` без предупреждений
+- **Известные ограничения** — подмодуль `storage/redis/` требует `go mod tidy`; стиль receiver в пакете protocol ожидает унификации
+- **Отчёт** — `docs/superpowers/reports/2026-07-29-code-review-report.md`
 
 ---
 

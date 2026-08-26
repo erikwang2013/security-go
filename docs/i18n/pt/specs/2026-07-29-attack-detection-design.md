@@ -2,7 +2,7 @@
 
 ## Overview
 
-A pure Go attack detection library providing a unified interface + registry pattern, covering **32 detectors** across **5 categories**. **Implementation complete (2026-07-29).**
+Biblioteca de detecção de ataques em Go puro, fornecendo interface unificada + padrão de registro (registry), cobrindo 5 grandes categorias e 32 detectores. **Implementação concluída (2026-07-29).**
 
 ## Package Structure
 
@@ -10,22 +10,22 @@ A pure Go attack detection library providing a unified interface + registry patt
 security-go/
 ├── go.mod
 ├── security.go              # Result, Severity, Detector interface, Engine
-├── all/all.go               # RegisterAll — registers all built-in detectors
-├── injection/               # Injection attacks (10)
-├── protocol/                # Protocol & request attacks (9)
-├── httpval/                 # HTTP protocol validation (5)
-├── data/                    # Data & serialization attacks (5)
-├── file/                    # File & sensitive data (3)
-└── storage/                 # Pluggable storage backends
+├── all/all.go               # RegisterAll — registra todos os detectors internos
+├── injection/               # Ataques de injeção (10)
+├── protocol/                # Ataques de protocolo e de requisição (9)
+├── httpval/                 # Validação da camada de protocolo HTTP (5)
+├── data/                    # Ataques de dados e serialização (5)
+├── file/                    # Arquivos e dados sensíveis (3)
+└── storage/                 # Backends de armazenamento plugáveis
     ├── storage.go           # Backend interface
-    ├── memory.go            # In-memory (with TTL cleanup)
-    ├── file.go              # JSON file persistence
-    └── redis/               # Redis sub-module (optional dependency)
+    ├── memory.go            # Implementação em memória (com limpeza por TTL)
+    ├── file.go              # Persistência em arquivo JSON
+    └── redis/               # Submódulo Redis (dependência opcional)
 ```
 
 ## Core API
 
-Full API reference (`Result`, `Detector`, `Engine`, storage `Backend`, HTTP validators) is in the standalone document: **[API Reference](../../api.md)**
+As APIs completas (`Result`, `Detector`, `Engine`, backend de armazenamento `Backend`, validadores HTTP) estão no documento separado: **[Documentação da API](../api.md)**
 
 - All detectors use pre-compiled regex patterns
 
@@ -52,12 +52,12 @@ Full API reference (`Result`, `Detector`, `Engine`, storage `Backend`, HTTP vali
 | protocol | cors | Origin: null, ACA* header injection |
 | protocol | websocket | Upgrade injection, null Origin, ws:// |
 | protocol | dns_rebinding | Host header internal IP, localhost, hostname without TLD |
-| httpval | method | Whitelist GET/POST/PUT/DELETE/HEAD/OPTIONS/PATCH |
-| httpval | body_size | Max size check (default 10MB) |
-| httpval | content_type | MIME whitelist (empty list = deny-all) |
+| httpval | method | Whitelist GET/POST/PUT/DELETE/HEAD/OPTIONS/PATCH → 405 |
+| httpval | body_size | Max size check → 413 (default 10MB) |
+| httpval | content_type | MIME whitelist → 415 |
 | httpval | csrf_origin | Cross-origin Origin vs Host match |
 | httpval | ip_blacklist | Window-based rate limit → auto ban (5/60s → 15min) |
-| data | deserialization | PHP `O:digit:`, `C:digit:`, unserialize() |
+| data | deserialization | PHP `O:número:`, `C:número:`, unserialize() |
 | data | csv_injection | `=`, `@`, `+`, `-` formula prefix |
 | data | mail_header | Bcc/Cc/From/To injection, MIME |
 | data | jwt_attack | alg:none, kid path traversal, empty signature |
@@ -74,10 +74,11 @@ Full API reference (`Result`, `Detector`, `Engine`, storage `Backend`, HTTP vali
 
 ## Implementation Status (2026-07-29)
 
-- **All 32 detectors implemented** — entry point: `all.RegisterAll(engine)`
-- **Test coverage** — 7/8 packages tested (`all` pending), httpval gained 32 tests
-- **Code review complete** — 3 bugs fixed (see review report), `go vet` zero warnings
-- **Known limitations** — `storage/redis/` sub-module needs `go mod tidy`; protocol package receiver style pending unification
+- **Todos os 32 detectors implementados** — ponto de entrada de registro `all.RegisterAll(engine)`
+- **Cobertura de testes** — 7/8 pacotes têm testes (o pacote `all` está pendente), httpval ganhou 32 testes complementares
+- **Revisão de código concluída** — 3 bugs corrigidos (ver relatório de revisão), `go vet` sem avisos
+- **Limitações conhecidas** — o submódulo `storage/redis/` requer `go mod tidy`; o estilo de receiver do pacote protocol está pendente de padronização
+- **Relatório** — `docs/superpowers/reports/2026-07-29-code-review-report.md`
 
 ---
 

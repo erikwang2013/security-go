@@ -1,10 +1,10 @@
-# Attack Detection Package — Design Spec
+# Attack Detection 패키지 — 설계 규격
 
-## Overview
+## 개요
 
-纯 Go 攻击检测库，提供统一接口 + 注册表模式，覆盖 5 大类 32 个检测器。**实现完成 (2026-07-29)。**
+순수 Go 공격 탐지 라이브러리로, 통합 인터페이스 + 등록소 패턴을 제공하며 5대 카테고리 32개의 감지기를 지원합니다. **구현 완료 (2026-07-29).**
 
-## Package Structure
+## 패키지 구조
 
 ```
 security-go/
@@ -23,15 +23,15 @@ security-go/
     └── redis/               # Redis 子模块 (可选依赖)
 ```
 
-## Core API
+## 핵심 API
 
-完整 API 接口（`Result`、`Detector`、`Engine`、存储后端 `Backend`、HTTP 校验器）见独立文档：**[API 接口文档](../../api.md)**
+전체 API 인터페이스(`Result`, `Detector`, `Engine`, 저장 백엔드 `Backend`, HTTP 검증기)는 별도 문서를 참조하세요: **[API 인터페이스 문서](../api.md)**
 
-- All detectors use pre-compiled regex patterns
+- 모든 감지기는 사전 컴파일된 정규식 패턴을 사용합니다
 
-## Detectors
+## 감지기
 
-| Category | Name | Key Patterns |
+| 카테고리 | 이름 | 핵심 패턴 |
 |----------|------|-------------|
 | injection | xss | `<script>`, `on[a-z]+=`, `javascript:`, SVG/CSS vectors |
 | injection | sql | UNION SELECT, `/**/`, sleep/benchmark, boolean blind, schema enum |
@@ -66,19 +66,19 @@ security-go/
 | file | upload | Extension whitelist + PHP tag content scan |
 | file | data_leak | Credit card, AWS key, private key, connection string, JWT secret |
 
-## Non-Goals
+## 비목표 (Non-Goals)
 
-- No HTTP middleware (pure detection library)
-- No real-time request interception (caller invokes detection)
-- No attack blocking (detection only; ip_blacklist provides block-listing support)
+- HTTP 미들웨어 없음 (순수 탐지 라이브러리)
+- 실시간 요청 차단 없음 (호출자가 탐지를 호출)
+- 공격 차단 없음 (탐지만 수행; ip_blacklist는 차단 지원 제공)
 
-## Implementation Status (2026-07-29)
+## 구현 상태 (2026-07-29)
 
-- **32 detector 全部实现** — 注册入口 `all.RegisterAll(engine)`
-- **测试覆盖** — 7/8 包有测试（`all` 包待补），httpval 已补写 32 个测试
-- **代码审查完成** — 修复 3 个 Bug（见审查报告），`go vet` 零警告
-- **已知限制** — `storage/redis/` 子模块需 `go mod tidy`；protocol 包 receiver 风格待统一
-- **报告** — `docs/superpowers/reports/2026-07-29-code-review-report.md`
+- **32개 감지기 전부 구현** — 등록 진입점 `all.RegisterAll(engine)`
+- **테스트 커버리지** — 7/8 패키지에 테스트 있음(`all` 패키지 보완 예정), httpval에 32개 테스트 추가 작성
+- **코드 리뷰 완료** — 3개 Bug 수정(리뷰 보고서 참조), `go vet` 경고 0건
+- **알려진 제한사항** — `storage/redis/` 서브모듈에 `go mod tidy` 필요; protocol 패키지 receiver 스타일 통일 예정
+- **보고서** — [코드 리뷰 보고서](../reports/2026-07-29-code-review-report.md)
 
 ---
 

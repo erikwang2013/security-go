@@ -1,6 +1,6 @@
 # Security Go — 攻击检测库
 
-[English](README-EN.md)
+[English](README-EN.md) · [API 接口文档](docs/api.md)
 
 Go 语言编写的攻击检测包，覆盖 **32 个检测器**、**5 大攻击类别**、**3 种可插拔存储后端**。统一接口 + 注册表模式，纯检测库，适配任何 Go HTTP 框架。
 
@@ -244,9 +244,71 @@ e.Register(&MyDetector{})
 
 ### 相关文档
 
-- [设计规范](docs/superpowers/specs/2026-07-29-attack-detection-design.md) — 包结构、核心 API、检测器目录
+- [API 接口文档](docs/api.md) — 核心类型、Detector/Engine 接口、存储后端接口、HTTP 校验器
+- [设计规范](docs/superpowers/specs/2026-07-29-attack-detection-design.md) — 包结构、检测器目录
 - [实施计划](docs/superpowers/plans/2026-07-29-attack-detection-plan.md) — 分步任务计划与实施偏差对照
 - [代码审查报告](docs/superpowers/reports/2026-07-29-code-review-report.md) — Bug 修复、测试覆盖、架构评估
+
+---
+
+## 多语言文档
+
+| 语言 | 文档 |
+|------|------|
+| 简体中文 | [README.md](README.md) |
+| English | [README-EN.md](README-EN.md) · [docs/i18n/en/README.md](docs/i18n/en/README.md) |
+| 한국어 | [docs/i18n/ko/README.md](docs/i18n/ko/README.md) |
+| Русский | [docs/i18n/ru/README.md](docs/i18n/ru/README.md) |
+| Deutsch | [docs/i18n/de/README.md](docs/i18n/de/README.md) |
+| Français | [docs/i18n/fr/README.md](docs/i18n/fr/README.md) |
+| Español | [docs/i18n/es/README.md](docs/i18n/es/README.md) |
+| Português | [docs/i18n/pt/README.md](docs/i18n/pt/README.md) |
+| हिन्दी | [docs/i18n/hi/README.md](docs/i18n/hi/README.md) |
+| العربية | [docs/i18n/ar/README.md](docs/i18n/ar/README.md) |
+| বাংলা | [docs/i18n/bn/README.md](docs/i18n/bn/README.md) |
+| Bahasa Indonesia | [docs/i18n/id/README.md](docs/i18n/id/README.md) |
+| 日本語 | [docs/i18n/ja/README.md](docs/i18n/ja/README.md) |
+
+---
+
+## 捐赠支持
+
+如果这个项目对你有帮助，欢迎打赏支持：
+
+| 方式 | 二维码 |
+|------|--------|
+| 支付宝 | ![支付宝](docs/alipay.png) |
+| 微信支付 | ![微信支付](docs/weixinpay.png) |
+
+### 全球转账打赏（银行汇款）
+
+**收款人信息**
+
+- 收款人姓名：WANG KEXUN
+- 收款账户号码：881015918251
+
+**收款银行（ZA Bank）**
+
+- SWIFT Code：`AABLHKHHXXX`
+- 银行名称：ZA Bank Limited
+- 银行编号：387
+- 银行地址：Core F, Cyberport 3, 100 Cyberport Road, Hong Kong
+
+**跨境汇款代理银行（如需）**
+
+> 请留意，此为跨境汇款代理银行（中转银行）信息，非收款银行信息。请向汇款银行查询是否需要提供跨境汇款代理银行信息。
+
+- 汇入港元、人民币及美元的代理银行为 Citibank：
+  - 银行名称：Citibank N.A. Hong Kong
+  - SWIFT Code：`CITIHKHXXXX`
+  - 银行编号：006
+  - 分行名称：Hong Kong Branch
+  - 分行编号：391
+  - 银行地址：Citibank Tower, Citibank Plaza, 3 Garden Road, Central, Hong Kong
+- 汇入其他币种时的代理银行为 BNY Mellon：
+  - 银行名称：THE BANK OF NEW YORK MELLON
+  - SWIFT Code：`IRVTUS3NXXX`
+  - 银行地址：THE BANK OF NEW YORK MELLON, 240 GREENWICH STREET, NEW YORK, United States
 
 ---
 

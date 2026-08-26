@@ -1,10 +1,10 @@
-# Attack Detection Package — Design Spec
+# حزمة كشف الهجمات — مواصفات التصميم
 
-## Overview
+## نظرة عامة
 
-纯 Go 攻击检测库，提供统一接口 + 注册表模式，覆盖 5 大类 32 个检测器。**实现完成 (2026-07-29)。**
+مكتبة كشف هجمات خالصة بلغة Go، توفر واجهة موحّدة + نمط سجلّات، تغطي 5 فئات و32 كاشفًا. **اكتمل التنفيذ (2026-07-29).**
 
-## Package Structure
+## بنية الحزمة
 
 ```
 security-go/
@@ -23,15 +23,15 @@ security-go/
     └── redis/               # Redis 子模块 (可选依赖)
 ```
 
-## Core API
+## واجهة API الأساسية
 
-完整 API 接口（`Result`、`Detector`、`Engine`、存储后端 `Backend`、HTTP 校验器）见独立文档：**[API 接口文档](../../api.md)**
+واجهات API الكاملة (`Result`، `Detector`، `Engine`، واجهة التخزين الخلفي `Backend`، مُدقّقات HTTP) موثّقة في وثيقة مستقلة: **[وثيقة واجهة API](../api.md)**
 
-- All detectors use pre-compiled regex patterns
+- تستخدم جميع الكاشفات أنماط regex مُجمّعة مسبقًا (All detectors use pre-compiled regex patterns)
 
-## Detectors
+## الكاشفات
 
-| Category | Name | Key Patterns |
+| الفئة | الاسم | الأنماط الرئيسية |
 |----------|------|-------------|
 | injection | xss | `<script>`, `on[a-z]+=`, `javascript:`, SVG/CSS vectors |
 | injection | sql | UNION SELECT, `/**/`, sleep/benchmark, boolean blind, schema enum |
@@ -66,19 +66,19 @@ security-go/
 | file | upload | Extension whitelist + PHP tag content scan |
 | file | data_leak | Credit card, AWS key, private key, connection string, JWT secret |
 
-## Non-Goals
+## خارج نطاق الأهداف
 
-- No HTTP middleware (pure detection library)
-- No real-time request interception (caller invokes detection)
-- No attack blocking (detection only; ip_blacklist provides block-listing support)
+- لا يوجد وسيط HTTP (مكتبة كشف خالصة)
+- لا يوجد اعتراض على الطلبات في الوقت الحقيقي (المستدعي هو من يستدعي الكشف)
+- لا يوجد حظر للهجمات (كشف فقط؛ يوفر ip_blacklist دعم الحظر)
 
-## Implementation Status (2026-07-29)
+## حالة التنفيذ (2026-07-29)
 
-- **32 detector 全部实现** — 注册入口 `all.RegisterAll(engine)`
-- **测试覆盖** — 7/8 包有测试（`all` 包待补），httpval 已补写 32 个测试
-- **代码审查完成** — 修复 3 个 Bug（见审查报告），`go vet` 零警告
-- **已知限制** — `storage/redis/` 子模块需 `go mod tidy`；protocol 包 receiver 风格待统一
-- **报告** — `docs/superpowers/reports/2026-07-29-code-review-report.md`
+- **تم تنفيذ الكاشفات الـ 32 بالكامل** — نقطة التسجيل `all.RegisterAll(engine)`
+- **تغطية الاختبارات** — 7/8 حزم لديها اختبارات (حزمة `all` معلّقة)، أُضيفت 32 اختبارًا لحزمة httpval
+- **اكتملت مراجعة الكود** — إصلاح 3 أخطاء (انظر تقرير المراجعة)، `go vet` بصفر تحذيرات
+- **القيود المعروفة** — الوحدة الفرعية `storage/redis/` تتطلب `go mod tidy`؛ أسلوب receiver في حزمة protocol بانتظار التوحيد
+- **التقرير** — `docs/superpowers/reports/2026-07-29-code-review-report.md` → [تقرير مراجعة الكود](../reports/2026-07-29-code-review-report.md)
 
 ---
 
