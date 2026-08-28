@@ -22,18 +22,16 @@ func (d *HeaderInjection) Name() string {
 }
 
 func (d *HeaderInjection) Detect(input string) *security.Result {
-	for _, p := range headerInjectionPatterns {
-		if p.MatchString(input) {
-			return &security.Result{
-				Name:     d.Name(),
-				Detected: true,
-				Severity: security.SeverityHigh,
-				Message:  "HTTP header injection pattern detected: CRLF injection or header manipulation",
-				Details: map[string]interface{}{
-					"matched_pattern": p.String(),
-					"input":           input,
-				},
-			}
+	if m, ok := security.FirstMatch(input, headerInjectionPatterns); ok {
+		return &security.Result{
+			Name:     d.Name(),
+			Detected: true,
+			Severity: security.SeverityHigh,
+			Message:  "HTTP header injection pattern detected: CRLF injection or header manipulation",
+			Details: map[string]interface{}{
+				"matched_pattern": m,
+				"input":           input,
+			},
 		}
 	}
 	return &security.Result{Name: d.Name(), Detected: false}

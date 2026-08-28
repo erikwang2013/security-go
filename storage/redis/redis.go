@@ -10,6 +10,8 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
+const blockedPrefix = "blocked:"
+
 // Backend is a Redis-backed storage backend.
 type Backend struct {
 	client *redis.Client
@@ -48,11 +50,11 @@ func (r *Backend) Get(key string) (int, error) {
 }
 
 func (r *Backend) Block(key string, duration time.Duration) error {
-	return r.client.Set(context.Background(), "blocked:"+key, "1", duration).Err()
+	return r.client.Set(context.Background(), blockedPrefix+key, "1", duration).Err()
 }
 
 func (r *Backend) IsBlocked(key string) (bool, error) {
-	val, err := r.client.Exists(context.Background(), "blocked:"+key).Result()
+	val, err := r.client.Exists(context.Background(), blockedPrefix+key).Result()
 	return val > 0, err
 }
 

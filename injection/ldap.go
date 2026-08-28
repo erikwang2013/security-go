@@ -26,17 +26,15 @@ func (d *LDAP) Name() string {
 }
 
 func (d *LDAP) Detect(input string) *security.Result {
-	for _, p := range ldapPatterns {
-		if p.MatchString(input) {
-			return &security.Result{
-				Name:     d.Name(),
-				Detected: true,
-				Message:  "LDAP injection pattern detected: " + p.String(),
-				Severity: security.SeverityHigh,
-				Details: map[string]interface{}{
-					"pattern": p.String(),
-				},
-			}
+	if m, ok := security.FirstMatch(input, ldapPatterns); ok {
+		return &security.Result{
+			Name:     d.Name(),
+			Detected: true,
+			Message:  "LDAP injection pattern detected: " + m,
+			Severity: security.SeverityHigh,
+			Details: map[string]interface{}{
+				"pattern": m,
+			},
 		}
 	}
 	return &security.Result{Name: d.Name(), Detected: false}

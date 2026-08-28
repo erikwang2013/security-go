@@ -21,18 +21,16 @@ func (d *CORS) Name() string {
 }
 
 func (d *CORS) Detect(input string) *security.Result {
-	for _, p := range corsPatterns {
-		if p.MatchString(input) {
-			return &security.Result{
-				Name:     d.Name(),
-				Detected: true,
-				Severity: security.SeverityMedium,
-				Message:  "CORS bypass pattern detected: overly permissive CORS configuration",
-				Details: map[string]interface{}{
-					"matched_pattern": p.String(),
-					"input":           input,
-				},
-			}
+	if m, ok := security.FirstMatch(input, corsPatterns); ok {
+		return &security.Result{
+			Name:     d.Name(),
+			Detected: true,
+			Severity: security.SeverityMedium,
+			Message:  "CORS bypass pattern detected: overly permissive CORS configuration",
+			Details: map[string]interface{}{
+				"matched_pattern": m,
+				"input":           input,
+			},
 		}
 	}
 	return &security.Result{Name: d.Name(), Detected: false}

@@ -31,9 +31,6 @@ func (c *CSRFOrigin) Detect(input string) *security.Result {
 		return &security.Result{Name: c.Name(), Detected: false}
 	}
 	host := u.Host
-	if host == "" {
-		host = u.Hostname()
-	}
 	if strings.EqualFold(host, c.Host) {
 		return &security.Result{Name: c.Name(), Detected: false}
 	}

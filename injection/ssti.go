@@ -26,17 +26,15 @@ func (d *SSTI) Name() string {
 }
 
 func (d *SSTI) Detect(input string) *security.Result {
-	for _, p := range sstiPatterns {
-		if p.MatchString(input) {
-			return &security.Result{
-				Name:     d.Name(),
-				Detected: true,
-				Message:  "SSTI injection pattern detected: " + p.String(),
-				Severity: security.SeverityCritical,
-				Details: map[string]interface{}{
-					"pattern": p.String(),
-				},
-			}
+	if m, ok := security.FirstMatch(input, sstiPatterns); ok {
+		return &security.Result{
+			Name:     d.Name(),
+			Detected: true,
+			Message:  "SSTI injection pattern detected: " + m,
+			Severity: security.SeverityCritical,
+			Details: map[string]interface{}{
+				"pattern": m,
+			},
 		}
 	}
 	return &security.Result{Name: d.Name(), Detected: false}

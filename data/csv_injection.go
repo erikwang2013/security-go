@@ -26,17 +26,15 @@ func (c *CSVInjection) Name() string {
 
 // Detect checks input for CSV formula injection patterns.
 func (c *CSVInjection) Detect(input string) *security.Result {
-	for _, p := range csvPatterns {
-		if p.MatchString(input) {
-			return &security.Result{
-				Name:     c.Name(),
-				Detected: true,
-				Message:  "CSV formula injection pattern detected: " + p.String(),
-				Severity: security.SeverityHigh,
-				Details: map[string]interface{}{
-					"pattern": p.String(),
-				},
-			}
+	if m, ok := security.FirstMatch(input, csvPatterns); ok {
+		return &security.Result{
+			Name:     c.Name(),
+			Detected: true,
+			Message:  "CSV formula injection pattern detected: " + m,
+			Severity: security.SeverityHigh,
+			Details: map[string]interface{}{
+				"pattern": m,
+			},
 		}
 	}
 	return &security.Result{Name: c.Name(), Detected: false}

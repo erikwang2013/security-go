@@ -3,6 +3,7 @@
 package file
 
 import (
+	"path/filepath"
 	"regexp"
 	"strings"
 
@@ -47,14 +48,12 @@ func (d *MaliciousFileUpload) Name() string {
 
 // Detect scans the input for malicious content patterns.
 func (d *MaliciousFileUpload) Detect(input string) *security.Result {
-	for _, p := range maliciousContentPatterns {
-		if p.MatchString(input) {
-			return &security.Result{
-				Name:     d.Name(),
-				Detected: true,
-				Message:  "Malicious content detected: " + p.String(),
-				Severity: security.SeverityHigh,
-			}
+	if m, ok := security.FirstMatch(input, maliciousContentPatterns); ok {
+		return &security.Result{
+			Name:     d.Name(),
+			Detected: true,
+			Message:  "Malicious content detected: " + m,
+			Severity: security.SeverityHigh,
 		}
 	}
 	return &security.Result{Name: d.Name(), Detected: false}
@@ -62,18 +61,17 @@ func (d *MaliciousFileUpload) Detect(input string) *security.Result {
 
 // HasMaliciousExt checks whether the filename has a non-whitelisted extension.
 func HasMaliciousExt(filename string) bool {
-	idx := strings.LastIndex(filename, ".")
-	if idx == -1 {
+	ext := strings.ToLower(filepath.Ext(filename))
+	if ext == "" {
 		return true
 	}
-	ext := strings.ToLower(filename[idx:])
 	return !allowedExt[ext]
 }
 
 // CheckExtension checks the filename extension and returns a detection result.
 func (d *MaliciousFileUpload) CheckExtension(filename string) *security.Result {
-	dotIdx := strings.LastIndex(filename, ".")
-	if dotIdx == -1 {
+	ext := strings.ToLower(filepath.Ext(filename))
+	if ext == "" {
 		return &security.Result{
 			Name:     d.Name(),
 			Detected: true,
@@ -81,7 +79,6 @@ func (d *MaliciousFileUpload) CheckExtension(filename string) *security.Result {
 			Severity: security.SeverityMedium,
 		}
 	}
-	ext := strings.ToLower(filename[dotIdx:])
 	if !allowedExt[ext] {
 		return &security.Result{
 			Name:     d.Name(),

@@ -26,18 +26,16 @@ func (d *SSRF) Name() string {
 }
 
 func (d *SSRF) Detect(input string) *security.Result {
-	for _, p := range ssrfPatterns {
-		if p.MatchString(input) {
-			return &security.Result{
-				Name:     d.Name(),
-				Detected: true,
-				Severity: security.SeverityHigh,
-				Message:  "SSRF attack pattern detected: internal or restricted URL target",
-				Details: map[string]interface{}{
-					"matched_pattern": p.String(),
-					"input":           input,
-				},
-			}
+	if m, ok := security.FirstMatch(input, ssrfPatterns); ok {
+		return &security.Result{
+			Name:     d.Name(),
+			Detected: true,
+			Severity: security.SeverityHigh,
+			Message:  "SSRF attack pattern detected: internal or restricted URL target",
+			Details: map[string]interface{}{
+				"matched_pattern": m,
+				"input":           input,
+			},
 		}
 	}
 	return &security.Result{Name: d.Name(), Detected: false}

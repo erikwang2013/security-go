@@ -31,17 +31,15 @@ func (p *PrototypePollution) Name() string {
 
 // Detect checks input for JavaScript prototype pollution patterns.
 func (p *PrototypePollution) Detect(input string) *security.Result {
-	for _, pat := range protoPollutionPatterns {
-		if pat.MatchString(input) {
-			return &security.Result{
-				Name:     p.Name(),
-				Detected: true,
-				Message:  "JavaScript prototype pollution pattern detected: " + pat.String(),
-				Severity: security.SeverityCritical,
-				Details: map[string]interface{}{
-					"pattern": pat.String(),
-				},
-			}
+	if m, ok := security.FirstMatch(input, protoPollutionPatterns); ok {
+		return &security.Result{
+			Name:     p.Name(),
+			Detected: true,
+			Message:  "JavaScript prototype pollution pattern detected: " + m,
+			Severity: security.SeverityCritical,
+			Details: map[string]interface{}{
+				"pattern": m,
+			},
 		}
 	}
 	return &security.Result{Name: p.Name(), Detected: false}

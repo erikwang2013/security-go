@@ -26,17 +26,15 @@ func (m *MailHeader) Name() string {
 
 // Detect checks input for mail header injection patterns.
 func (m *MailHeader) Detect(input string) *security.Result {
-	for _, p := range mailPatterns {
-		if p.MatchString(input) {
-			return &security.Result{
-				Name:     m.Name(),
-				Detected: true,
-				Message:  "Mail header injection pattern detected: " + p.String(),
-				Severity: security.SeverityCritical,
-				Details: map[string]interface{}{
-					"pattern": p.String(),
-				},
-			}
+	if match, ok := security.FirstMatch(input, mailPatterns); ok {
+		return &security.Result{
+			Name:     m.Name(),
+			Detected: true,
+			Message:  "Mail header injection pattern detected: " + match,
+			Severity: security.SeverityCritical,
+			Details: map[string]interface{}{
+				"pattern": match,
+			},
 		}
 	}
 	return &security.Result{Name: m.Name(), Detected: false}

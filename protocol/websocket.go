@@ -24,18 +24,16 @@ func (d *WebSocket) Name() string {
 }
 
 func (d *WebSocket) Detect(input string) *security.Result {
-	for _, p := range websocketPatterns {
-		if p.MatchString(input) {
-			return &security.Result{
-				Name:     d.Name(),
-				Detected: true,
-				Severity: security.SeverityMedium,
-				Message:  "WebSocket hijacking pattern detected: potential cross-site WebSocket hijack",
-				Details: map[string]interface{}{
-					"matched_pattern": p.String(),
-					"input":           input,
-				},
-			}
+	if m, ok := security.FirstMatch(input, websocketPatterns); ok {
+		return &security.Result{
+			Name:     d.Name(),
+			Detected: true,
+			Severity: security.SeverityMedium,
+			Message:  "WebSocket hijacking pattern detected: potential cross-site WebSocket hijack",
+			Details: map[string]interface{}{
+				"matched_pattern": m,
+				"input":           input,
+			},
 		}
 	}
 	return &security.Result{Name: d.Name(), Detected: false}

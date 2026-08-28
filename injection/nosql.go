@@ -22,17 +22,15 @@ func (d *NoSQL) Name() string {
 }
 
 func (d *NoSQL) Detect(input string) *security.Result {
-	for _, p := range nosqlPatterns {
-		if p.MatchString(input) {
-			return &security.Result{
-				Name:     d.Name(),
-				Detected: true,
-				Message:  "NoSQL injection pattern detected: " + p.String(),
-				Severity: security.SeverityHigh,
-				Details: map[string]interface{}{
-					"pattern": p.String(),
-				},
-			}
+	if m, ok := security.FirstMatch(input, nosqlPatterns); ok {
+		return &security.Result{
+			Name:     d.Name(),
+			Detected: true,
+			Message:  "NoSQL injection pattern detected: " + m,
+			Severity: security.SeverityHigh,
+			Details: map[string]interface{}{
+				"pattern": m,
+			},
 		}
 	}
 	return &security.Result{Name: d.Name(), Detected: false}

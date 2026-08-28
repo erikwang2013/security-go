@@ -2,7 +2,10 @@
 
 package security
 
-import "net/http"
+import (
+	"net/http"
+	"regexp"
+)
 
 // Severity represents the severity level of a detection result.
 type Severity int
@@ -42,6 +45,16 @@ func NewEngine() *Engine {
 // Register adds a detector to the engine.
 func (e *Engine) Register(d Detector) {
 	e.detectors[d.Name()] = d
+}
+
+// FirstMatch returns the first pattern that matches input and its source string.
+func FirstMatch(input string, patterns []*regexp.Regexp) (string, bool) {
+	for _, p := range patterns {
+		if p.MatchString(input) {
+			return p.String(), true
+		}
+	}
+	return "", false
 }
 
 // Detect runs a named detector against input.

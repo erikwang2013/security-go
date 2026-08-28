@@ -13,7 +13,6 @@ var requestSmugglingPatterns = []*regexp.Regexp{
 	regexp.MustCompile(`(?i)Transfer-Encoding:\s*.*,\s*chunked`),
 	regexp.MustCompile(`(?i)Transfer-Encoding\s*:\s*chunked`),
 	regexp.MustCompile(`(?i)Content-Length:\s*\d+.*\r\n.*Transfer-Encoding:`),
-	regexp.MustCompile(`(?i)Transfer-encoding:\s*chunked`),
 	regexp.MustCompile(`\x0bTransfer-Encoding`),
 }
 
@@ -24,18 +23,16 @@ func (d *RequestSmuggling) Name() string {
 }
 
 func (d *RequestSmuggling) Detect(input string) *security.Result {
-	for _, p := range requestSmugglingPatterns {
-		if p.MatchString(input) {
-			return &security.Result{
-				Name:     d.Name(),
-				Detected: true,
-				Severity: security.SeverityCritical,
-				Message:  "HTTP request smuggling pattern detected: content-length / transfer-encoding conflict",
-				Details: map[string]interface{}{
-					"matched_pattern": p.String(),
-					"input":           input,
-				},
-			}
+	if m, ok := security.FirstMatch(input, requestSmugglingPatterns); ok {
+		return &security.Result{
+			Name:     d.Name(),
+			Detected: true,
+			Severity: security.SeverityCritical,
+			Message:  "HTTP request smuggling pattern detected: content-length / transfer-encoding conflict",
+			Details: map[string]interface{}{
+				"matched_pattern": m,
+				"input":           input,
+			},
 		}
 	}
 	return &security.Result{Name: d.Name(), Detected: false}

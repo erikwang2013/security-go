@@ -38,14 +38,12 @@ func (d *PathTraversal) Name() string {
 
 // Detect checks the input for path traversal patterns.
 func (d *PathTraversal) Detect(input string) *security.Result {
-	for _, p := range pathTraversalPatterns {
-		if p.MatchString(input) {
-			return &security.Result{
-				Name:     d.Name(),
-				Detected: true,
-				Message:  "Path traversal attack detected: " + p.String(),
-				Severity: security.SeverityHigh,
-			}
+	if m, ok := security.FirstMatch(input, pathTraversalPatterns); ok {
+		return &security.Result{
+			Name:     d.Name(),
+			Detected: true,
+			Message:  "Path traversal attack detected: " + m,
+			Severity: security.SeverityHigh,
 		}
 	}
 	return &security.Result{Name: d.Name(), Detected: false}

@@ -28,7 +28,7 @@ func (j *JWTAttack) Detect(input string) *security.Result {
 		return &security.Result{Name: j.Name(), Detected: false}
 	}
 
-	headerJSON, err := decodeBase64URL(parts[0])
+	headerJSON, err := base64.RawURLEncoding.DecodeString(strings.TrimRight(parts[0], "="))
 	if err != nil {
 		return &security.Result{Name: j.Name(), Detected: false}
 	}
@@ -53,18 +53,16 @@ func (j *JWTAttack) Detect(input string) *security.Result {
 	}
 
 	// Check kid for path traversal
-	if kid, ok := header["kid"].(string); ok {
-		if strings.Contains(kid, "../") || strings.Contains(kid, `..\`) {
-			return &security.Result{
-				Name:     j.Name(),
-				Detected: true,
-				Message:  "JWT kid contains path traversal sequence",
-				Severity: security.SeverityCritical,
-				Details: map[string]interface{}{
-					"reason": "kid_path_traversal",
-					"kid":    kid,
-				},
-			}
+	if kid, ok := header["kid"].(string); ok && (strings.Contains(kid, "../") || strings.Contains(kid, `..\`)) {
+		return &security.Result{
+			Name:     j.Name(),
+			Detected: true,
+			Message:  "JWT kid contains path traversal sequence",
+			Severity: security.SeverityCritical,
+			Details: map[string]interface{}{
+				"reason": "kid_path_traversal",
+				"kid":    kid,
+			},
 		}
 	}
 
@@ -82,18 +80,4 @@ func (j *JWTAttack) Detect(input string) *security.Result {
 	}
 
 	return &security.Result{Name: j.Name(), Detected: false}
-}
-
-// decodeBase64URL decodes a base64url-encoded string to raw bytes.
-func decodeBase64URL(s string) ([]byte, error) {
-	// Pad and convert to standard base64
-	s = strings.TrimRight(s, "=")
-	switch len(s) % 4 {
-	case 2:
-		s += "=="
-	case 3:
-		s += "="
-	}
-	s = strings.NewReplacer("-", "+", "_", "/").Replace(s)
-	return base64.StdEncoding.DecodeString(s)
 }

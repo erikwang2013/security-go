@@ -31,17 +31,15 @@ func (d *SQL) Name() string {
 }
 
 func (d *SQL) Detect(input string) *security.Result {
-	for _, p := range sqlPatterns {
-		if p.MatchString(input) {
-			return &security.Result{
-				Name:     d.Name(),
-				Detected: true,
-				Message:  "SQL injection pattern detected: " + p.String(),
-				Severity: security.SeverityCritical,
-				Details: map[string]interface{}{
-					"pattern": p.String(),
-				},
-			}
+	if m, ok := security.FirstMatch(input, sqlPatterns); ok {
+		return &security.Result{
+			Name:     d.Name(),
+			Detected: true,
+			Message:  "SQL injection pattern detected: " + m,
+			Severity: security.SeverityCritical,
+			Details: map[string]interface{}{
+				"pattern": m,
+			},
 		}
 	}
 	return &security.Result{Name: d.Name(), Detected: false}

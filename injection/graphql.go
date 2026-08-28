@@ -24,17 +24,15 @@ func (d *GraphQL) Name() string {
 }
 
 func (d *GraphQL) Detect(input string) *security.Result {
-	for _, p := range graphqlPatterns {
-		if p.MatchString(input) {
-			return &security.Result{
-				Name:     d.Name(),
-				Detected: true,
-				Message:  "GraphQL injection/introspection pattern detected: " + p.String(),
-				Severity: security.SeverityMedium,
-				Details: map[string]interface{}{
-					"pattern": p.String(),
-				},
-			}
+	if m, ok := security.FirstMatch(input, graphqlPatterns); ok {
+		return &security.Result{
+			Name:     d.Name(),
+			Detected: true,
+			Message:  "GraphQL injection/introspection pattern detected: " + m,
+			Severity: security.SeverityMedium,
+			Details: map[string]interface{}{
+				"pattern": m,
+			},
 		}
 	}
 	return &security.Result{Name: d.Name(), Detected: false}

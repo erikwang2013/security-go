@@ -23,18 +23,16 @@ func (d *DNSRebinding) Name() string {
 }
 
 func (d *DNSRebinding) Detect(input string) *security.Result {
-	for _, p := range dnsRebindingPatterns {
-		if p.MatchString(input) {
-			return &security.Result{
-				Name:     d.Name(),
-				Detected: true,
-				Severity: security.SeverityHigh,
-				Message:  "DNS rebinding pattern detected: Host header targeting internal network",
-				Details: map[string]interface{}{
-					"matched_pattern": p.String(),
-					"input":           input,
-				},
-			}
+	if m, ok := security.FirstMatch(input, dnsRebindingPatterns); ok {
+		return &security.Result{
+			Name:     d.Name(),
+			Detected: true,
+			Severity: security.SeverityHigh,
+			Message:  "DNS rebinding pattern detected: Host header targeting internal network",
+			Details: map[string]interface{}{
+				"matched_pattern": m,
+				"input":           input,
+			},
 		}
 	}
 	return &security.Result{Name: d.Name(), Detected: false}

@@ -18,7 +18,7 @@ type blocked struct {
 
 // Memory is an in-memory storage backend with automatic TTL cleanup.
 type Memory struct {
-	mu      sync.Mutex
+	mu      sync.RWMutex
 	events  map[string]*event
 	blocked map[string]*blocked
 }
@@ -47,8 +47,8 @@ func (m *Memory) Incr(key string, window time.Duration) (int, error) {
 }
 
 func (m *Memory) Get(key string) (int, error) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
+	m.mu.RLock()
+	defer m.mu.RUnlock()
 	if ev, ok := m.events[key]; ok {
 		return ev.count, nil
 	}
@@ -63,8 +63,8 @@ func (m *Memory) Block(key string, duration time.Duration) error {
 }
 
 func (m *Memory) IsBlocked(key string) (bool, error) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
+	m.mu.RLock()
+	defer m.mu.RUnlock()
 	if b, ok := m.blocked[key]; ok {
 		return time.Now().Before(b.until), nil
 	}
@@ -77,8 +77,8 @@ func (m *Memory) reap(interval time.Duration) {
 	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
 	for range ticker.C {
-		m.mu.Lock()
 		now := time.Now()
+		m.mu.Lock()
 		for k, v := range m.events {
 			if now.Sub(v.windowStart) > 5*time.Minute {
 				delete(m.events, k)

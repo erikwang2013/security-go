@@ -30,17 +30,15 @@ func (d *JNDI) Name() string {
 }
 
 func (d *JNDI) Detect(input string) *security.Result {
-	for _, p := range jndiPatterns {
-		if p.MatchString(input) {
-			return &security.Result{
-				Name:     d.Name(),
-				Detected: true,
-				Message:  "JNDI/Log4Shell injection pattern detected: " + p.String(),
-				Severity: security.SeverityCritical,
-				Details: map[string]interface{}{
-					"pattern": p.String(),
-				},
-			}
+	if m, ok := security.FirstMatch(input, jndiPatterns); ok {
+		return &security.Result{
+			Name:     d.Name(),
+			Detected: true,
+			Message:  "JNDI/Log4Shell injection pattern detected: " + m,
+			Severity: security.SeverityCritical,
+			Details: map[string]interface{}{
+				"pattern": m,
+			},
 		}
 	}
 	return &security.Result{Name: d.Name(), Detected: false}

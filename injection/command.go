@@ -31,17 +31,15 @@ func (d *Command) Name() string {
 }
 
 func (d *Command) Detect(input string) *security.Result {
-	for _, p := range commandPatterns {
-		if p.MatchString(input) {
-			return &security.Result{
-				Name:     d.Name(),
-				Detected: true,
-				Message:  "Command injection pattern detected: " + p.String(),
-				Severity: security.SeverityCritical,
-				Details: map[string]interface{}{
-					"pattern": p.String(),
-				},
-			}
+	if m, ok := security.FirstMatch(input, commandPatterns); ok {
+		return &security.Result{
+			Name:     d.Name(),
+			Detected: true,
+			Message:  "Command injection pattern detected: " + m,
+			Severity: security.SeverityCritical,
+			Details: map[string]interface{}{
+				"pattern": m,
+			},
 		}
 	}
 	return &security.Result{Name: d.Name(), Detected: false}

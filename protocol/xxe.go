@@ -24,18 +24,16 @@ func (d *XXE) Name() string {
 }
 
 func (d *XXE) Detect(input string) *security.Result {
-	for _, p := range xxePatterns {
-		if p.MatchString(input) {
-			return &security.Result{
-				Name:     d.Name(),
-				Detected: true,
-				Severity: security.SeverityHigh,
-				Message:  "XXE attack pattern detected: XML external entity injection",
-				Details: map[string]interface{}{
-					"matched_pattern": p.String(),
-					"input":           input,
-				},
-			}
+	if m, ok := security.FirstMatch(input, xxePatterns); ok {
+		return &security.Result{
+			Name:     d.Name(),
+			Detected: true,
+			Severity: security.SeverityHigh,
+			Message:  "XXE attack pattern detected: XML external entity injection",
+			Details: map[string]interface{}{
+				"matched_pattern": m,
+				"input":           input,
+			},
 		}
 	}
 	return &security.Result{Name: d.Name(), Detected: false}

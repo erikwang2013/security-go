@@ -21,18 +21,16 @@ func (d *HostHeader) Name() string {
 }
 
 func (d *HostHeader) Detect(input string) *security.Result {
-	for _, p := range hostHeaderPatterns {
-		if p.MatchString(input) {
-			return &security.Result{
-				Name:     d.Name(),
-				Detected: true,
-				Severity: security.SeverityMedium,
-				Message:  "Host header attack pattern detected: malicious host or forwarding header",
-				Details: map[string]interface{}{
-					"matched_pattern": p.String(),
-					"input":           input,
-				},
-			}
+	if m, ok := security.FirstMatch(input, hostHeaderPatterns); ok {
+		return &security.Result{
+			Name:     d.Name(),
+			Detected: true,
+			Severity: security.SeverityMedium,
+			Message:  "Host header attack pattern detected: malicious host or forwarding header",
+			Details: map[string]interface{}{
+				"matched_pattern": m,
+				"input":           input,
+			},
 		}
 	}
 	return &security.Result{Name: d.Name(), Detected: false}

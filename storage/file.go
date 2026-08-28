@@ -9,26 +9,21 @@ import (
 	"time"
 )
 
-type fileRecord struct {
+type record struct {
 	Key         string    `json:"key"`
 	Count       int       `json:"count"`
 	WindowStart time.Time `json:"window_start"`
 	BlockUntil  time.Time `json:"block_until,omitempty"`
 }
 
-type record struct {
-	count       int
-	windowStart time.Time
-	blockUntil  time.Time
-}
-
 // File is a file-based persistent storage backend.
 type File struct {
-	mu      sync.Mutex
+	mu      sync.RWMutex
 	path    string
 	records map[string]*record
 	done    chan struct{}
 	closed  bool
+	dirty   bool
 }
 
 // NewFile creates or loads a file-based storage backend with periodic
@@ -37,14 +32,10 @@ func NewFile(path string) (*File, error) {
 	f := &File{path: path, records: make(map[string]*record), done: make(chan struct{})}
 	data, err := os.ReadFile(path)
 	if err == nil {
-		var loaded []fileRecord
+		var loaded []record
 		if json.Unmarshal(data, &loaded) == nil {
 			for _, r := range loaded {
-				f.records[r.Key] = &record{
-					count:       r.Count,
-					windowStart: r.WindowStart,
-					blockUntil:  r.BlockUntil,
-				}
+				f.records[r.Key] = &r
 			}
 		}
 	}
@@ -57,19 +48,21 @@ func (f *File) Incr(key string, window time.Duration) (int, error) {
 	defer f.mu.Unlock()
 	now := time.Now()
 	r, ok := f.records[key]
-	if !ok || now.Sub(r.windowStart) > window {
-		f.records[key] = &record{count: 1, windowStart: now}
+	if !ok || now.Sub(r.WindowStart) > window {
+		f.records[key] = &record{Key: key, Count: 1, WindowStart: now}
+		f.dirty = true
 		return 1, nil
 	}
-	r.count++
-	return r.count, nil
+	r.Count++
+	f.dirty = true
+	return r.Count, nil
 }
 
 func (f *File) Get(key string) (int, error) {
-	f.mu.Lock()
-	defer f.mu.Unlock()
+	f.mu.RLock()
+	defer f.mu.RUnlock()
 	if r, ok := f.records[key]; ok {
-		return r.count, nil
+		return r.Count, nil
 	}
 	return 0, nil
 }
@@ -78,18 +71,19 @@ func (f *File) Block(key string, duration time.Duration) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	if r, ok := f.records[key]; ok {
-		r.blockUntil = time.Now().Add(duration)
+		r.BlockUntil = time.Now().Add(duration)
 	} else {
-		f.records[key] = &record{blockUntil: time.Now().Add(duration)}
+		f.records[key] = &record{Key: key, BlockUntil: time.Now().Add(duration)}
 	}
+	f.dirty = true
 	return nil
 }
 
 func (f *File) IsBlocked(key string) (bool, error) {
-	f.mu.Lock()
-	defer f.mu.Unlock()
+	f.mu.RLock()
+	defer f.mu.RUnlock()
 	if r, ok := f.records[key]; ok {
-		return time.Now().Before(r.blockUntil), nil
+		return time.Now().Before(r.BlockUntil), nil
 	}
 	return false, nil
 }
@@ -105,12 +99,17 @@ func (f *File) Close() error {
 }
 
 func (f *File) saveLocked() error {
-	var out []fileRecord
+	now := time.Now()
+	var out []record
 	for k, r := range f.records {
-		out = append(out, fileRecord{
-			Key: k, Count: r.count,
-			WindowStart: r.windowStart, BlockUntil: r.blockUntil,
-		})
+		blockAlive := !r.BlockUntil.IsZero() && now.Before(r.BlockUntil)
+		windowAlive := !r.WindowStart.IsZero() && now.Sub(r.WindowStart) <= 5*time.Minute
+		// ponytail: 5-min ceiling assumes windows <= 5min (matches memory.go); store window per record if longer needed
+		if !blockAlive && !windowAlive {
+			delete(f.records, k)
+			continue
+		}
+		out = append(out, *r)
 	}
 	data, err := json.Marshal(out)
 	if err != nil {
@@ -128,7 +127,9 @@ func (f *File) autoSave(interval time.Duration) {
 			return
 		case <-ticker.C:
 			f.mu.Lock()
-			_ = f.saveLocked()
+			if f.dirty && f.saveLocked() == nil {
+				f.dirty = false
+			}
 			f.mu.Unlock()
 		}
 	}

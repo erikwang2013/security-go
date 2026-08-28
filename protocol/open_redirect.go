@@ -23,18 +23,16 @@ func (d *OpenRedirect) Name() string {
 }
 
 func (d *OpenRedirect) Detect(input string) *security.Result {
-	for _, p := range openRedirectPatterns {
-		if p.MatchString(input) {
-			return &security.Result{
-				Name:     d.Name(),
-				Detected: true,
-				Severity: security.SeverityMedium,
-				Message:  "Open redirect pattern detected: external or protocol-based redirect",
-				Details: map[string]interface{}{
-					"matched_pattern": p.String(),
-					"input":           input,
-				},
-			}
+	if m, ok := security.FirstMatch(input, openRedirectPatterns); ok {
+		return &security.Result{
+			Name:     d.Name(),
+			Detected: true,
+			Severity: security.SeverityMedium,
+			Message:  "Open redirect pattern detected: external or protocol-based redirect",
+			Details: map[string]interface{}{
+				"matched_pattern": m,
+				"input":           input,
+			},
 		}
 	}
 	return &security.Result{Name: d.Name(), Detected: false}

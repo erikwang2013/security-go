@@ -23,17 +23,15 @@ func (d *SSI) Name() string {
 }
 
 func (d *SSI) Detect(input string) *security.Result {
-	for _, p := range ssiPatterns {
-		if p.MatchString(input) {
-			return &security.Result{
-				Name:     d.Name(),
-				Detected: true,
-				Message:  "SSI injection pattern detected: " + p.String(),
-				Severity: security.SeverityHigh,
-				Details: map[string]interface{}{
-					"pattern": p.String(),
-				},
-			}
+	if m, ok := security.FirstMatch(input, ssiPatterns); ok {
+		return &security.Result{
+			Name:     d.Name(),
+			Detected: true,
+			Message:  "SSI injection pattern detected: " + m,
+			Severity: security.SeverityHigh,
+			Details: map[string]interface{}{
+				"pattern": m,
+			},
 		}
 	}
 	return &security.Result{Name: d.Name(), Detected: false}
