@@ -3,6 +3,7 @@
 package all
 
 import (
+	"net/http"
 	"testing"
 
 	"github.com/erikwang2013/security-go"
@@ -24,6 +25,8 @@ func TestFalsePositiveRegression(t *testing.T) {
 		"q=a || b",
 		"q=python exec(",
 		"q=it's--what",
+		"q=5) --",
+		"q=x=1)# --",
 	}
 	for _, input := range benign {
 		for _, r := range e.DetectAll(input) {
@@ -40,6 +43,7 @@ func TestFalsePositiveRegression(t *testing.T) {
 		{"' OR '1'='1", security.SeverityCritical},
 		{"UNION SELECT * FROM users", security.SeverityCritical},
 		{"1' AND 1=1 --", security.SeverityCritical},
+		{"1') OR ('1'='1", security.SeverityCritical},
 		{"admin'--", security.SeverityCritical},
 		{"--select * from users", security.SeverityCritical},
 		{"UNION SELECT CONCAT(0x7e,user(),0x7e)", security.SeverityCritical},
@@ -62,6 +66,34 @@ func TestFalsePositiveRegression(t *testing.T) {
 		}
 		if got < tc.minSeverity {
 			t.Errorf("attack %q: max severity=%v, want >= %v", tc.input, got, tc.minSeverity)
+		}
+	}
+}
+
+// URL-encoded payloads must be caught by DetectRequest's decode-and-rescan.
+func TestEncodedPayloads(t *testing.T) {
+	e := security.NewEngine()
+	RegisterAll(e)
+	cases := []struct {
+		url string
+	}{
+		{"http://x/api/search?q=%3Cscript%3Ealert(1)%3C/script%3E"},
+		{"http://x/api/login?u=1%27%20OR%20%271%27%3D%271"},
+		{"http://x/api/search?q=%27%20OR%20%271%27%3D%271"},
+		{"http://x/api/search?q=%3Cimg%20src=x%20onerror=alert(1)%3E"},
+		{"http://x/api/search?q=..%2F..%2Fetc%2Fpasswd"},
+	}
+	for _, tc := range cases {
+		r, _ := http.NewRequest("GET", tc.url, nil)
+		blocked := false
+		for _, res := range e.DetectRequest(r) {
+			if res.Severity >= security.SeverityHigh {
+				blocked = true
+				break
+			}
+		}
+		if !blocked {
+			t.Errorf("encoded attack not blocked: %s", tc.url)
 		}
 	}
 }

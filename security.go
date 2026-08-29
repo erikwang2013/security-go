@@ -4,6 +4,7 @@ package security
 
 import (
 	"net/http"
+	"net/url"
 	"regexp"
 )
 
@@ -77,11 +78,15 @@ func (e *Engine) DetectAll(input string) []*Result {
 }
 
 // DetectRequest runs all registered detectors against an HTTP request.
+// Each input is also scanned URL-decoded: `%3Cscript%3E`-style encoded
+// payloads must not bypass detection.
 func (e *Engine) DetectRequest(r *http.Request) []*Result {
 	var results []*Result
-	inputs := collectRequestInputs(r)
-	for _, input := range inputs {
+	for _, input := range collectRequestInputs(r) {
 		results = append(results, e.DetectAll(input)...)
+		if dec, err := url.QueryUnescape(input); err == nil && dec != input {
+			results = append(results, e.DetectAll(dec)...)
+		}
 	}
 	return results
 }

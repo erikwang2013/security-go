@@ -24,7 +24,12 @@ var sqlPatterns = []*regexp.Regexp{
 	// Bare `--` / `#` / `/*` in normal text no longer triggers.
 	regexp.MustCompile(`(?i)['"]\s*(?:--|/\*)`),
 	regexp.MustCompile(`(?i)['"]\s*#\s*$`),
-	regexp.MustCompile(`(?i)\)\s*(?:--|#|/\*)`),
+	// comment tail after `')` / `")` (classic auth-bypass); bare `) --` in
+	// normal text (e.g. "5) -- note") must not trigger
+	regexp.MustCompile(`(?i)['"]\)\s*(?:--|#|/\*)`),
+	// numeric comparison after `) OR (` / `) AND (` — catches `1') OR ('1'='1`
+	// without flagging `if (a) or (b)` text
+	regexp.MustCompile(`(?i)\)\s*(?:or|and)\s+\(?['"]?\d+['"]?\s*=\s*['"]?\d+`),
 	regexp.MustCompile(`(?i)(?:^|[^a-z])(?:--|#|/\*)\s*(?:(?:or|and|select|union|drop|update|insert|delete|having|group|where|order|from|limit|sleep|benchmark|exec)\b|xp_)`),
 	// SQL functions must have a SQL-shaped argument list (digits, 0x hex,
 	// or nested SQL functions/keywords). Bare `concat(` / `char(` no longer
