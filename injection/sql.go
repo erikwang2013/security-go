@@ -19,10 +19,12 @@ var sqlPatterns = []*regexp.Regexp{
 	regexp.MustCompile(`(?i)waitfor\s+delay`),
 	regexp.MustCompile(`(?i)\b(?:exec|execute)\s+(?:master\.\.|xp_)`),
 	regexp.MustCompile(`(?i)\b(?:exec|execute)\s*\(\s*(?:master\.\.|xp_)`),
-	// SQL comment markers only when tied to SQL: right after a quote/`)` (the
-	// classic auth-bypass tail), or a SQL keyword right after the marker.
+	// SQL comment markers only when tied to SQL: `--` right after a quote/`)`
+	// (the classic auth-bypass tail), or a SQL keyword right after the marker.
 	// Bare `--` / `#` / `/*` in normal text no longer triggers.
-	regexp.MustCompile(`(?i)(?:'|\"|\))\s*(?:--|#|/\*)`),
+	regexp.MustCompile(`(?i)['"]\s*(?:--|/\*)`),
+	regexp.MustCompile(`(?i)['"]\s*#\s*$`),
+	regexp.MustCompile(`(?i)\)\s*(?:--|#|/\*)`),
 	regexp.MustCompile(`(?i)(?:^|[^a-z])(?:--|#|/\*)\s*(?:(?:or|and|select|union|drop|update|insert|delete|having|group|where|order|from|limit|sleep|benchmark|exec)\b|xp_)`),
 	// SQL functions must have a SQL-shaped argument list (digits, 0x hex,
 	// or nested SQL functions/keywords). Bare `concat(` / `char(` no longer
