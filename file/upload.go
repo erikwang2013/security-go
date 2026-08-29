@@ -33,6 +33,11 @@ var maliciousContentPatterns = []*regexp.Regexp{
 	regexp.MustCompile(`<\?=`),
 	regexp.MustCompile(`<%[^%]*%>`),
 	regexp.MustCompile(`(?i)<script`),
+}
+
+// code functions are suspicious on their own (Medium) but only clearly
+// malicious when combined with a script tag or PHP marker above (High)
+var codeEvalPatterns = []*regexp.Regexp{
 	regexp.MustCompile(`(?i)eval\s*\(`),
 	regexp.MustCompile(`(?i)system\s*\(`),
 	regexp.MustCompile(`(?i)exec\s*\(`),
@@ -54,6 +59,14 @@ func (d *MaliciousFileUpload) Detect(input string) *security.Result {
 			Detected: true,
 			Message:  "Malicious content detected: " + m,
 			Severity: security.SeverityHigh,
+		}
+	}
+	if m, ok := security.FirstMatch(input, codeEvalPatterns); ok {
+		return &security.Result{
+			Name:     d.Name(),
+			Detected: true,
+			Message:  "Suspicious code function detected: " + m,
+			Severity: security.SeverityMedium,
 		}
 	}
 	return &security.Result{Name: d.Name(), Detected: false}

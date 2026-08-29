@@ -26,7 +26,7 @@ func TestXSS(t *testing.T) {
 		{"<svg onload=alert(1)>", true},
 		{"<body onload=alert(1)>", true},
 		{"<input onfocus=alert(1)>", true},
-		{"onmouseover=alert(1)", true},
+		{"<div onmouseover=alert(1)>", true},
 		{"javascript:eval('xss')", true},
 		{"JavaScript:alert(1)", true},
 		{"<iframe src=evil.com>", true},

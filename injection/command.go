@@ -13,10 +13,14 @@ var commandPatterns = []*regexp.Regexp{
 	regexp.MustCompile(`\$\([^)]*\)`),
 	regexp.MustCompile(`(?i)\|\s*(?:cat|ls|id|whoami|uname|wget|curl|nc|bash|sh)`),
 	regexp.MustCompile(`(?i)/dev/tcp/`),
-	regexp.MustCompile(`(?i)\b(?:system|exec|shell_exec|passthru|popen|proc_open|pcntl_exec)\s*\(`),
+	// require a quoted or variable argument: bare `exec(` in plain text
+	// (e.g. "python exec(") is a function call, not injection
+	regexp.MustCompile(`(?i)\b(?:system|exec|shell_exec|passthru|popen|proc_open|pcntl_exec)\s*\(\s*(?:['"]|\$|[0-9])`),
 	regexp.MustCompile(`(?i)&&\s*(?:cat|ls|id|whoami|wget|curl)`),
 	regexp.MustCompile(`(?i);\s*(?:cat|ls|id|whoami)`),
-	regexp.MustCompile(`\|\|`),
+	// bare `||` in normal text ("a || b") is not injection; require a
+	// command word after it, matching the `|` / `&&` / `;` siblings above
+	regexp.MustCompile(`(?i)\|\|\s*(?:cat|ls|id|whoami|wget|curl|nc|bash|sh|echo|rm|mv|chmod|cp|touch|kill|mkdir|pkill|reboot|shutdown)`),
 	regexp.MustCompile(`(?i)%0a`),
 	regexp.MustCompile(`(?i)\bping\s+-c`),
 	regexp.MustCompile(`(?i)\bnslookup\s+`),

@@ -9,7 +9,7 @@ import (
 )
 
 var sqlPatterns = []*regexp.Regexp{
-	regexp.MustCompile(`(?i)union\s+(?:/\*.*?\*/\s*)*select`),
+	regexp.MustCompile(`(?i)(?:/\*.*?\*/\s*)*union(?:\s+|/\*.*?\*/)\s*(?:/\*.*?\*/\s*)*select`),
 	regexp.MustCompile(`(?i)union\s*\(\s*select`),
 	regexp.MustCompile(`(?i)\b(?:sleep|benchmark|pg_sleep)\s*\(`),
 	regexp.MustCompile(`(?i)\b(?:information_schema|mysql\.|pg_catalog|sys\.tables|sqlite_master)\b`),
@@ -19,9 +19,15 @@ var sqlPatterns = []*regexp.Regexp{
 	regexp.MustCompile(`(?i)waitfor\s+delay`),
 	regexp.MustCompile(`(?i)\b(?:exec|execute)\s+(?:master\.\.|xp_)`),
 	regexp.MustCompile(`(?i)\b(?:exec|execute)\s*\(\s*(?:master\.\.|xp_)`),
+	// SQL comment markers only when tied to SQL: right after a quote/`)` (the
+	// classic auth-bypass tail), or a SQL keyword right after the marker.
+	// Bare `--` / `#` / `/*` in normal text no longer triggers.
 	regexp.MustCompile(`(?i)(?:'|\"|\))\s*(?:--|#|/\*)`),
-	regexp.MustCompile(`(?i)(?:/\*.*?\*/|--|#)\s*(?:or|and|union|select)\b`),
-	regexp.MustCompile(`(?i)\b(?:hex|char|ascii|concat)\s*\(`),
+	regexp.MustCompile(`(?i)(?:^|[^a-z])(?:--|#|/\*)\s*(?:(?:or|and|select|union|drop|update|insert|delete|having|group|where|order|from|limit|sleep|benchmark|exec)\b|xp_)`),
+	// SQL functions must have a SQL-shaped argument list (digits, 0x hex,
+	// or nested SQL functions/keywords). Bare `concat(` / `char(` no longer
+	// triggers.
+	regexp.MustCompile(`(?i)\b(?:hex|char|ascii|concat)\s*\(\s*[^)]*(?:\d+|0x[0-9a-f]+|\b(?:user|version|database|current_user|mid|substr|left|right|char|ascii|concat|select|from|where|union|or|and)\b)[^)]*\)`),
 }
 
 // SQL detects SQL injection attempts.
