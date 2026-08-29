@@ -14,7 +14,9 @@ var xssPatterns = []*regexp.Regexp{
 	// event handler only counts inside an HTML tag; bare `onxxx=` in plain
 	// text (e.g. "donation=5") no longer triggers
 	regexp.MustCompile(`(?i)<[a-z][^>]*\s+on[a-z]+\s*=`),
-	regexp.MustCompile(`(?i)javascript\s*:`),
+	// `javascript:` only counts with an active payload after the colon;
+	// bare `javascript:` (e.g. href="javascript:void(0)") no longer triggers
+	regexp.MustCompile(`(?i)javascript\s*:\s*(?:alert|confirm|prompt|eval\s*\(|document\.|location|window\.|fetch\s*\(|XMLHttpRequest|atob\s*\(|fromCharCode)`),
 	regexp.MustCompile(`(?i)<iframe`),
 	regexp.MustCompile(`(?i)<embed`),
 	regexp.MustCompile(`(?i)<object`),
@@ -29,10 +31,17 @@ var xssPatterns = []*regexp.Regexp{
 	regexp.MustCompile(`(?i)document\.(?:write|cookie)`),
 	regexp.MustCompile(`(?i)<base[^>]*href`),
 	regexp.MustCompile(`(?i)fromCharCode\s*\(`),
-	regexp.MustCompile(`(?i)&#x?[0-9a-f]+;?`),
+	// only the tag-breaking entity set: & < > " ' ` |
+	// bare numeric entities (&#169; copyright etc.) no longer trigger
+	regexp.MustCompile(`(?i)&#(?:x(?:3c|3e|22|27|26|60|7c)|(?:38|39|60|62|34|96|124));?`),
 }
 
-var xssEvalPattern = regexp.MustCompile(`(?i)eval\s*\(`)
+var xssMediumPatterns = []*regexp.Regexp{
+	// bare dangerous scheme and bare numeric entity: suspicious, not blocking
+	regexp.MustCompile(`(?i)javascript\s*:`),
+	regexp.MustCompile(`(?i)&#x?[0-9a-f]+;?`),
+	regexp.MustCompile(`(?i)eval\s*\(`),
+}
 
 // XSS detects Cross-Site Scripting injection attempts.
 type XSS struct{}
@@ -53,13 +62,13 @@ func (d *XSS) Detect(input string) *security.Result {
 			},
 		}
 	}
-	// bare eval() without any other XSS signal is suspicious but not an
-	// active payload: Medium (logged, not blocking)
-	if m := xssEvalPattern.String(); xssEvalPattern.MatchString(input) {
+	// bare eval() / javascript: / numeric entities without an active XSS
+	// signal are suspicious but not blocking: Medium (logged, not blocking)
+	if m, ok := security.FirstMatch(input, xssMediumPatterns); ok {
 		return &security.Result{
 			Name:     d.Name(),
 			Detected: true,
-			Message:  "XSS eval() usage detected: " + m,
+			Message:  "Suspicious XSS-related pattern detected: " + m,
 			Severity: security.SeverityMedium,
 			Details: map[string]interface{}{
 				"pattern": m,

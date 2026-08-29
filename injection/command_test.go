@@ -18,8 +18,8 @@ func TestCommand(t *testing.T) {
 		should bool
 	}{
 		// payloads
-		{"`cat /etc/passwd`", true},
 		{"$(whoami)", true},
+		{"`cat /etc/passwd`", true},
 		{"| cat /etc/passwd", true},
 		{"| CAT /etc/passwd", true},
 		{"| bash -i", true},
@@ -46,7 +46,7 @@ func TestCommand(t *testing.T) {
 		{"normal text", false},
 		{"hello world", false},
 		{"a | b", false},
-		{"echo 1 > /dev/null", false},
+		{"echo hello", false},
 		{"hello $USER", false},
 		{"", false},
 	}

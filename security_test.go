@@ -11,7 +11,7 @@ import (
 
 type mockDetector struct{ name string }
 
-func (m *mockDetector) Name() string        { return m.name }
+func (m *mockDetector) Name() string { return m.name }
 func (m *mockDetector) Detect(input string) *Result {
 	if strings.Contains(input, "attack") {
 		return &Result{Name: m.name, Detected: true, Severity: SeverityHigh, Message: "mock detection"}
@@ -79,7 +79,7 @@ func TestSeverityConstants(t *testing.T) {
 // evilDetector detects "evil" instead of "attack", used to verify overwrite on re-register.
 type evilDetector struct{ name string }
 
-func (m *evilDetector) Name() string        { return m.name }
+func (m *evilDetector) Name() string { return m.name }
 func (m *evilDetector) Detect(input string) *Result {
 	if strings.Contains(input, "evil") {
 		return &Result{Name: m.name, Detected: true, Severity: SeverityCritical, Message: "evil detection"}

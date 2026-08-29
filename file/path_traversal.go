@@ -9,8 +9,8 @@ import (
 )
 
 var pathTraversalPatterns = []*regexp.Regexp{
-	regexp.MustCompile(`\.\./`),
-	regexp.MustCompile(`\.\.\\`),
+	// encoded forms and wrappers are deliberate evasion, and real traversal
+	// attacks carry the target path (/etc/passwd, file:///...): all High
 	regexp.MustCompile(`%2e%2e[/\\]`),
 	regexp.MustCompile(`%252e%252e[/\\]`),
 	regexp.MustCompile(`(?i)\.\.%2f`),
@@ -26,6 +26,13 @@ var pathTraversalPatterns = []*regexp.Regexp{
 	regexp.MustCompile(`(?i)C:\\Windows\\(?:System32|win\.ini)`),
 	regexp.MustCompile(`%00`),
 	regexp.MustCompile(`\x00`),
+}
+
+// bare `../` / `..\` is ubiquitous in relative URLs and normal text
+// (q=2024/../2025, "../img/logo.png"): Medium, not blocking
+var pathTraversalMediumPatterns = []*regexp.Regexp{
+	regexp.MustCompile(`\.\./`),
+	regexp.MustCompile(`\.\.\\`),
 }
 
 // PathTraversal is a detector for path traversal attacks.
@@ -44,6 +51,14 @@ func (d *PathTraversal) Detect(input string) *security.Result {
 			Detected: true,
 			Message:  "Path traversal attack detected: " + m,
 			Severity: security.SeverityHigh,
+		}
+	}
+	if m, ok := security.FirstMatch(input, pathTraversalMediumPatterns); ok {
+		return &security.Result{
+			Name:     d.Name(),
+			Detected: true,
+			Message:  "Suspicious path component detected: " + m,
+			Severity: security.SeverityMedium,
 		}
 	}
 	return &security.Result{Name: d.Name(), Detected: false}

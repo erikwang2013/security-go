@@ -18,8 +18,8 @@ func TestSSTI(t *testing.T) {
 		should bool
 	}{
 		// payloads
-		{"{{7*7}}", true},
 		{"{{config.SECRET_KEY}}", true},
+		{"{{7*7}}", true},
 		{"${7*7}", true},
 		{"<%= system('id') %>", true},
 		{"<% system('id') %>", true},

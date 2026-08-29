@@ -27,6 +27,14 @@ func TestFalsePositiveRegression(t *testing.T) {
 		"q=it's--what",
 		"q=5) --",
 		"q=x=1)# --",
+		"q=../img/logo.png",
+		"q=2024/../2025",
+		`q={"__proto__": null}`,
+		`q={"constructor": {"name": "x"}}`,
+		"q=&#169;",
+		"q=javascript:void(0)",
+		"q=sleep(8)",
+		"q=SELECT * FROM sqlite_master",
 	}
 	for _, input := range benign {
 		for _, r := range e.DetectAll(input) {
@@ -56,6 +64,14 @@ func TestFalsePositiveRegression(t *testing.T) {
 		{"$(cat /etc/passwd)", security.SeverityCritical},
 		{"|| nc -e /bin/sh", security.SeverityCritical},
 		{"ls || cat /etc/passwd", security.SeverityCritical},
+		{"q=../../etc/passwd", security.SeverityHigh},
+		{"q=..%2f..%2fetc%2fpasswd", security.SeverityHigh},
+		{"q=admin')--", security.SeverityCritical},
+		{"q=' OR SLEEP(5) --", security.SeverityCritical},
+		{"q=obj.__proto__ = {polluted:true}", security.SeverityCritical},
+		{"q=constructor[\"prototype\"][\"x\"]=1", security.SeverityCritical},
+		{"q=javascript:alert(1)", security.SeverityHigh},
+		{"q=&#x3c;script&#x3e;", security.SeverityHigh},
 	}
 	for _, tc := range attacks {
 		got := security.SeverityLow

@@ -9,9 +9,6 @@ import (
 )
 
 var protoPollutionPatterns = []*regexp.Regexp{
-	regexp.MustCompile(`(?i)["']__proto__["']\s*:`),
-	regexp.MustCompile(`(?i)["']constructor["']\s*:`),
-	regexp.MustCompile(`(?i)["']prototype["']\s*:`),
 	regexp.MustCompile(`(?i)__defineGetter__\s*\(`),
 	regexp.MustCompile(`(?i)__defineSetter__\s*\(`),
 	regexp.MustCompile(`(?i)__lookupGetter__\s*\(`),
@@ -19,6 +16,14 @@ var protoPollutionPatterns = []*regexp.Regexp{
 	regexp.MustCompile(`(?i)\[\[__proto__\]\]`),
 	regexp.MustCompile(`\.__proto__\s*=`),
 	regexp.MustCompile(`(?i)\bconstructor\b\s*\[\s*['"]prototype['"]\s*\]`),
+}
+
+// bare JSON object keys ("constructor": x) are common in legit JSON
+// documents/config: Medium, not blocking
+var protoPollutionMediumPatterns = []*regexp.Regexp{
+	regexp.MustCompile(`(?i)["']__proto__["']\s*:`),
+	regexp.MustCompile(`(?i)["']constructor["']\s*:`),
+	regexp.MustCompile(`(?i)["']prototype["']\s*:`),
 }
 
 // PrototypePollution detects JavaScript prototype pollution attacks.
@@ -37,6 +42,17 @@ func (p *PrototypePollution) Detect(input string) *security.Result {
 			Detected: true,
 			Message:  "JavaScript prototype pollution pattern detected: " + m,
 			Severity: security.SeverityCritical,
+			Details: map[string]interface{}{
+				"pattern": m,
+			},
+		}
+	}
+	if m, ok := security.FirstMatch(input, protoPollutionMediumPatterns); ok {
+		return &security.Result{
+			Name:     p.Name(),
+			Detected: true,
+			Message:  "Suspicious prototype key reference detected: " + m,
+			Severity: security.SeverityMedium,
 			Details: map[string]interface{}{
 				"pattern": m,
 			},

@@ -9,8 +9,9 @@ import (
 )
 
 var commandPatterns = []*regexp.Regexp{
-	regexp.MustCompile("`[^`]+`"),
-	regexp.MustCompile(`\$\([^)]*\)`),
+	// `$(...)` only counts when it contains a command word or path;
+	// bare `$()` / `$(date)` in tutorials is not injection
+	regexp.MustCompile(`\$\([^)]*(?:cat|ls|id|whoami|wget|curl|bash|sh|nc|rm|chmod|find|grep|sudo|echo|python|perl|php|/etc/|/bin/|/dev/|/usr/)[^)]*\)`),
 	regexp.MustCompile(`(?i)\|\s*(?:cat|ls|id|whoami|uname|wget|curl|nc|bash|sh)`),
 	regexp.MustCompile(`(?i)/dev/tcp/`),
 	// require a quoted or variable argument: bare `exec(` in plain text
@@ -21,6 +22,12 @@ var commandPatterns = []*regexp.Regexp{
 	// bare `||` in normal text ("a || b") is not injection; require a
 	// command word after it, matching the `|` / `&&` / `;` siblings above
 	regexp.MustCompile(`(?i)\|\|\s*(?:cat|ls|id|whoami|wget|curl|nc|bash|sh|echo|rm|mv|chmod|cp|touch|kill|mkdir|pkill|reboot|shutdown)`),
+}
+
+// patterns that are suspicious but common in normal text/code (markdown
+// backticks, URL encoding, ping/nslookup tutorials): Medium, not blocking
+var commandMediumPatterns = []*regexp.Regexp{
+	regexp.MustCompile("`[^`]+`"),
 	regexp.MustCompile(`(?i)%0a`),
 	regexp.MustCompile(`(?i)\bping\s+-c`),
 	regexp.MustCompile(`(?i)\bnslookup\s+`),
@@ -41,6 +48,17 @@ func (d *Command) Detect(input string) *security.Result {
 			Detected: true,
 			Message:  "Command injection pattern detected: " + m,
 			Severity: security.SeverityCritical,
+			Details: map[string]interface{}{
+				"pattern": m,
+			},
+		}
+	}
+	if m, ok := security.FirstMatch(input, commandMediumPatterns); ok {
+		return &security.Result{
+			Name:     d.Name(),
+			Detected: true,
+			Message:  "Suspicious command pattern detected: " + m,
+			Severity: security.SeverityMedium,
 			Details: map[string]interface{}{
 				"pattern": m,
 			},

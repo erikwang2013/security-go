@@ -17,6 +17,11 @@ var jndiPatterns = []*regexp.Regexp{
 	regexp.MustCompile(`(?i)\$\{::-j\}`),
 	regexp.MustCompile(`(?i)\$\{date:`),
 	regexp.MustCompile(`(?i)\$\{(?:lower|upper):[^}]*[jJ][nN][dD][iI]`),
+}
+
+// bare protocols are common in config examples ("ldap://localhost"); the
+// ${jndi:...} forms above remain Critical
+var jndiMediumPatterns = []*regexp.Regexp{
 	regexp.MustCompile(`(?i)ldaps?://`),
 	regexp.MustCompile(`(?i)rmi://`),
 	regexp.MustCompile(`(?i)dns://`),
@@ -36,6 +41,17 @@ func (d *JNDI) Detect(input string) *security.Result {
 			Detected: true,
 			Message:  "JNDI/Log4Shell injection pattern detected: " + m,
 			Severity: security.SeverityCritical,
+			Details: map[string]interface{}{
+				"pattern": m,
+			},
+		}
+	}
+	if m, ok := security.FirstMatch(input, jndiMediumPatterns); ok {
+		return &security.Result{
+			Name:     d.Name(),
+			Detected: true,
+			Message:  "Suspicious protocol reference detected: " + m,
+			Severity: security.SeverityMedium,
 			Details: map[string]interface{}{
 				"pattern": m,
 			},
