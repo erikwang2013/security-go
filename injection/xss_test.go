@@ -47,6 +47,9 @@ func TestXSS(t *testing.T) {
 		{"hello world", false},
 		{"normal text without html", false},
 		{"https://example.com/page", false},
+		{"q=donation=5", false},
+		{"q=action=1", false},
+		{"q=condition=all", false},
 		{"email@example.com", false},
 		{"", false},
 	}

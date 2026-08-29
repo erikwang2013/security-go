@@ -11,7 +11,7 @@ import (
 var xssPatterns = []*regexp.Regexp{
 	regexp.MustCompile(`(?i)<script`),
 	regexp.MustCompile(`(?i)</script>`),
-	regexp.MustCompile(`(?i)on[a-z]+\s*=`),
+	regexp.MustCompile(`(?i)\bon[a-z]+\s*=`),
 	regexp.MustCompile(`(?i)javascript\s*:`),
 	regexp.MustCompile(`(?i)<iframe`),
 	regexp.MustCompile(`(?i)<embed`),

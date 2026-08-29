@@ -48,6 +48,16 @@ func TestSQL(t *testing.T) {
 		{"SELECT name FROM users WHERE id = 1", false},
 		{"SELECT * FROM users", false},
 		{"", false},
+		// plain -- / # / /* in text must not fire (ranges, titles, hashtags)
+		{"q=2024--2025", false},
+		{"chapter title -- vol.2", false},
+		{"id=1--", false},
+		{"q=news #top", false},
+		{"q=a/*b", false},
+		// comment tokens need an injection point right before them
+		{"id=1'--", true},
+		{"id='1'#", true},
+		{"id='1'/*", true},
 	}
 	var meta *security.Result
 	for _, tc := range tests {

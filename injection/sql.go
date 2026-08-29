@@ -19,7 +19,8 @@ var sqlPatterns = []*regexp.Regexp{
 	regexp.MustCompile(`(?i)waitfor\s+delay`),
 	regexp.MustCompile(`(?i)\b(?:exec|execute)\s+(?:master\.\.|xp_)`),
 	regexp.MustCompile(`(?i)\b(?:exec|execute)\s*\(\s*(?:master\.\.|xp_)`),
-	regexp.MustCompile(`(?i)(?:--|#|/\*).*$`),
+	regexp.MustCompile(`(?i)(?:'|\"|\))\s*(?:--|#|/\*)`),
+	regexp.MustCompile(`(?i)(?:/\*.*?\*/|--|#)\s*(?:or|and|union|select)\b`),
 	regexp.MustCompile(`(?i)\b(?:hex|char|ascii|concat)\s*\(`),
 }
 
