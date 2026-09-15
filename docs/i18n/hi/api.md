@@ -58,7 +58,7 @@ func (e *Engine) DetectAll(input string) []*Result  // 全量检测（仅返回 
 func (e *Engine) DetectRequest(r *http.Request) []*Result // 检测完整 HTTP 请求
 ```
 
-`DetectRequest` स्वतः अनुरोध के URL, Query, Headers, Cookies को इनपुट के रूप में एकत्रित करता है।
+`DetectRequest` स्वतः अनुरोध के URL, Query, Headers, Cookies को इनपुट के रूप में एकत्रित करता है। प्रत्येक इनपुट को URL-डिकोड करने के बाद दोबारा स्कैन किया जाता है, इसलिए `%3Cscript%3E` जैसे एन्कोडेड पेलोड बच नहीं सकते।
 
 ## पंजीकरण प्रवेश बिंदु
 

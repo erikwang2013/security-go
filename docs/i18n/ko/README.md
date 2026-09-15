@@ -87,9 +87,9 @@ HTTP Request
 | 등급 | 설명 | 대표 시나리오 |
 |------|------|---------|
 | `SeverityLow` | 낮은 위험 | 허용되지 않은 HTTP 메서드, Content-Type 불일치 |
-| `SeverityMedium` | 중간 위험 | CORS 구성 문제, 오픈 리다이렉트, GraphQL 인트로스펙션 |
-| `SeverityHigh` | 높은 위험 | XSS, SQL 주입, SSRF, 경로 순회 |
-| `SeverityCritical` | 심각 | 명령 주입, JNDI, SSTI, XXE, 데이터 유출 |
+| `SeverityMedium` | 중간 위험 | 약한 신호: CORS 구성 문제, 오픈 리다이렉트, GraphQL 인트로스펙션, 그리고 각 감지기가 의도적으로 분리한 문맥 없는 패턴(`../`, `on…=`, `javascript:`, `sleep(`, `sqlite_master`, 백틱, `{#…#}`, `__proto__:`, PHP 매직 메서드 이름) — 튜토리얼과 일반 콘텐츠에서 흔합니다 |
+| `SeverityHigh` | 높은 위험 | 강한 신호: XSS, SQL 주입, SSRF, 경로 순회, 세션 이상 |
+| `SeverityCritical` | 심각 | 강한 신호: 명령 주입, JNDI, SSTI, XXE, 데이터 유출, 역직렬화(PHP 직렬화 객체 / pickle / Java / .NET) |
 
 ## 구현 기능
 

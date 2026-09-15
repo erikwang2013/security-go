@@ -58,7 +58,7 @@ func (e *Engine) DetectAll(input string) []*Result  // 全量检测（仅返回 
 func (e *Engine) DetectRequest(r *http.Request) []*Result // 检测完整 HTTP 请求
 ```
 
-`DetectRequest`는 요청의 URL, Query, Headers, Cookies를 자동으로 수집하여 입력으로 사용합니다.
+`DetectRequest`는 요청의 URL, Query, Headers, Cookies를 자동으로 수집하여 입력으로 사용합니다. 각 입력은 URL 디코딩 후 다시 스캔되므로 `%3Cscript%3E` 같은 인코딩된 페이로드로 탐지를 우회할 수 없습니다.
 
 ## 등록 진입점
 

@@ -87,9 +87,9 @@ HTTP Request
 | Stufe | Beschreibung | Typische Szenarien |
 |-------|--------------|--------------------|
 | `SeverityLow` | Geringes Risiko | Unzulässige HTTP-Methode, Content-Type stimmt nicht überein |
-| `SeverityMedium` | Mittleres Risiko | CORS-Konfigurationsprobleme, offene Weiterleitung, GraphQL-Introspektion |
-| `SeverityHigh` | Hohes Risiko | XSS, SQL-Injektion, SSRF, Pfad-Traversal |
-| `SeverityCritical` | Kritisch | Befehlsinjektion, JNDI, SSTI, XXE, Datenlecks |
+| `SeverityMedium` | Mittleres Risiko | Schwache Signale: CORS-Fehlkonfiguration, offene Weiterleitung, GraphQL-Introspektion, dazu die kontextfreien Muster, die jeder Detektor bewusst abtrennt (`../`, `on…=`, `javascript:`, `sleep(`, `sqlite_master`, Backticks, `{#…#}`, `__proto__:`, PHP-Magic-Method-Namen) — in Tutorials und normalen Inhalten häufig |
+| `SeverityHigh` | Hohes Risiko | Starke Signale: XSS, SQL-Injektion, SSRF, Pfad-Traversal, Sitzungsanomalien |
+| `SeverityCritical` | Kritisch | Starke Signale: Befehlsinjektion, JNDI, SSTI, XXE, Datenleck, Deserialisierung (PHP-serialisierte Objekte / pickle / Java / .NET) |
 
 ## Implementierte Funktionen
 

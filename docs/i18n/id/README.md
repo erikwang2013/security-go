@@ -87,9 +87,9 @@ HTTP Request
 | Tingkat | Keterangan | Skenario Umum |
 |------|------|---------|
 | `SeverityLow` | Risiko rendah | Metode HTTP tidak sah, Content-Type tidak cocok |
-| `SeverityMedium` | Risiko sedang | Masalah konfigurasi CORS, open redirect, introspeksi GraphQL |
-| `SeverityHigh` | Risiko tinggi | XSS, injeksi SQL, SSRF, path traversal |
-| `SeverityCritical` | Kritis | Injeksi perintah, JNDI, SSTI, XXE, kebocoran data |
+| `SeverityMedium` | Risiko sedang | Sinyal lemah: salah konfigurasi CORS, open redirect, introspeksi GraphQL, ditambah pola tanpa konteks yang sengaja dipisahkan tiap detektor (`../`, `on…=`, `javascript:`, `sleep(`, `sqlite_master`, backtick, `{#…#}`, `__proto__:`, nama magic method PHP) — lazim di tutorial dan konten biasa |
+| `SeverityHigh` | Risiko tinggi | Sinyal kuat: XSS, injeksi SQL, SSRF, path traversal, anomali sesi |
+| `SeverityCritical` | Kritis | Sinyal kuat: injeksi perintah, JNDI, SSTI, XXE, kebocoran data, deserialisasi (objek terserialisasi PHP / pickle / Java / .NET) |
 
 ## Fitur yang Diimplementasikan
 

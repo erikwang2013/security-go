@@ -58,7 +58,7 @@ func (e *Engine) DetectAll(input string) []*Result  // 全量检测（仅返回 
 func (e *Engine) DetectRequest(r *http.Request) []*Result // 检测完整 HTTP 请求
 ```
 
-يجمع `DetectRequest` تلقائيًا URL وQuery وHeaders وCookies الخاصة بالطلب كمدخلات.
+يجمع `DetectRequest` تلقائيًا URL وQuery وHeaders وCookies الخاصة بالطلب كمدخلات. ويُعاد فحص كل مدخل بعد فك ترميز URL، فلا تستطيع حِزم مُرمَّزة مثل `%3Cscript%3E` تجاوز الكشف.
 
 ## نقطة التسجيل
 

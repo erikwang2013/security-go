@@ -73,9 +73,9 @@ A pure Go attack detection library with **36 detectors** across **6 categories**
 | Level | Description | Typical Scenario |
 |-------|-------------|-----------------|
 | `SeverityLow` | Low risk | Invalid HTTP method, Content-Type mismatch |
-| `SeverityMedium` | Medium risk | CORS misconfig, open redirect, GraphQL introspection |
-| `SeverityHigh` | High risk | XSS, SQL injection, SSRF, path traversal |
-| `SeverityCritical` | Critical | Command injection, JNDI, SSTI, XXE, data leak |
+| `SeverityMedium` | Medium risk | Weak-signal hits: CORS misconfiguration, open redirect, GraphQL introspection, plus the context-free patterns each detector deliberately separates (`../`, `on…=`, `javascript:`, `sleep(`, `sqlite_master`, backticks, `{#…#}`, `__proto__:`, PHP magic-method names), which are common in tutorials and ordinary content |
+| `SeverityHigh` | High risk | Strong-signal hits: XSS, SQL injection, SSRF, path traversal, session anomalies |
+| `SeverityCritical` | Critical | Strong-signal hits: command injection, JNDI, SSTI, XXE, data leak, deserialization (PHP serialized objects / pickle / Java / .NET) |
 
 ## Features
 

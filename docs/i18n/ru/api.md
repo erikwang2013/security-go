@@ -58,7 +58,7 @@ func (e *Engine) DetectAll(input string) []*Result  // 全量检测（仅返回 
 func (e *Engine) DetectRequest(r *http.Request) []*Result // 检测完整 HTTP 请求
 ```
 
-`DetectRequest` автоматически собирает URL, Query, Headers и Cookies запроса в качестве входных данных.
+`DetectRequest` автоматически собирает URL, Query, Headers и Cookies запроса в качестве входных данных. Каждый вход дополнительно проверяется после URL-декодирования, поэтому закодированные полезные нагрузки вроде `%3Cscript%3E` не обходят обнаружение.
 
 ## Точка регистрации
 

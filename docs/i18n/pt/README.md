@@ -87,9 +87,9 @@ HTTP Request
 | Nível | Descrição | Cenários típicos |
 |------|------|---------|
 | `SeverityLow` | Baixo risco | Método HTTP inválido, Content-Type incompatível |
-| `SeverityMedium` | Risco médio | Problemas de configuração CORS, redirecionamento aberto, introspecção GraphQL |
-| `SeverityHigh` | Alto risco | XSS, injeção de SQL, SSRF, path traversal |
-| `SeverityCritical` | Crítico | Injeção de comandos, JNDI, SSTI, XXE, vazamento de dados |
+| `SeverityMedium` | Risco médio | Sinais fracos: má configuração de CORS, redirecionamento aberto, introspecção GraphQL, mais os padrões sem contexto que cada detector separa de propósito (`../`, `on…=`, `javascript:`, `sleep(`, `sqlite_master`, crases, `{#…#}`, `__proto__:`, nomes de métodos mágicos PHP) — comuns em tutoriais e conteúdo comum |
+| `SeverityHigh` | Alto risco | Sinais fortes: XSS, injeção de SQL, SSRF, path traversal, anomalias de sessão |
+| `SeverityCritical` | Crítico | Sinais fortes: injeção de comandos, JNDI, SSTI, XXE, vazamento de dados, desserialização (objetos serializados PHP / pickle / Java / .NET) |
 
 ## Funcionalidades implementadas
 

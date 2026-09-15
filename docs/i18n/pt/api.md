@@ -58,7 +58,7 @@ func (e *Engine) DetectAll(input string) []*Result  // Detecção completa (reto
 func (e *Engine) DetectRequest(r *http.Request) []*Result // Detecta uma requisição HTTP completa
 ```
 
-`DetectRequest` coleta automaticamente URL, Query, Headers e Cookies da requisição como entrada.
+`DetectRequest` coleta automaticamente URL, Query, Headers e Cookies da requisição como entrada. Cada entrada é reescaneada após decodificação de URL, então cargas codificadas como `%3Cscript%3E` não conseguem contornar a detecção.
 
 ## Ponto de entrada de registro
 

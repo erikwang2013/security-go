@@ -87,9 +87,9 @@ HTTP Request
 | レベル | 説明 | 典型的なシナリオ |
 |------|------|---------|
 | `SeverityLow` | 低リスク | 不正な HTTP メソッド、Content-Type の不一致 |
-| `SeverityMedium` | 中リスク | CORS 設定の問題、開放リダイレクト、GraphQL イントロスペクション |
-| `SeverityHigh` | 高リスク | XSS、SQL インジェクション、SSRF、パストラバーサル |
-| `SeverityCritical` | 重大 | コマンドインジェクション、JNDI、SSTI、XXE、データ漏洩 |
+| `SeverityMedium` | 中リスク | 弱いシグナル: CORS 設定の問題、開放リダイレクト、GraphQL イントロスペクション、および各検出器が意図的に分離した文脈なしパターン（`../`、`on…=`、`javascript:`、`sleep(`、`sqlite_master`、バッククォート、`{#…#}`、`__proto__:`、PHP マジックメソッド名）— チュートリアルや通常のコンテンツによく現れます |
+| `SeverityHigh` | 高リスク | 強いシグナル: XSS、SQL インジェクション、SSRF、パストラバーサル、セッション異常 |
+| `SeverityCritical` | 重大 | 強いシグナル: コマンドインジェクション、JNDI、SSTI、XXE、データ漏洩、デシリアライゼーション（PHP シリアライズオブジェクト / pickle / Java / .NET） |
 
 ## 実装機能
 

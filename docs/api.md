@@ -58,7 +58,7 @@ func (e *Engine) DetectAll(input string) []*Result  // 全量检测（仅返回 
 func (e *Engine) DetectRequest(r *http.Request) []*Result // 检测完整 HTTP 请求
 ```
 
-`DetectRequest` 自动收集请求的 URL、Query、Headers、Cookies 作为输入。
+`DetectRequest` 自动收集请求的 URL、Query、Headers、Cookies 作为输入。 它同时对每个输入做 URL 解码后重新扫描，`%3Cscript%3E` 这类编码载荷无法绕过检测。
 
 ## 注册入口
 

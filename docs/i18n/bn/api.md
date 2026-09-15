@@ -58,7 +58,7 @@ func (e *Engine) DetectAll(input string) []*Result  // 全量检测（仅返回 
 func (e *Engine) DetectRequest(r *http.Request) []*Result // 检测完整 HTTP 请求
 ```
 
-`DetectRequest` স্বয়ংক্রিয়ভাবে রিকোয়েস্টের URL, Query, Headers, Cookies সংগ্রহ করে ইনপুট হিসেবে ব্যবহার করে।
+`DetectRequest` স্বয়ংক্রিয়ভাবে রিকোয়েস্টের URL, Query, Headers, Cookies সংগ্রহ করে ইনপুট হিসেবে ব্যবহার করে। প্রতিটি ইনপুট URL-ডিকোড করার পর আবার স্ক্যান করা হয়, তাই `%3Cscript%3E`-এর মতো এনকোডেড পেলোড এড়াতে পারে না।
 
 ## রেজিস্ট্রেশন এন্ট্রি পয়েন্ট
 

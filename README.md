@@ -87,9 +87,9 @@ HTTP Request
 | 级别 | 说明 | 典型场景 |
 |------|------|---------|
 | `SeverityLow` | 低风险 | 非法 HTTP 方法、Content-Type 不匹配 |
-| `SeverityMedium` | 中风险 | CORS 配置问题、开放重定向、GraphQL 内省 |
-| `SeverityHigh` | 高风险 | XSS、SQL 注入、SSRF、路径遍历 |
-| `SeverityCritical` | 严重 | 命令注入、JNDI、SSTI、XXE、数据泄露 |
+| `SeverityMedium` | 中风险 | 弱特征命中：CORS 配置问题、开放重定向、GraphQL 内省；以及各检测器刻意分离的无上下文模式（`../`、`on…=`、`javascript:`、`sleep(`、`sqlite_master`、反引号、`{#…#}`、`__proto__:`、PHP 魔术方法名），教程与正常内容里常见 |
+| `SeverityHigh` | 高风险 | 强特征命中：XSS、SQL 注入、SSRF、路径遍历、会话异常 |
+| `SeverityCritical` | 严重 | 强特征命中：命令注入、JNDI、SSTI、XXE、数据泄露、反序列化（PHP 序列化对象 / pickle / Java / .NET） |
 
 ## 实现功能
 
