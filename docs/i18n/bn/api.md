@@ -114,6 +114,105 @@ e.Register(bl)
 blocked, _ := bl.RecordAttack(clientIP)
 ```
 
+### JSON নেস্টিং ডেপথ ও Cookie অ্যাট্রিবিউট
+
+| কনস্ট্রাক্টর | বর্ণনা |
+|--------|------|
+| `NewNestedDepth(maxDepth, maxKeys) *NestedDepth` | JSON বডি স্ট্রিম স্ক্যান: নেস্টিং গভীরতা (ডিফল্ট 32) বা এলিমেন্ট সংখ্যা ছাড়ালে `nested_depth` রিপোর্ট; অবৈধ বা কাটা JSON কখনও মেলে না |
+| `NewCookieAttrs(requireSecure, requireHttpOnly, requireSameSite) *CookieAttrs` | একটি `Set-Cookie` যাচাই: অনুপস্থিত অ্যাট্রিবিউট, অতিরিক্ত দীর্ঘ মান (`MaxValueLen`), খালি মান (`RequireNonEmpty`) |
+
+## সেশন নিরাপত্তা
+
+`session` প্যাকেজ **ক্লায়েন্ট হাইজ্যাক**, **ডেটা ট্যাম্পারিং**, **দূরবর্তী লগইন** সনাক্ত করে। এতে সম্পূর্ণ `*http.Request` (token, ক্লায়েন্ট IP, User-Agent) এবং অ্যাপ্লিকেশনের নিজস্ব স্টোরেজ ও কী প্রয়োজন, তাই এটি `Engine`-এ রেজিস্টার হয় না, সরাসরি মিডলওয়্যার/ফাংশন হিসেবে আহ্বান করা হয়।
+
+### Store ইন্টারফেস
+
+সেশন বাইন্ডিং `storage.Backend` (যা শুধু কাউন্ট ও ব্লক সমর্থন করে) দিয়ে প্রকাশ করা যায় না, তাই `session` নিজস্ব একটি ছোট ইন্টারফেস নিয়ে আসে:
+
+```go
+type Store interface {
+    Save(key string, value []byte, ttl time.Duration) error
+    Load(key string) ([]byte, error)   // 不存在或已过期返回 (nil, nil)
+    Delete(key string) error
+}
+
+session.NewMemoryStore() *MemoryStore // 内存实现，30s 清理过期条目，Close 停止清理
+```
+
+### Session
+
+```go
+type Session struct {
+    IP          string    `json:"ip"`           // 建立会话时的客户端 IP
+    UserAgent   string    `json:"ua,omitempty"`
+    Fingerprint string    `json:"fp,omitempty"` // 设备指纹（X-Device-Fingerprint 头）
+    Country     string    `json:"country,omitempty"`
+    IssuedAt    time.Time `json:"issued_at"`
+    LastSeen    time.Time `json:"last_seen"`    // 每次 Check 滑动续期
+}
+```
+
+### Tracker
+
+```go
+type Tracker struct {
+    Store             Store
+    TTL               time.Duration              // 会话生命周期，默认 30m，每次 Check 滑动续期
+    SubnetBits        int                        // 同地判定前缀，默认 24（IPv6 自动 +24）
+    CountryOf         func(ip string) string     // 可选 GeoIP 钩子；为 nil 时跳过国家判定
+    KnownNets         int                        // Observe 每用户保留的登录网段数，默认 8
+    KnownNetTTL       time.Duration              // 登录网段保留时长，默认 90 天
+    TokenSource       func(*http.Request) string // 默认 DefaultTokenSource
+    TrustProxyHeaders bool                       // 默认 false
+    FailClosed        bool                       // 默认 false
+}
+```
+
+| মেথড | বর্ণনা |
+|------|------|
+| `NewTracker(store) *Tracker` | তৈরি করে ডিফল্ট মান পূরণ করে |
+| `Issue(token, r) error` | লগইন সফল হলে token → IP সাবনেট / UA / ফিঙ্গারপ্রিন্ট বাইন্ড করে; খালি token হলে এরর রিটার্ন করে |
+| `Check(r) *Result` | প্রতি রিকোয়েস্টে যাচাই করে, সনাক্ত হলে `Detected: true` রিটার্ন করে; পাস হলে সেশন স্লাইডিং রিনিউ হয় |
+| `Observe(user, r) *Result` | লগইনের সময় ব্যবহারকারীর পূর্ববর্তী লগইন সাবনেটের সাথে তুলনা করে, নতুন সাবনেট দেখা গেলে সতর্ক করে; প্রথম লগইনে বেসলাইন না থাকলে সতর্ক করে না |
+| `Guard(http.Handler) http.Handler` | মিডলওয়্যার র‍্যাপার, `Check` সনাক্ত করলে 401 রিটার্ন করে |
+| `Revoke(token) error` | লগআউট, সেশন তাৎক্ষণিক বাতিল হয় |
+| `DefaultTokenSource(r) string` | `Authorization: Bearer <token>` নেয়, তারপর `session` কুকি |
+| `RecordFailure(token) error` | একটি ব্যর্থ প্রমাণীকরণ গণনা; উইন্ডোর মধ্যে `Failures` (ডিফল্ট ৫, ৫ মিনিটে) ছুঁলে লক লেখা হয়, `Lockout` ডিফল্ট ১৫ মিনিট |
+| `IsLocked(token) (bool, time.Time)` | টোকেন লক করা আছে কি না এবং কখন পর্যন্ত; স্টোর ত্রুটি আনলকড হিসেবে পড়া হয় |
+| `ClearFailures(token) error` | সফল লগইনে ব্যর্থতার গণনা শূন্য করে (লক নিজের টাইমারে চলে, মুছে যায় না) |
+
+`Details["reason"]`-এর মান:
+
+| reason | ট্রিগার শর্ত | তীব্রতা |
+|--------|---------|---------|
+| `missing_token` | রিকোয়েস্টে token নেই | High |
+| `unknown_token` | token ইস্যু হয়নি, `Revoke` হয়েছে বা মেয়াদোত্তীর্ণ | High |
+| `token_locked` | উইন্ডোর মধ্যে ব্যর্থতার সীমা ছোঁয়া, টোকেন লক | Critical |
+| `client_hijack` | UA পরিবর্তন, বা ডিভাইস ফিঙ্গারপ্রিন্ট পরিবর্তন | Critical |
+| `remote_login` | `CountryOf` দেশ পরিবর্তন নির্ণয় করে (Critical) / IP সাবনেট পরিবর্তন (High), `Check` ও `Observe` উভয়ে ব্যবহৃত | Critical / High |
+| `store_error` | স্টোরেজ পড়তে ব্যর্থ এবং `FailClosed = true` | High |
+
+> `TrustProxyHeaders` ডিফল্টভাবে বন্ধ: `X-Forwarded-For` / `X-Real-IP` ক্লায়েন্টের নিয়ন্ত্রণে, চালু করলে হাইজ্যাকার বাইন্ড করা IP জাল করতে পারে। কেবল নিজের রিভার্স প্রক্সির পেছনে চালু করুন।
+> `FailClosed` ডিফল্টভাবে বন্ধ (স্টোরেজ ব্যর্থ হলে অনুমোদন), `httpval.IPBlacklist`-এর সাথে সামঞ্জস্যপূর্ণ। স্টোরেজ কী হলো token-এর SHA-256, তাই স্টোরেজ ফাঁস হলেও সরাসরি ব্যবহারযোগ্য token পাওয়া যায় না।
+
+### Signer
+
+```go
+type Signer struct {
+    Secret  []byte           // 共享 HMAC 密钥，用 crypto/rand 生成
+    MaxSkew time.Duration    // 时间戳允许偏差，默认 5m
+    Nonces  storage.Backend  // 可选：非空时用窗口计数拦截签名重放（可跨实例，复用 Redis）
+}
+
+signer := session.NewSigner(secret, mem)
+sig, err := signer.Sign(map[string]string{"amount": "100", "to": "bob"}) // "<unix-ts>.<nonce>.<mac>"
+res := signer.Verify(params, sig)                                        // 参数被改动/密钥不符/超时/重放
+```
+
+প্যারামিটার `url.Values.Encode()` দিয়ে ক্যানোনিকালাইজ করা হয় (সাজানো + এস্কেপ), map-এর ক্রম ফলাফলকে প্রভাবিত করে না। যাচাইয়ের ক্রম টাইমস্ট্যাম্প → সিগনেচার → nonce কাউন্টার, তাই জাল সিগনেচার বৈধ nonce খরচ করতে পারে না; `Nonces` nil হলে কেবল টাইমস্ট্যাম্প উইন্ডো দিয়ে রিপ্লে সীমিত করা যায়।
+
+`Details["reason"]`-এর মান: `signer_not_configured` (Critical), `signature_mismatch` (Critical), `replay` (Critical), `signature_malformed`, `timestamp_invalid`, `signature_expired`, `timestamp_in_future` (High)।
+
 ## কাস্টম ডিটেক্টর উদাহরণ
 
 ```go

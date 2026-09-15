@@ -2,7 +2,7 @@
 
 [简体中文](../../../README.md) · [English](../../../README-EN.md)
 
-Go 言語で書かれた攻撃検出パッケージ。**32 個の検出器**、**5 大攻撃カテゴリ**、**3 種類のプラグ可能なストレージバックエンド**をカバーします。統一インターフェース + レジストリパターンを採用した純粋な検出ライブラリで、あらゆる Go HTTP フレームワークに適合します。
+Go 言語で書かれた攻撃検出パッケージ。**36 個の検出器**、**6 大攻撃カテゴリ**、**3 種類のプラグ可能なストレージバックエンド**をカバーします。統一インターフェース + レジストリパターンを採用した純粋な検出ライブラリで、あらゆる Go HTTP フレームワークに適合します。
 
 ## 設計思想
 
@@ -11,7 +11,7 @@ Go 言語で書かれた攻撃検出パッケージ。**32 個の検出器**、*
 - **ゼロ依存検出** — すべての検出器は Go 標準ライブラリの `regexp` のみを使用し、外部依存なし
 - **統一インターフェース** — 各検出器は `Detector` インターフェース（`Name()` + `Detect()`）を実装し、`Engine` レジストリで一元管理
 - **プリコンパイル済み正規表現** — すべてのパターンは `var` の初期化時にコンパイルされ、実行時オーバーヘッドはゼロ
-- **オンデマンド設定** — インジェクション/プロトコル/データ/ファイル検出器はプラグイン方式で即使用可能。HTTP バリデータはアプリ側でのカスタム設定が必要
+- **オンデマンド設定** — インジェクション/プロトコル/データ/ファイル検出器はプラグイン方式で即使用可能。HTTP バリデータとセッションセキュリティ検出はアプリ側でのカスタム設定が必要
 
 ### 設計アーキテクチャ
 
@@ -48,14 +48,25 @@ Go 言語で書かれた攻撃検出パッケージ。**32 個の検出器**、*
           │                                                               │
    ┌──────▼──────────┐                                         ┌──────────▼──────────┐
    │     httpval     │                                         │       storage       │
-   │     (5 个)      │                                         │  ┌──────────────┐   │
+   │     (7 个)      │                                         │  ┌──────────────┐   │
    │                 │                                         │  │   Backend    │   │
    │  method, size,  │                                         │  │   interface  │   │
    │  type, csrf,    │                                         │  └──┬───┬───┬───┘   │
+   │  cookie,nested  │                                         │                    │
    │  ip_blacklist   │◄────── 使用 storage.Backend ──────────►│  Memory File Redis │
    │  (需配置参数)    │                                         │                    │
    └─────────────────┘                                         └────────────────────┘
+
+   ┌─────────────────────────────────────────────────────────────────────┐
+   │  session (2)   outside the Engine registry                          │
+   │                                                                     │
+   │  Tracker (session_guard)  +  Signer (data_tamper)                   │
+   │  Issue / Check / Observe / Guard / Revoke    Sign / Verify          │
+   └─────────────────────────────────────────────────────────────────────┘
 ```
+
+> `session` パッケージは `Engine` に登録しません：セッション検証は完全な `*http.Request`（token、クライアント IP、User-Agent）を読む必要があり、
+> またアプリ側のストレージと鍵を用意する必要があるため、ミドルウェアとして直接呼び出します。以下「セッションセキュリティ設定」を参照してください。
 
 ### データフロー
 
@@ -111,7 +122,9 @@ HTTP Request
 | **WebSocket ハイジャック** | Upgrade ヘッダーインジェクション、null Origin バイパス、`ws://` URL |
 | **DNS リバインディング** | Host ヘッダー内の内部 IP、localhost、TLD なしの短いホスト名 |
 
-### HTTP プロトコル層バリデーション (5)
+### HTTP プロトコル層バリデーション (7)
+| **JSON ネスト深度** | `json.Decoder` によるストリーム走査。ネスト深度または要素数が上限を超えると JSON ボムとして検出（既定深度 32）。不正・切り詰められた JSON では決して発報しません |
+| **Cookie 属性** | `Set-Cookie` に `Secure`/`HttpOnly`/`SameSite` が無い、値が長すぎる、または空の場合を検出。欠落属性は 1 件の結果にまとめます |
 
 | 検出器 | 説明 |
 |--------|------|
@@ -125,7 +138,7 @@ HTTP Request
 
 | 検出器 | 検出パターン |
 |--------|---------|
-| **PHP デシリアライゼーション** | `O:数字:` / `C:数字:` シリアライズオブジェクト、`unserialize()`、マジックメソッド（`__wakeup`/`__destruct`） |
+| **デシリアライゼーション** | `O:数字:` / `C:数字:` シリアライズオブジェクト、`unserialize()`、マジックメソッド（`__wakeup`/`__destruct`）。PHP / pickle / Java / .NET のペイロードに対応 |
 | **CSV インジェクション** | `=cmd\|`、`@SUM(`、`+`/`-` 数式プレフィックス、`HYPERLINK`/`DDE` |
 | **メールヘッダーインジェクション** | Bcc/Cc/From/To インジェクション、MIME multipart、boundary パラメータ |
 | **JWT 攻撃** | `alg: none` バイパス、`kid` パストラバーサル、空シグネチャ検出（構造デコード解析） |
@@ -138,6 +151,13 @@ HTTP Request
 | **パストラバーサル** | `../`、`..\\`、`php://filter`/`php://input`、null バイト、URL エンコードバイパス、`/etc/passwd` |
 | **悪意のあるアップロード** | 拡張子ホワイトリスト（15 種）+ PHP タグ `<?php`/`<?=` 内容スキャン |
 | **データ漏洩** | クレジットカード番号、AWS Access Key、秘密鍵 `-----BEGIN`、データベース接続文字列、API トークン、JWT シークレット、GitHub PAT |
+
+### セッションセキュリティ (2)
+
+| 検出器 | 検出パターン |
+|--------|---------|
+| **セッションガード** (`session_guard`) | セッション確立時のクライアントに token をバインドし、リクエストごとに比較：User-Agent またはデバイスフィンガープリントの変化を**クライアントハイジャック**（Critical）と判定。クライアント IP が別サブネットや別国家に落ちた場合を**遠隔地ログイン**（High/Critical）と判定。`Observe()` はログイン時に過去のサブネットと比較し、新しいサブネットが現れれば即座に警告。セッションはスライディングで延長され、`Revoke()` で即座に無効化可能。`RecordFailure()` が失敗回数を数え、ウィンドウ内でしきい値に達するとトークンをロックし、`Check()` が `token_locked` を返し、ログイン成功時に `ClearFailures()` がカウントを戻します |
+| **データ改ざん** (`data_tamper`) | リクエストパラメータに HMAC-SHA256 署名（`タイムスタンプ.nonce.署名`）を行い、パラメータの改変、鍵の不一致、タイムスタンプのずれ、署名リプレイ（nonce カウンター）を識別 |
 
 ### ストレージバックエンド (3)
 
@@ -224,6 +244,56 @@ e.Register(bl)
 // 攻击发生时记录
 blocked, _ := bl.RecordAttack(clientIP)
 ```
+
+### セッションセキュリティ設定
+
+`session` パッケージは `Engine` を経由せず、ミドルウェアとして直接使用します。ストレージはアプリ側で用意する必要があります（デフォルトでメモリ実装を提供、Redis などに差し替え可能）：
+
+```go
+import "github.com/erikwang2013/security-go/session"
+
+st := session.NewMemoryStore()
+defer st.Close()
+
+tr := session.NewTracker(st)
+tr.CountryOf = geo.Lookup // 可选：接入 GeoIP，用于识别跨国家登录
+
+// 登录成功后绑定会话（token 由你的登录流程生成）
+// 异地登录检测：比对该用户历史登录网段，出现新网段即告警
+if res := tr.Observe("user-1", r); res.Detected {
+    log.Printf("[%s] %s (%v)", res.Name, res.Message, res.Details["reason"])
+}
+if err := tr.Issue(token, r); err != nil {      // 绑定 token → IP 网段 / UA / 设备指纹
+    http.Error(w, "session error", http.StatusInternalServerError)
+    return
+}
+
+// 保护路由：命中劫持或异地登录直接返回 401
+mux.Handle("/api/", tr.Guard(apiHandler))
+
+// 或只做检测、自行决定处置
+if res := tr.Check(r); res.Detected {
+    log.Printf("[%s] %s (%v)", res.Name, res.Message, res.Details["reason"])
+}
+
+// 登出
+tr.Revoke(token)
+```
+
+データ改ざん検出：クライアントとサーバーが共有鍵を持ち、クライアントがパラメータに署名し、サーバーが再計算して検証します：
+
+```go
+signer := session.NewSigner(secret, storage.NewMemory()) // 第二个参数用于拦截签名重放，可为 nil
+
+sig, _ := signer.Sign(map[string]string{"amount": "100", "to": "bob"}) // 客户端：随参数一起提交
+
+if res := signer.Verify(map[string]string{"amount": "100", "to": "bob"}, sig); res.Detected {
+    log.Printf("[%s] %s (%v)", res.Name, res.Message, res.Details["reason"])
+}
+```
+
+> `TrustProxyHeaders` はデフォルトで無効：`X-Forwarded-For` / `X-Real-IP` はクライアントが制御できるため、自前のリバースプロキシ配下でのみ有効にしてください。
+> `FailClosed` はデフォルトで無効（ストレージ障害時は通過、`IPBlacklist` と同様）。セッションに敏感な業務では有効化を推奨します。
 
 ### カスタム検出器
 

@@ -2,7 +2,7 @@
 
 [简体中文](../../../README.md) · [English](../../../README-EN.md) · [API 인터페이스 문서](api.md)
 
-Go 언어로 작성된 공격 탐지 패키지로, **32개의 감지기**, **5대 공격 카테고리**, **3가지 플러그형 저장 백엔드**를 지원합니다. 통합 인터페이스 + 등록소 패턴을 사용하는 순수 탐지 라이브러리로, 모든 Go HTTP 프레임워크에 적용할 수 있습니다.
+Go 언어로 작성된 공격 탐지 패키지로, **36개의 감지기**, **6대 공격 카테고리**, **3가지 플러그형 저장 백엔드**를 지원합니다. 통합 인터페이스 + 등록소 패턴을 사용하는 순수 탐지 라이브러리로, 모든 Go HTTP 프레임워크에 적용할 수 있습니다.
 
 ## 설계 철학
 
@@ -11,7 +11,7 @@ Go 언어로 작성된 공격 탐지 패키지로, **32개의 감지기**, **5�
 - **제로 의존성 탐지** — 모든 감지기는 Go 표준 라이브러리 `regexp`만 사용하며 외부 의존성이 없습니다
 - **통합 인터페이스** — 각 감지기는 `Detector` 인터페이스(`Name()` + `Detect()`)를 구현하고, `Engine` 등록소를 통해 통합 관리됩니다
 - **사전 컴파일된 정규식** — 모든 패턴은 `var` 초기화 시점에 컴파일되어 런타임 오버헤드가 없습니다
-- **필요에 따른 구성** — 주입/프로토콜/데이터/파일 감지기는 플러그 앤 플레이 방식; HTTP 검증기는 애플리케이션에서 커스텀 구성이 필요합니다
+- **필요에 따른 구성** — 주입/프로토콜/데이터/파일 감지기는 플러그 앤 플레이 방식; HTTP 검증기와 세션 보안 감지기는 애플리케이션에서 커스텀 구성이 필요합니다
 
 ### 설계 아키텍처
 
@@ -48,14 +48,25 @@ Go 언어로 작성된 공격 탐지 패키지로, **32개의 감지기**, **5�
           │                                                               │
    ┌──────▼──────────┐                                         ┌──────────▼──────────┐
    │     httpval     │                                         │       storage       │
-   │     (5 个)      │                                         │  ┌──────────────┐   │
+   │     (7 个)      │                                         │  ┌──────────────┐   │
    │                 │                                         │  │   Backend    │   │
    │  method, size,  │                                         │  │   interface  │   │
    │  type, csrf,    │                                         │  └──┬───┬───┬───┘   │
+   │  cookie,nested  │                                         │                    │
    │  ip_blacklist   │◄────── 使用 storage.Backend ──────────►│  Memory File Redis │
    │  (需配置参数)    │                                         │                    │
    └─────────────────┘                                         └────────────────────┘
+
+   ┌─────────────────────────────────────────────────────────────────────┐
+   │  session (2)   outside the Engine registry                          │
+   │                                                                     │
+   │  Tracker (session_guard)  +  Signer (data_tamper)                   │
+   │  Issue / Check / Observe / Guard / Revoke    Sign / Verify          │
+   └─────────────────────────────────────────────────────────────────────┘
 ```
+
+> `session` 패키지는 `Engine` 등록을 거치지 않습니다: 세션 검증은 완전한 `*http.Request`(token, 클라이언트 IP, User-Agent)를 읽어야 하고,
+> 애플리케이션이 저장소와 키를 제공해야 하므로 미들웨어로 직접 호출합니다. 아래 「세션 보안 구성」을 참조하세요.
 
 ### 데이터 흐름
 
@@ -111,7 +122,9 @@ HTTP Request
 | **WebSocket 하이재킹** | Upgrade 헤더 주입, null Origin 우회, `ws://` URL |
 | **DNS 리바인딩** | Host 헤더 내부망 IP, localhost, TLD 없는 짧은 호스트명 |
 
-### HTTP 프로토콜 계층 검증 (5)
+### HTTP 프로토콜 계층 검증 (7)
+| **JSON 중첩 깊이** | `json.Decoder`로 스트림 스캔: 중첩 깊이나 요소 수가 한도를 넘으면 JSON 폭탄으로 판정(기본 깊이 32). 잘못되었거나 잘린 JSON은 절대 탐지하지 않습니다 |
+| **Cookie 속성** | `Set-Cookie`에 `Secure`/`HttpOnly`/`SameSite` 누락, 값 초과 길이 또는 빈 값 탐지. 누락된 속성은 하나의 결과로 묶습니다 |
 
 | 감지기 | 설명 |
 |--------|------|
@@ -125,7 +138,7 @@ HTTP Request
 
 | 감지기 | 감지 패턴 |
 |--------|---------|
-| **PHP 역직렬화** | `O:숫자:` / `C:숫자:` 직렬화 객체, `unserialize()`, 매직 메서드(`__wakeup`/`__destruct`) |
+| **역직렬화** | `O:숫자:` / `C:숫자:` 직렬화 객체, `unserialize()`, 매직 메서드(`__wakeup`/`__destruct`); PHP / pickle / Java / .NET 페이로드 지원 |
 | **CSV 주입** | `=cmd\|`, `@SUM(`, `+`/`-` 수식 접두사, `HYPERLINK`/`DDE` |
 | **메일 헤더 주입** | Bcc/Cc/From/To 주입, MIME multipart, boundary 매개변수 |
 | **JWT 공격** | `alg: none` 우회, `kid` 경로 순회, 빈 서명 감지(구조 디코딩 분석) |
@@ -138,6 +151,13 @@ HTTP Request
 | **경로 순회** | `../`, `..\\`, `php://filter`/`php://input`, null 바이트, URL 인코딩 우회, `/etc/passwd` |
 | **악성 업로드** | 확장자 화이트리스트(15종) + PHP 태그 `<?php`/`<?=` 콘텐츠 스캔 |
 | **데이터 유출** | 신용카드 번호, AWS Access Key, 개인 키 `-----BEGIN`, DB 연결 문자열, API Token, JWT Secret, GitHub PAT |
+
+### 세션 보안 (2)
+
+| 감지기 | 감지 패턴 |
+|--------|---------|
+| **세션 가드** (`session_guard`) | 세션 생성 시점의 클라이언트 바인딩을 token에 묶어 매 요청마다 비교: User-Agent 또는 기기 지문 변경 시 **클라이언트 하이재킹**(Critical)으로 판정; 클라이언트 IP가 다른 네트워크 대역이나 국가로 바뀌면 **원격 로그인**(High/Critical)으로 판정; `Observe()`는 로그인 시 과거 네트워크 대역과 비교하여 새 대역이 나타나면 경고합니다. 세션은 슬라이딩 갱신되며 `Revoke()`로 즉시 무효화할 수 있습니다; `RecordFailure()`가 실패 횟수를 세어 윈도우 내 임계값에 도달하면 토큰을 잠그고, `Check()`는 `token_locked`를 보고하며, 로그인 성공 시 `ClearFailures()`가 횟수를 초기화합니다 |
+| **데이터 변조** (`data_tamper`) | 요청 파라미터에 HMAC-SHA256 서명(`타임스탬프.nonce.서명`)을 적용하여 파라미터 변경, 키 불일치, 타임스탬프 초과, 서명 재전송(nonce 카운터)을 식별합니다 |
 
 ### 저장 백엔드 (3)
 
@@ -224,6 +244,56 @@ e.Register(bl)
 // 攻击发生时记录
 blocked, _ := bl.RecordAttack(clientIP)
 ```
+
+### 세션 보안 구성
+
+`session` 패키지는 `Engine`을 거치지 않고 미들웨어로 직접 사용합니다. 저장소는 애플리케이션이 직접 준비해야 합니다(기본으로 메모리 구현을 제공하며, Redis 등으로 교체 가능):
+
+```go
+import "github.com/erikwang2013/security-go/session"
+
+st := session.NewMemoryStore()
+defer st.Close()
+
+tr := session.NewTracker(st)
+tr.CountryOf = geo.Lookup // 可选：接入 GeoIP，用于识别跨国家登录
+
+// 登录成功后绑定会话（token 由你的登录流程生成）
+// 异地登录检测：比对该用户历史登录网段，出现新网段即告警
+if res := tr.Observe("user-1", r); res.Detected {
+    log.Printf("[%s] %s (%v)", res.Name, res.Message, res.Details["reason"])
+}
+if err := tr.Issue(token, r); err != nil {      // 绑定 token → IP 网段 / UA / 设备指纹
+    http.Error(w, "session error", http.StatusInternalServerError)
+    return
+}
+
+// 保护路由：命中劫持或异地登录直接返回 401
+mux.Handle("/api/", tr.Guard(apiHandler))
+
+// 或只做检测、自行决定处置
+if res := tr.Check(r); res.Detected {
+    log.Printf("[%s] %s (%v)", res.Name, res.Message, res.Details["reason"])
+}
+
+// 登出
+tr.Revoke(token)
+```
+
+데이터 변조 감지: 클라이언트와 서버가 공유 키를 사용하며, 클라이언트가 파라미터에 서명하고 서버가 재계산하여 검증합니다:
+
+```go
+signer := session.NewSigner(secret, storage.NewMemory()) // 第二个参数用于拦截签名重放，可为 nil
+
+sig, _ := signer.Sign(map[string]string{"amount": "100", "to": "bob"}) // 客户端：随参数一起提交
+
+if res := signer.Verify(map[string]string{"amount": "100", "to": "bob"}, sig); res.Detected {
+    log.Printf("[%s] %s (%v)", res.Name, res.Message, res.Details["reason"])
+}
+```
+
+> `TrustProxyHeaders`는 기본적으로 비활성화됩니다: `X-Forwarded-For` / `X-Real-IP`는 클라이언트가 제어할 수 있으므로 자체 리버스 프록시 뒤에서만 활성화하세요.
+> `FailClosed`는 기본적으로 비활성화됩니다(저장소 장애 시 통과, `IPBlacklist`와 동일); 세션에 민감한 서비스는 활성화를 권장합니다.
 
 ### 사용자 정의 감지기
 

@@ -114,6 +114,105 @@ e.Register(bl)
 blocked, _ := bl.RecordAttack(clientIP)
 ```
 
+### عمق تداخل JSON وسمات Cookie
+
+| المُنشئ | الوصف |
+|--------|------|
+| `NewNestedDepth(maxDepth, maxKeys) *NestedDepth` | مسح تدفقي لجسم JSON: يُبلّغ `nested_depth` عند تجاوز عمق التداخل (الافتراضي 32) أو عدد العناصر؛ لا يطابق JSON غير الصالح أو المقطوع أبدًا |
+| `NewCookieAttrs(requireSecure, requireHttpOnly, requireSameSite) *CookieAttrs` | يتحقق من `Set-Cookie` واحد: سمات غائبة، قيمة طويلة جدًا (`MaxValueLen`)، قيمة فارغة (`RequireNonEmpty`) |
+
+## أمان الجلسات
+
+تكشف حزمة `session` **اختطاف العميل** و**التلاعب بالبيانات** و**تسجيل الدخول من موقع بعيد**. وتحتاج إلى `*http.Request` كاملًا (token، عنوان IP للعميل، User-Agent) وإلى تخزين ومفاتيح يوفّرها التطبيق، لذلك لا تُسجَّل في `Engine`، بل تُستدعى مباشرة كوسيط/دالة.
+
+### واجهة Store
+
+لا يمكن التعبير عن ربط الجلسة عبر `storage.Backend` (فهو لا يوفّر سوى العدّ والحظر)، لذلك تأتي `session` بواجهة صغيرة خاصة بها:
+
+```go
+type Store interface {
+    Save(key string, value []byte, ttl time.Duration) error
+    Load(key string) ([]byte, error)   // 不存在或已过期返回 (nil, nil)
+    Delete(key string) error
+}
+
+session.NewMemoryStore() *MemoryStore // 内存实现，30s 清理过期条目，Close 停止清理
+```
+
+### Session
+
+```go
+type Session struct {
+    IP          string    `json:"ip"`           // 建立会话时的客户端 IP
+    UserAgent   string    `json:"ua,omitempty"`
+    Fingerprint string    `json:"fp,omitempty"` // 设备指纹（X-Device-Fingerprint 头）
+    Country     string    `json:"country,omitempty"`
+    IssuedAt    time.Time `json:"issued_at"`
+    LastSeen    time.Time `json:"last_seen"`    // 每次 Check 滑动续期
+}
+```
+
+### Tracker
+
+```go
+type Tracker struct {
+    Store             Store
+    TTL               time.Duration              // 会话生命周期，默认 30m，每次 Check 滑动续期
+    SubnetBits        int                        // 同地判定前缀，默认 24（IPv6 自动 +24）
+    CountryOf         func(ip string) string     // 可选 GeoIP 钩子；为 nil 时跳过国家判定
+    KnownNets         int                        // Observe 每用户保留的登录网段数，默认 8
+    KnownNetTTL       time.Duration              // 登录网段保留时长，默认 90 天
+    TokenSource       func(*http.Request) string // 默认 DefaultTokenSource
+    TrustProxyHeaders bool                       // 默认 false
+    FailClosed        bool                       // 默认 false
+}
+```
+
+| الطريقة | الوصف |
+|------|------|
+| `NewTracker(store) *Tracker` | ينشئ ويملأ القيم الافتراضية |
+| `Issue(token, r) error` | بعد نجاح تسجيل الدخول يربط الـ token بـ نطاق IP / UA / بصمة الجهاز؛ الـ token الفارغ يُرجع خطأ |
+| `Check(r) *Result` | يتحقق مع كل طلب، وعند الإصابة يُرجع `Detected: true`؛ وعند النجاح يجدّد الجلسة انزلاقيًا |
+| `Observe(user, r) *Result` | عند تسجيل الدخول يقارن النطاقات السابقة لهذا المستخدم، ويُنبّه عند ظهور نطاق جديد؛ أول تسجيل دخول بلا خط أساس لا يُنبّه |
+| `Guard(http.Handler) http.Handler` | تغليف كوسيط، وعند إصابة `Check` يُرجع 401 |
+| `Revoke(token) error` | تسجيل الخروج، فتُبطل الجلسة فورًا |
+| `DefaultTokenSource(r) string` | يأخذ `Authorization: Bearer <token>`، ثم كوكي `session` |
+| `RecordFailure(token) error` | يحصي محاولة مصادقة فاشلة؛ وعند بلوغ `Failures` (افتراضيًا 5 خلال 5 دقائق) يُكتب القفل، و`Lockout` افتراضيًا 15 دقيقة |
+| `IsLocked(token) (bool, time.Time)` | هل الرمز مقفل ومتى ينتهي القفل؛ خطأ المخزن يُقرأ كغير مقفل |
+| `ClearFailures(token) error` | يصفّر عدّاد الفشل بعد نجاح تسجيل الدخول (القفل يعمل بمؤقته ولا يُلغى) |
+
+قيم `Details["reason"]`:
+
+| reason | شرط الإطلاق | مستوى الخطورة |
+|--------|---------|---------|
+| `missing_token` | الطلب لا يحمل token | High |
+| `unknown_token` | الـ token لم يُصدر، أو تم `Revoke`، أو انتهت صلاحيته | High |
+| `token_locked` | بلوغ حد الفشل داخل النافذة، الرمز مقفل | Critical |
+| `client_hijack` | تغيّر UA، أو تغيّر بصمة الجهاز | Critical |
+| `remote_login` | يحكم `CountryOf` باختلاف البلد (Critical) / اختلاف نطاق IP (High)، ويشترك فيه `Check` و`Observe` | Critical / High |
+| `store_error` | فشل قراءة التخزين مع `FailClosed = true` | High |
+
+> `TrustProxyHeaders` معطّل افتراضيًا: `X-Forwarded-For` / `X-Real-IP` يتحكم بهما العميل، وبعد تفعيله يمكن للمختطف تزوير عنوان IP المربوط. لا تفعّله إلا خلف وكيل عكسي تملكه.
+> `FailClosed` معطّل افتراضيًا (السماح عند فشل التخزين)، متوافق مع `httpval.IPBlacklist`. مفتاح التخزين هو SHA-256 للـ token، لذا فإن تسريب التخزين لا يمنح token صالحًا مباشرة.
+
+### Signer
+
+```go
+type Signer struct {
+    Secret  []byte           // 共享 HMAC 密钥，用 crypto/rand 生成
+    MaxSkew time.Duration    // 时间戳允许偏差，默认 5m
+    Nonces  storage.Backend  // 可选：非空时用窗口计数拦截签名重放（可跨实例，复用 Redis）
+}
+
+signer := session.NewSigner(secret, mem)
+sig, err := signer.Sign(map[string]string{"amount": "100", "to": "bob"}) // "<unix-ts>.<nonce>.<mac>"
+res := signer.Verify(params, sig)                                        // 参数被改动/密钥不符/超时/重放
+```
+
+تُنظَّم المعاملات عبر `url.Values.Encode()` (ترتيب + تهريب)، فترتيب الـ map لا يؤثر على النتيجة. ترتيب التحقق هو الطابع الزمني ← التوقيع ← عدّاد nonce، لذلك لا يمكن لتوقيع مزوّر أن يستهلك nonce صالحًا؛ وعندما يكون `Nonces` مساويًا لـ nil لا يبقى سوى نافذة الطابع الزمني للحد من إعادة الإرسال.
+
+قيم `Details["reason"]`: `signer_not_configured` (Critical)، `signature_mismatch` (Critical)، `replay` (Critical)، `signature_malformed`، `timestamp_invalid`، `signature_expired`، `timestamp_in_future` (High).
+
 ## مثال على كاشف مخصص
 
 ```go

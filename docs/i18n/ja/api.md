@@ -114,6 +114,105 @@ e.Register(bl)
 blocked, _ := bl.RecordAttack(clientIP)
 ```
 
+### JSON ネスト深度と Cookie 属性
+
+| コンストラクタ | 説明 |
+|--------|------|
+| `NewNestedDepth(maxDepth, maxKeys) *NestedDepth` | JSON ボディをストリーム走査し、ネスト深度（既定 32）または要素数が上限を超えると `nested_depth` を報告。不正・切り詰められた JSON は決して一致しません |
+| `NewCookieAttrs(requireSecure, requireHttpOnly, requireSameSite) *CookieAttrs` | 1 つの `Set-Cookie` を検証: 属性の欠落、値の超過長（`MaxValueLen`）、空値（`RequireNonEmpty`） |
+
+## セッションセキュリティ
+
+`session` パッケージは**クライアントハイジャック**、**データ改ざん**、**遠隔地ログイン**を検出します。完全な `*http.Request`（token、クライアント IP、User-Agent）と、アプリ側で用意するストレージおよび鍵が必要なため、`Engine` には登録せず、ミドルウェア／関数として直接呼び出します。
+
+### Store インターフェース
+
+セッションのバインドは `storage.Backend`（カウントとブロックのみ）では表現できないため、`session` は独自の小さなインターフェースを持ちます：
+
+```go
+type Store interface {
+    Save(key string, value []byte, ttl time.Duration) error
+    Load(key string) ([]byte, error)   // 不存在或已过期返回 (nil, nil)
+    Delete(key string) error
+}
+
+session.NewMemoryStore() *MemoryStore // 内存实现，30s 清理过期条目，Close 停止清理
+```
+
+### Session
+
+```go
+type Session struct {
+    IP          string    `json:"ip"`           // 建立会话时的客户端 IP
+    UserAgent   string    `json:"ua,omitempty"`
+    Fingerprint string    `json:"fp,omitempty"` // 设备指纹（X-Device-Fingerprint 头）
+    Country     string    `json:"country,omitempty"`
+    IssuedAt    time.Time `json:"issued_at"`
+    LastSeen    time.Time `json:"last_seen"`    // 每次 Check 滑动续期
+}
+```
+
+### Tracker
+
+```go
+type Tracker struct {
+    Store             Store
+    TTL               time.Duration              // 会话生命周期，默认 30m，每次 Check 滑动续期
+    SubnetBits        int                        // 同地判定前缀，默认 24（IPv6 自动 +24）
+    CountryOf         func(ip string) string     // 可选 GeoIP 钩子；为 nil 时跳过国家判定
+    KnownNets         int                        // Observe 每用户保留的登录网段数，默认 8
+    KnownNetTTL       time.Duration              // 登录网段保留时长，默认 90 天
+    TokenSource       func(*http.Request) string // 默认 DefaultTokenSource
+    TrustProxyHeaders bool                       // 默认 false
+    FailClosed        bool                       // 默认 false
+}
+```
+
+| メソッド | 説明 |
+|------|------|
+| `NewTracker(store) *Tracker` | 作成しデフォルト値を設定 |
+| `Issue(token, r) error` | ログイン成功後に token → IP サブネット / UA / フィンガープリントをバインド；空の token はエラーを返す |
+| `Check(r) *Result` | リクエストごとに検証し、検出時は `Detected: true` を返す；通過時はスライディングで延長 |
+| `Observe(user, r) *Result` | ログイン時にそのユーザーの過去のサブネットと比較し、新しいサブネットで警告；初回ログインはベースラインがなく警告しない |
+| `Guard(http.Handler) http.Handler` | ミドルウェアラッパー、`Check` が検出すると 401 を返す |
+| `Revoke(token) error` | ログアウト、セッションを即座に無効化 |
+| `DefaultTokenSource(r) string` | `Authorization: Bearer <token>` を取得、次に `session` Cookie |
+| `RecordFailure(token) error` | 認証失敗を 1 回計上。ウィンドウ内で `Failures`（既定 5 回 / 5 分）に達するとロックを書き込み、`Lockout` は既定 15 分 |
+| `IsLocked(token) (bool, time.Time)` | トークンがロック中かどうかと解除時刻。ストア障害時は未ロック扱い |
+| `ClearFailures(token) error` | ログイン成功時に失敗カウントを戻します（ロックは独自のタイマーで動き、解除されません） |
+
+`Details["reason"]` の値：
+
+| reason | トリガー条件 | 深刻度 |
+|--------|---------|---------|
+| `missing_token` | リクエストに token が含まれない | High |
+| `unknown_token` | token が未発行、`Revoke` 済み、または期限切れ | High |
+| `token_locked` | ウィンドウ内で失敗回数がしきい値に到達、トークンをロック | Critical |
+| `client_hijack` | UA の変化、またはデバイスフィンガープリントの変化 | Critical |
+| `remote_login` | `CountryOf` がクロスカントリーと判定（Critical）/ IP が別サブネット（High）。`Check` と `Observe` で共通 | Critical / High |
+| `store_error` | ストレージ読み取り失敗かつ `FailClosed = true` | High |
+
+> `TrustProxyHeaders` はデフォルトで無効：`X-Forwarded-For` / `X-Real-IP` はクライアントが制御できるため、有効にするとハイジャック者がバインドされた IP を偽装できます。自前のリバースプロキシ配下でのみ有効にしてください。
+> `FailClosed` はデフォルトで無効（ストレージ障害時は通過）、`httpval.IPBlacklist` と同様です。ストレージのキーは token の SHA-256 であり、ストレージが漏洩しても直接利用可能な token は得られません。
+
+### Signer
+
+```go
+type Signer struct {
+    Secret  []byte           // 共享 HMAC 密钥，用 crypto/rand 生成
+    MaxSkew time.Duration    // 时间戳允许偏差，默认 5m
+    Nonces  storage.Backend  // 可选：非空时用窗口计数拦截签名重放（可跨实例，复用 Redis）
+}
+
+signer := session.NewSigner(secret, mem)
+sig, err := signer.Sign(map[string]string{"amount": "100", "to": "bob"}) // "<unix-ts>.<nonce>.<mac>"
+res := signer.Verify(params, sig)                                        // 参数被改动/密钥不符/超时/重放
+```
+
+パラメータは `url.Values.Encode()` で正規化され（ソート + エスケープ）、map の順序は結果に影響しません。検証順序はタイムスタンプ → 署名 → nonce カウンターであるため、偽造署名が正当な nonce を消費することはできません。`Nonces` が nil の場合、リプレイの制限はタイムスタンプウィンドウのみになります。
+
+`Details["reason"]` の値：`signer_not_configured`（Critical）、`signature_mismatch`（Critical）、`replay`（Critical）、`signature_malformed`、`timestamp_invalid`、`signature_expired`、`timestamp_in_future`（High）。
+
 ## カスタム検出器の例
 
 ```go

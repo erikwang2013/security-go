@@ -114,6 +114,105 @@ e.Register(bl)
 blocked, _ := bl.RecordAttack(clientIP)
 ```
 
+### Profundidad de anidamiento JSON y atributos de cookie
+
+| Constructor | Descripción |
+|--------|------|
+| `NewNestedDepth(maxDepth, maxKeys) *NestedDepth` | Escanea en streaming un cuerpo JSON: informa `nested_depth` al superar la profundidad (por defecto 32) o el número de elementos. El JSON no válido o truncado nunca coincide |
+| `NewCookieAttrs(requireSecure, requireHttpOnly, requireSameSite) *CookieAttrs` | Valida un `Set-Cookie`: atributos ausentes, valor demasiado largo (`MaxValueLen`), valor vacío (`RequireNonEmpty`) |
+
+## Seguridad de sesión
+
+El paquete `session` detecta el **secuestro del cliente**, la **manipulación de datos** y el **inicio de sesión desde otra ubicación**. Necesita el `*http.Request` completo (token, IP del cliente, User-Agent), así como el almacenamiento y la clave que aporta la aplicación, por lo que no se registra en la `Engine` y se invoca directamente como middleware/función.
+
+### Interfaz Store
+
+La vinculación de sesión no puede expresarse con `storage.Backend` (solo cuenta y bloqueo), por lo que `session` incluye una pequeña interfaz propia:
+
+```go
+type Store interface {
+    Save(key string, value []byte, ttl time.Duration) error
+    Load(key string) ([]byte, error)   // 不存在或已过期返回 (nil, nil)
+    Delete(key string) error
+}
+
+session.NewMemoryStore() *MemoryStore // 内存实现，30s 清理过期条目，Close 停止清理
+```
+
+### Session
+
+```go
+type Session struct {
+    IP          string    `json:"ip"`           // 建立会话时的客户端 IP
+    UserAgent   string    `json:"ua,omitempty"`
+    Fingerprint string    `json:"fp,omitempty"` // 设备指纹（X-Device-Fingerprint 头）
+    Country     string    `json:"country,omitempty"`
+    IssuedAt    time.Time `json:"issued_at"`
+    LastSeen    time.Time `json:"last_seen"`    // 每次 Check 滑动续期
+}
+```
+
+### Tracker
+
+```go
+type Tracker struct {
+    Store             Store
+    TTL               time.Duration              // 会话生命周期，默认 30m，每次 Check 滑动续期
+    SubnetBits        int                        // 同地判定前缀，默认 24（IPv6 自动 +24）
+    CountryOf         func(ip string) string     // 可选 GeoIP 钩子；为 nil 时跳过国家判定
+    KnownNets         int                        // Observe 每用户保留的登录网段数，默认 8
+    KnownNetTTL       time.Duration              // 登录网段保留时长，默认 90 天
+    TokenSource       func(*http.Request) string // 默认 DefaultTokenSource
+    TrustProxyHeaders bool                       // 默认 false
+    FailClosed        bool                       // 默认 false
+}
+```
+
+| Método | Descripción |
+|------|------|
+| `NewTracker(store) *Tracker` | Crea el tracker y rellena los valores por defecto |
+| `Issue(token, r) error` | Tras un inicio de sesión correcto vincula token → subred IP / UA / huella; un token vacío devuelve error |
+| `Check(r) *Result` | Valida en cada petición y devuelve `Detected: true` si hay coincidencia; si pasa, renueva de forma deslizante |
+| `Observe(user, r) *Result` | Al iniciar sesión compara las subredes históricas de ese usuario y alerta cuando aparece una nueva subred; el primer inicio de sesión no tiene línea base y no alerta |
+| `Guard(http.Handler) http.Handler` | Envoltorio de middleware: devuelve 401 si `Check` detecta |
+| `Revoke(token) error` | Cierre de sesión: la sesión se invalida de inmediato |
+| `DefaultTokenSource(r) string` | Toma `Authorization: Bearer <token>` y, en su defecto, la cookie `session` |
+| `RecordFailure(token) error` | Cuenta un intento de autenticación fallido; al alcanzar `Failures` (por defecto 5 en 5 minutos) escribe un bloqueo, `Lockout` por defecto 15 minutos |
+| `IsLocked(token) (bool, time.Time)` | Si el token está bloqueado y hasta cuándo; un error del almacén se lee como no bloqueado |
+| `ClearFailures(token) error` | Pone a cero el contador de fallos tras un inicio de sesión correcto (el bloqueo corre con su propio temporizador) |
+
+Valores de `Details["reason"]`:
+
+| reason | Condición de activación | Nivel de severidad |
+|--------|---------|---------|
+| `missing_token` | La petición no lleva token | High |
+| `unknown_token` | El token no fue emitido, ya se revocó con `Revoke` o ha caducado | High |
+| `token_locked` | Umbral de fallos alcanzado dentro de la ventana, token bloqueado | Critical |
+| `client_hijack` | Cambia el UA o cambia la huella del dispositivo | Critical |
+| `remote_login` | `CountryOf` determina cambio de país (Critical) / IP en otra subred (High); lo comparten `Check` y `Observe` | Critical / High |
+| `store_error` | Falla la lectura del almacenamiento y `FailClosed = true` | High |
+
+> `TrustProxyHeaders` está desactivado por defecto: `X-Forwarded-For` / `X-Real-IP` son controlables por el cliente y, si se activa, un atacante puede falsificar la IP vinculada. Actívalo solo detrás de un proxy inverso propio.
+> `FailClosed` está desactivado por defecto (se permite el paso cuando falla el almacenamiento), igual que en `httpval.IPBlacklist`. La clave de almacenamiento es el SHA-256 del token, por lo que una fuga del almacenamiento no entrega directamente un token utilizable.
+
+### Signer
+
+```go
+type Signer struct {
+    Secret  []byte           // 共享 HMAC 密钥，用 crypto/rand 生成
+    MaxSkew time.Duration    // 时间戳允许偏差，默认 5m
+    Nonces  storage.Backend  // 可选：非空时用窗口计数拦截签名重放（可跨实例，复用 Redis）
+}
+
+signer := session.NewSigner(secret, mem)
+sig, err := signer.Sign(map[string]string{"amount": "100", "to": "bob"}) // "<unix-ts>.<nonce>.<mac>"
+res := signer.Verify(params, sig)                                        // 参数被改动/密钥不符/超时/重放
+```
+
+Los parámetros se normalizan con `url.Values.Encode()` (ordenación + escapado), por lo que el orden del map no afecta al resultado. El orden de verificación es marca de tiempo → firma → contador de nonce, así que una firma falsificada no puede consumir un nonce legítimo; si `Nonces` es nil, solo se puede limitar la repetición mediante la ventana de marca de tiempo.
+
+Valores de `Details["reason"]`: `signer_not_configured` (Critical), `signature_mismatch` (Critical), `replay` (Critical), `signature_malformed`, `timestamp_invalid`, `signature_expired`, `timestamp_in_future` (High).
+
 ## Ejemplo de detector personalizado
 
 ```go

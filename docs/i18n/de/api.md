@@ -114,6 +114,105 @@ e.Register(bl)
 blocked, _ := bl.RecordAttack(clientIP)
 ```
 
+### JSON-Verschachtelungstiefe und Cookie-Attribute
+
+| Konstruktor | Beschreibung |
+|--------|------|
+| `NewNestedDepth(maxDepth, maxKeys) *NestedDepth` | Streamt einen JSON-Body: meldet `nested_depth` bei Überschreitung der Tiefe (Standard 32) oder der Elementanzahl. Nicht-JSON und abgeschnittenes JSON treffen nie |
+| `NewCookieAttrs(requireSecure, requireHttpOnly, requireSameSite) *CookieAttrs` | Prüft ein `Set-Cookie`: fehlende Attribute, überlanger Wert (`MaxValueLen`), leerer Wert (`RequireNonEmpty`) |
+
+## Sitzungssicherheit
+
+Das Paket `session` erkennt **Client-Entführung**, **Datenmanipulation** und **Anmeldung von einem anderen Ort**. Es benötigt den vollständigen `*http.Request` (Token, Client-IP, User-Agent) sowie den von der Anwendung bereitgestellten Speicher und Schlüssel; deshalb wird es nicht in die `Engine` registriert, sondern direkt als Middleware/Funktion aufgerufen.
+
+### Store-Schnittstelle
+
+Die Sitzungsbindung lässt sich nicht mit `storage.Backend` ausdrücken (nur Zähler und Sperren), daher bringt `session` eine eigene kleine Schnittstelle mit:
+
+```go
+type Store interface {
+    Save(key string, value []byte, ttl time.Duration) error
+    Load(key string) ([]byte, error)   // 不存在或已过期返回 (nil, nil)
+    Delete(key string) error
+}
+
+session.NewMemoryStore() *MemoryStore // 内存实现，30s 清理过期条目，Close 停止清理
+```
+
+### Session
+
+```go
+type Session struct {
+    IP          string    `json:"ip"`           // 建立会话时的客户端 IP
+    UserAgent   string    `json:"ua,omitempty"`
+    Fingerprint string    `json:"fp,omitempty"` // 设备指纹（X-Device-Fingerprint 头）
+    Country     string    `json:"country,omitempty"`
+    IssuedAt    time.Time `json:"issued_at"`
+    LastSeen    time.Time `json:"last_seen"`    // 每次 Check 滑动续期
+}
+```
+
+### Tracker
+
+```go
+type Tracker struct {
+    Store             Store
+    TTL               time.Duration              // 会话生命周期，默认 30m，每次 Check 滑动续期
+    SubnetBits        int                        // 同地判定前缀，默认 24（IPv6 自动 +24）
+    CountryOf         func(ip string) string     // 可选 GeoIP 钩子；为 nil 时跳过国家判定
+    KnownNets         int                        // Observe 每用户保留的登录网段数，默认 8
+    KnownNetTTL       time.Duration              // 登录网段保留时长，默认 90 天
+    TokenSource       func(*http.Request) string // 默认 DefaultTokenSource
+    TrustProxyHeaders bool                       // 默认 false
+    FailClosed        bool                       // 默认 false
+}
+```
+
+| Methode | Beschreibung |
+|------|------|
+| `NewTracker(store) *Tracker` | Erstellt den Tracker und füllt die Standardwerte ein |
+| `Issue(token, r) error` | Bindet nach erfolgreicher Anmeldung token → IP-Subnetz / UA / Fingerabdruck; ein leeres token gibt einen Fehler zurück |
+| `Check(r) *Result` | Prüft bei jeder Anfrage, liefert bei Treffer `Detected: true`; bei Erfolg gleitende Verlängerung |
+| `Observe(user, r) *Result` | Vergleicht bei der Anmeldung die historischen Subnetze des Benutzers und warnt bei einem neuen Subnetz; die erste Anmeldung hat keine Basislinie und warnt nicht |
+| `Guard(http.Handler) http.Handler` | Middleware-Wrapper, der bei Treffer von `Check` 401 zurückgibt |
+| `Revoke(token) error` | Abmeldung, die Sitzung wird sofort ungültig |
+| `DefaultTokenSource(r) string` | Liest `Authorization: Bearer <token>`, andernfalls das Cookie `session` |
+| `RecordFailure(token) error` | Zählt eine fehlgeschlagene Anmeldung; bei Erreichen von `Failures` (Standard 5 in 5 Minuten) wird eine Sperre geschrieben, `Lockout` Standard 15 Minuten |
+| `IsLocked(token) (bool, time.Time)` | Ob das Token gesperrt ist und bis wann; ein Speicherfehler gilt als nicht gesperrt |
+| `ClearFailures(token) error` | Setzt den Fehlerzähler nach erfolgreicher Anmeldung zurück (eine Sperre läuft über ihren eigenen Timer) |
+
+Werte von `Details["reason"]`:
+
+| reason | Auslösebedingung | Schweregrad |
+|--------|---------|---------|
+| `missing_token` | Die Anfrage enthält kein token | High |
+| `unknown_token` | token wurde nicht ausgestellt, wurde per `Revoke` beendet oder ist abgelaufen | High |
+| `token_locked` | Fehlerschwelle im Fenster erreicht, Token gesperrt | Critical |
+| `client_hijack` | UA geändert oder Gerätefingerabdruck geändert | Critical |
+| `remote_login` | `CountryOf` stellt einen Länderwechsel fest (Critical) / IP in einem anderen Subnetz (High); wird von `Check` und `Observe` gemeinsam genutzt | Critical / High |
+| `store_error` | Speicherlesefehler und `FailClosed = true` | High |
+
+> `TrustProxyHeaders` ist standardmäßig deaktiviert: `X-Forwarded-For` / `X-Real-IP` sind vom Client kontrollierbar; nach dem Aktivieren kann ein Angreifer die gebundene IP fälschen. Nur hinter einem eigenen Reverse-Proxy aktivieren.
+> `FailClosed` ist standardmäßig deaktiviert (Freigabe bei Speicherfehlern), konsistent mit `httpval.IPBlacklist`. Der Speicherschlüssel ist der SHA-256 des token; ein Speicherleck liefert daher keinen direkt nutzbaren token.
+
+### Signer
+
+```go
+type Signer struct {
+    Secret  []byte           // 共享 HMAC 密钥，用 crypto/rand 生成
+    MaxSkew time.Duration    // 时间戳允许偏差，默认 5m
+    Nonces  storage.Backend  // 可选：非空时用窗口计数拦截签名重放（可跨实例，复用 Redis）
+}
+
+signer := session.NewSigner(secret, mem)
+sig, err := signer.Sign(map[string]string{"amount": "100", "to": "bob"}) // "<unix-ts>.<nonce>.<mac>"
+res := signer.Verify(params, sig)                                        // 参数被改动/密钥不符/超时/重放
+```
+
+Parameter werden über `url.Values.Encode()` normalisiert (Sortierung + Escaping), die Map-Reihenfolge beeinflusst das Ergebnis nicht. Die Prüfreihenfolge ist Zeitstempel → Signatur → Nonce-Zähler, daher kann eine gefälschte Signatur keine gültige Nonce verbrauchen; ist `Nonces` nil, lässt sich Replay nur über das Zeitstempel-Fenster einschränken.
+
+Werte von `Details["reason"]`: `signer_not_configured` (Critical), `signature_mismatch` (Critical), `replay` (Critical), `signature_malformed`, `timestamp_invalid`, `signature_expired`, `timestamp_in_future` (High).
+
 ## Beispiel für benutzerdefinierte Detektoren
 
 ```go

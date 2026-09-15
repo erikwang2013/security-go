@@ -2,7 +2,7 @@
 
 [简体中文](../../../README.md) · [English](../../../README-EN.md) · [Documentation de l'API](api.md)
 
-Paquet de détection d'attaques écrit en Go, couvrant **32 détecteurs**, **5 grandes catégories d'attaques** et **3 backends de stockage enfichables**. Interface unifiée + modèle de registre, bibliothèque de détection pure, compatible avec tout framework HTTP Go.
+Paquet de détection d'attaques écrit en Go, couvrant **36 détecteurs**, **6 grandes catégories d'attaques** et **3 backends de stockage enfichables**. Interface unifiée + modèle de registre, bibliothèque de détection pure, compatible avec tout framework HTTP Go.
 
 ## Conception
 
@@ -11,7 +11,7 @@ Paquet de détection d'attaques écrit en Go, couvrant **32 détecteurs**, **5 g
 - **Détection zéro dépendance** — tous les détecteurs utilisent uniquement `regexp` de la bibliothèque standard Go, aucune dépendance externe
 - **Interface unifiée** — chaque détecteur implémente l'interface `Detector` (`Name()` + `Detect()`), gérée de manière centralisée par le registre `Engine`
 - **Expressions régulières précompilées** — tous les motifs sont compilés à l'initialisation des `var`, zéro surcoût à l'exécution
-- **Configuration à la demande** — les détecteurs d'injection/protocole/données/fichier sont prêts à l'emploi ; les validateurs HTTP nécessitent une configuration personnalisée
+- **Configuration à la demande** — les détecteurs d'injection/protocole/données/fichier sont prêts à l'emploi ; les validateurs HTTP et la détection de sécurité de session nécessitent une configuration personnalisée
 
 ### Architecture
 
@@ -48,15 +48,26 @@ Paquet de détection d'attaques écrit en Go, couvrant **32 détecteurs**, **5 g
           │                                                               │
    ┌──────▼──────────┐                                         ┌──────────▼──────────┐
    │     httpval     │                                         │       storage       │
-   │     (5)         │                                         │  ┌──────────────┐   │
+   │     (7)         │                                         │  ┌──────────────┐   │
    │                 │                                         │  │   Backend    │   │
    │  method, size,  │                                         │  │   interface  │   │
    │  type, csrf,    │                                         │  └──┬───┬───┬───┘   │
+   │  cookie,nested  │                                         │                    │
    │  ip_blacklist   │◄────── utilise storage.Backend ────────►│  Memory File Redis │
    │  (paramètres    │                                         │                    │
    │  requis)        │                                         └────────────────────┘
    └─────────────────┘
+
+   ┌─────────────────────────────────────────────────────────────────────┐
+   │  session (2)   outside the Engine registry                          │
+   │                                                                     │
+   │  Tracker (session_guard)  +  Signer (data_tamper)                   │
+   │  Issue / Check / Observe / Guard / Revoke    Sign / Verify          │
+   └─────────────────────────────────────────────────────────────────────┘
 ```
+
+> Le paquet `session` ne passe pas par l'enregistrement `Engine` : la validation de session doit lire le `*http.Request` complet (token, IP client, User-Agent),
+> et nécessite que l'application fournisse le stockage et la clé, il est donc appelé directement comme middleware — voir « Configuration de la sécurité de session » ci-dessous.
 
 ### Flux de données
 
@@ -112,7 +123,9 @@ HTTP Request
 | **Détournement WebSocket** | Injection d'en-tête Upgrade, contournement Origin null, URL `ws://` |
 | **Rebinding DNS** | IP internes dans l'en-tête Host, localhost, noms d'hôte courts sans TLD |
 
-### Validation de la couche HTTP (5)
+### Validation de la couche HTTP (7)
+| **Profondeur d'imbrication JSON** | Analyse en flux avec `json.Decoder` : signale une bombe JSON dès que la profondeur d'imbrication ou le nombre d'éléments dépasse la limite (profondeur par défaut 32). Un JSON invalide ou tronqué ne déclenche jamais |
+| **Attributs Set-Cookie** | Signale un `Set-Cookie` sans `Secure`/`HttpOnly`/`SameSite`, à valeur trop longue ou vide ; les attributs manquants sont regroupés en un seul résultat |
 
 | Détecteur | Description |
 |--------|------|
@@ -126,7 +139,7 @@ HTTP Request
 
 | Détecteur | Motifs détectés |
 |--------|---------|
-| **Désérialisation PHP** | Objets sérialisés `O:nombre:` / `C:nombre:`, `unserialize()`, méthodes magiques (`__wakeup`/`__destruct`) |
+| **Désérialisation** | Objets sérialisés `O:nombre:` / `C:nombre:`, `unserialize()`, méthodes magiques (`__wakeup`/`__destruct`) ; couvre les charges PHP / pickle / Java / .NET |
 | **Injection CSV** | `=cmd\|`, `@SUM(`, préfixes de formule `+`/`-`, `HYPERLINK`/`DDE` |
 | **Injection d'en-tête d'e-mail** | Injection Bcc/Cc/From/To, multipart MIME, paramètre boundary |
 | **Attaque JWT** | Contournement `alg: none`, traversée de chemin `kid`, détection de signature vide (analyse par décodage structurel) |
@@ -139,6 +152,13 @@ HTTP Request
 | **Traversée de chemin** | `../`, `..\\`, `php://filter`/`php://input`, octet nul, contournement par encodage URL, `/etc/passwd` |
 | **Téléversement malveillant** | Liste blanche d'extensions (15) + analyse de contenu des balises PHP `<?php`/`<?=` |
 | **Fuite de données** | Numéros de carte bancaire, AWS Access Key, clés privées `-----BEGIN`, chaînes de connexion de base de données, jetons API, JWT Secret, PAT GitHub |
+
+### Sécurité de session (2)
+
+| Détecteur | Motifs détectés |
+|--------|---------|
+| **Garde de session** (`session_guard`) | Liaison du token au client au moment de l'établissement de la session, comparée à chaque requête : un changement de User-Agent ou d'empreinte d'appareil détermine un **détournement du client** (Critical) ; une IP client tombant dans un autre sous-réseau ou pays détermine une **connexion distante** (High/Critical) ; `Observe()` compare les sous-réseaux historiques lors de la connexion et alerte dès qu'un nouveau sous-réseau apparaît. La session est renouvelée par glissement, `Revoke()` permet une invalidation immédiate ; `RecordFailure()` compte les tentatives échouées et verrouille le jeton dès que le seuil est atteint dans la fenêtre, `Check()` renvoie alors `token_locked`, et `ClearFailures()` remet le compteur à zéro après une connexion réussie |
+| **Falsification de données** (`data_tamper`) | Signature HMAC-SHA256 des paramètres de requête (`horodatage.nonce.signature`), identifiant la modification de paramètres, une clé non correspondante, un horodatage hors tolérance et la relecture de signature (compteur de nonce) |
 
 ### Backends de stockage (3)
 
@@ -225,6 +245,56 @@ e.Register(bl)
 // Enregistrement lors d'une attaque
 blocked, _ := bl.RecordAttack(clientIP)
 ```
+
+### Configuration de la sécurité de session
+
+Le paquet `session` s'utilise directement comme middleware, sans passer par `Engine`. Le stockage doit être fourni par l'application (une implémentation en mémoire est fournie par défaut, remplaçable par Redis, etc.) :
+
+```go
+import "github.com/erikwang2013/security-go/session"
+
+st := session.NewMemoryStore()
+defer st.Close()
+
+tr := session.NewTracker(st)
+tr.CountryOf = geo.Lookup // 可选：接入 GeoIP，用于识别跨国家登录
+
+// 登录成功后绑定会话（token 由你的登录流程生成）
+// 异地登录检测：比对该用户历史登录网段，出现新网段即告警
+if res := tr.Observe("user-1", r); res.Detected {
+    log.Printf("[%s] %s (%v)", res.Name, res.Message, res.Details["reason"])
+}
+if err := tr.Issue(token, r); err != nil {      // 绑定 token → IP 网段 / UA / 设备指纹
+    http.Error(w, "session error", http.StatusInternalServerError)
+    return
+}
+
+// 保护路由：命中劫持或异地登录直接返回 401
+mux.Handle("/api/", tr.Guard(apiHandler))
+
+// 或只做检测、自行决定处置
+if res := tr.Check(r); res.Detected {
+    log.Printf("[%s] %s (%v)", res.Name, res.Message, res.Details["reason"])
+}
+
+// 登出
+tr.Revoke(token)
+```
+
+Détection de falsification de données : le client et le serveur partagent une clé, le client signe les paramètres et le serveur recalcule la vérification :
+
+```go
+signer := session.NewSigner(secret, storage.NewMemory()) // 第二个参数用于拦截签名重放，可为 nil
+
+sig, _ := signer.Sign(map[string]string{"amount": "100", "to": "bob"}) // 客户端：随参数一起提交
+
+if res := signer.Verify(map[string]string{"amount": "100", "to": "bob"}, sig); res.Detected {
+    log.Printf("[%s] %s (%v)", res.Name, res.Message, res.Details["reason"])
+}
+```
+
+> `TrustProxyHeaders` est désactivé par défaut : `X-Forwarded-For` / `X-Real-IP` sont contrôlables par le client, ne l'activez qu'en amont d'un reverse proxy dédié.
+> `FailClosed` est désactivé par défaut (passage en cas de panne de stockage, comme pour `IPBlacklist`) ; son activation est recommandée pour les activités sensibles aux sessions.
 
 ### Détecteur personnalisé
 

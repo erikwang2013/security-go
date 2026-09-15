@@ -2,7 +2,7 @@
 
 ## Overview
 
-Pustaka deteksi serangan murni Go, menyediakan antarmuka terpadu + pola registry, mencakup 5 kategori besar dengan 32 detektor. **Implementasi selesai (2026-07-29).**
+Pustaka deteksi serangan murni Go, menyediakan antarmuka terpadu + pola registry, mencakup 6 kategori besar dengan 36 detektor. **Implementasi selesai (2026-07-29); paket `session` ditambahkan pada 2026-09-15.**
 
 ## Package Structure
 
@@ -13,9 +13,13 @@ security-go/
 ├── all/all.go               # RegisterAll — 注册所有内置 detector
 ├── injection/               # 注入类攻击 (10)
 ├── protocol/                # 协议与请求攻击 (9)
-├── httpval/                 # HTTP 协议层校验 (5)
+├── httpval/                 # HTTP 协议层校验 (7)
 ├── data/                    # 数据与序列化攻击 (5)
 ├── file/                    # 文件与敏感数据 (3)
+├── session/                 # 会话安全 (2) — 不经过 Engine
+│   ├── store.go             # Store interface + MemoryStore
+│   ├── tracker.go           # Tracker — 客户端被劫持 / 异地登录
+│   └── tamper.go            # Signer — 篡改数据
 └── storage/                 # 可插拔存储后端
     ├── storage.go           # Backend interface
     ├── memory.go            # 内存实现 (带 TTL 清理)
@@ -57,6 +61,8 @@ Antarmuka API lengkap (`Result`, `Detector`, `Engine`, backend penyimpanan `Back
 | httpval | content_type | MIME whitelist → 415 |
 | httpval | csrf_origin | Cross-origin Origin vs Host match |
 | httpval | ip_blacklist | Window-based rate limit → auto ban (5/60s → 15min) |
+| httpval | nested_depth | JSON body bomb: nesting depth / element count exceeded (streamed; non-JSON never matches) |
+| httpval | cookie_attrs | Set-Cookie missing Secure/HttpOnly/SameSite, overlong or empty value |
 | data | deserialization | PHP `O:数字:`, `C:数字:`, unserialize() |
 | data | csv_injection | `=`, `@`, `+`, `-` formula prefix |
 | data | mail_header | Bcc/Cc/From/To injection, MIME |
@@ -65,10 +71,12 @@ Antarmuka API lengkap (`Result`, `Detector`, `Engine`, backend penyimpanan `Back
 | file | path_traversal | `../`, `..\\`, php://filter, null byte |
 | file | upload | Extension whitelist + PHP tag content scan |
 | file | data_leak | Credit card, AWS key, private key, connection string, JWT secret |
+| session | session_guard | token↔client binding: UA/fingerprint change (client hijack), IP subnet/country change (remote login), login-network history |
+| session | data_tamper | HMAC-SHA256 over canonical params, ±5m timestamp window, nonce replay counter |
 
 ## Non-Goals
 
-- No HTTP middleware (pure detection library)
+- No HTTP middleware (pure detection library) — satu-satunya pengecualian adalah `session.Tracker.Guard`, pembungkus tipis yang mengembalikan 401 saat `Check` mendeteksi
 - No real-time request interception (caller invokes detection)
 - No attack blocking (detection only; ip_blacklist provides block-listing support)
 
@@ -79,6 +87,16 @@ Antarmuka API lengkap (`Result`, `Detector`, `Engine`, backend penyimpanan `Back
 - **Code review selesai** — 3 Bug diperbaiki (lihat laporan review), `go vet` nol peringatan
 - **Keterbatasan yang diketahui** — submodul `storage/redis/` memerlukan `go mod tidy`; gaya receiver paket protocol menunggu penyatuan
 - **Laporan** — `docs/superpowers/reports/2026-07-29-code-review-report.md`
+
+## Addendum — paket session (2026-09-15)
+
+Keamanan sesi ditambahkan sebagai kategori ke-6, dengan batasan desain yang sama seperti di atas:
+
+- **`session.Tracker`** (`session_guard`) — `Issue` mengikat token → subnet IP / UA / sidik jari perangkat; `Check` membandingkan setiap permintaan, memicu `client_hijack` (perubahan UA atau sidik jari, Critical) atau `remote_login` (lintas negara Critical / lintas subnet High); `Guard` langsung mengembalikan 401 saat terdeteksi; `Observe` saat login membandingkan subnet historis pengguna tersebut; `Revoke` langsung membatalkan.
+- **`session.Signer`** (`data_tamper`) — Tanda tangan HMAC-SHA256 pada parameter `<timestamp>.<nonce>.<signature>`, urutan verifikasi adalah timestamp → tanda tangan → penghitung nonce, sehingga tanda tangan palsu tidak dapat menghabiskan nonce yang sah. Penghitung replay menggunakan kembali `storage.Backend`.
+- **Penyimpanan** — Struktur sesi tidak dapat diekspresikan dengan `storage.Backend` yang hanya mendukung penghitung/blokir, sehingga ditambahkan `session.Store` (`Save` / `Load` / `Delete`) + `MemoryStore`; `storage.Backend` dan ketiga implementasinya tidak diubah.
+- **Tidak didaftarkan ke `Engine`** — `Detector.Detect(input string)` tidak dapat mengakses token / IP klien / UA, sehingga `Tracker` menerima `*http.Request` secara langsung; `all.RegisterAll` tetap hanya mendaftarkan detektor tanpa konfigurasi.
+- **Pengujian** — Paket `session` memiliki 3 file pengujian (store / tracker / tamper), `go test ./... -race` lulus.
 
 ---
 

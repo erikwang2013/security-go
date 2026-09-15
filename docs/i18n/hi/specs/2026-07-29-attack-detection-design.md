@@ -2,7 +2,7 @@
 
 ## अवलोकन
 
-शुद्ध Go आक्रमण-पता लगाने वाली लाइब्रेरी, एकीकृत इंटरफ़ेस + रजिस्ट्री पैटर्न के साथ, 5 प्रमुख श्रेणियों में 32 डिटेक्टर कवर करती है। **कार्यान्वयन पूर्ण (2026-07-29)।**
+शुद्ध Go आक्रमण-पता लगाने वाली लाइब्रेरी, एकीकृत इंटरफ़ेस + रजिस्ट्री पैटर्न के साथ, 6 प्रमुख श्रेणियों में 36 डिटेक्टर कवर करती है। **कार्यान्वयन पूर्ण (2026-07-29); `session` पैकेज 2026-09-15 को जोड़ा गया।**
 
 ## पैकेज संरचना
 
@@ -13,9 +13,13 @@ security-go/
 ├── all/all.go               # RegisterAll — 注册所有内置 detector
 ├── injection/               # 注入类攻击 (10)
 ├── protocol/                # 协议与请求攻击 (9)
-├── httpval/                 # HTTP 协议层校验 (5)
+├── httpval/                 # HTTP 协议层校验 (7)
 ├── data/                    # 数据与序列化攻击 (5)
 ├── file/                    # 文件与敏感数据 (3)
+├── session/                 # 会话安全 (2) — 不经过 Engine
+│   ├── store.go             # Store interface + MemoryStore
+│   ├── tracker.go           # Tracker — 客户端被劫持 / 异地登录
+│   └── tamper.go            # Signer — 篡改数据
 └── storage/                 # 可插拔存储后端
     ├── storage.go           # Backend interface
     ├── memory.go            # 内存实现 (带 TTL 清理)
@@ -57,6 +61,8 @@ security-go/
 | httpval | content_type | MIME whitelist → 415 |
 | httpval | csrf_origin | Cross-origin Origin vs Host match |
 | httpval | ip_blacklist | Window-based rate limit → auto ban (5/60s → 15min) |
+| httpval | nested_depth | JSON body bomb: nesting depth / element count exceeded (streamed; non-JSON never matches) |
+| httpval | cookie_attrs | Set-Cookie missing Secure/HttpOnly/SameSite, overlong or empty value |
 | data | deserialization | PHP `O:अंक:`, `C:अंक:`, unserialize() |
 | data | csv_injection | `=`, `@`, `+`, `-` formula prefix |
 | data | mail_header | Bcc/Cc/From/To injection, MIME |
@@ -65,10 +71,12 @@ security-go/
 | file | path_traversal | `../`, `..\\`, php://filter, null byte |
 | file | upload | Extension whitelist + PHP tag content scan |
 | file | data_leak | Credit card, AWS key, private key, connection string, JWT secret |
+| session | session_guard | token↔client binding: UA/fingerprint change (client hijack), IP subnet/country change (remote login), login-network history |
+| session | data_tamper | HMAC-SHA256 over canonical params, ±5m timestamp window, nonce replay counter |
 
 ## गैर-लक्ष्य (Non-Goals)
 
-- कोई HTTP मिडलवेयर नहीं (शुद्ध डिटेक्शन लाइब्रेरी)
+- कोई सामान्य-प्रयोजन HTTP मिडलवेयर नहीं (शुद्ध डिटेक्शन लाइब्रेरी) — एकमात्र अपवाद `session.Tracker.Guard` है, जो `Check` में डिटेक्शन होने पर 401 लौटाने वाला पतला रैपर है
 - कोई रीयल-टाइम रिक्वेस्ट इंटरसेप्शन नहीं (कॉलर स्वयं डिटेक्शन बुलाता है)
 - कोई आक्रमण-रोकथाम नहीं (केवल डिटेक्शन; ip_blacklist ब्लॉक-लिस्टिंग सहायता प्रदान करता है)
 
@@ -79,6 +87,16 @@ security-go/
 - **कोड समीक्षा पूर्ण** — 3 Bug फिक्स किए (समीक्षा रिपोर्ट देखें), `go vet` शून्य चेतावनी
 - **ज्ञात सीमाएँ** — `storage/redis/` सबमॉड्यूल को `go mod tidy` की आवश्यकता है; protocol पैकेज की receiver शैली अभी एकरूप नहीं है
 - **रिपोर्ट** — `docs/superpowers/reports/2026-07-29-code-review-report.md`
+
+## परिशिष्ट — session पैकेज (2026-09-15)
+
+सत्र सुरक्षा को छठी श्रेणी के रूप में जोड़ा गया है, डिज़ाइन बाधाएँ ऊपर वर्णित के समान हैं:
+
+- **`session.Tracker`** (`session_guard`) — `Issue` token → IP सबनेट / UA / डिवाइस फ़िंगरप्रिंट बाइंड करता है; `Check` प्रत्येक अनुरोध पर तुलना करके `client_hijack` (UA या फ़िंगरप्रिंट बदलाव, Critical) या `remote_login` (देश बदलाव Critical / सबनेट बदलाव High) पर मेल खाता है; `Guard` मेल खाते ही 401 लौटाता है; `Observe` लॉगिन के समय उस उपयोगकर्ता के ऐतिहासिक सबनेट की तुलना करता है; `Revoke` तुरंत अमान्य कर देता है।
+- **`session.Signer`** (`data_tamper`) — पैरामीटर का HMAC-SHA256 सिग्नेचर `<टाइमस्टैम्प>.<nonce>.<सिग्नेचर>`, सत्यापन क्रम टाइमस्टैम्प → सिग्नेचर → nonce काउंटर है, इसलिए नकली सिग्नेचर वैध nonce खर्च नहीं कर सकता। रीप्ले काउंटिंग `storage.Backend` का पुनः उपयोग करती है।
+- **स्टोरेज** — सत्र संरचना को केवल काउंटिंग/ब्लॉकिंग समर्थित `storage.Backend` से व्यक्त नहीं किया जा सकता, इसलिए `session.Store` (`Save` / `Load` / `Delete`) + `MemoryStore` जोड़े गए; `storage.Backend` और उसके तीनों कार्यान्वयन अपरिवर्तित हैं।
+- **`Engine` में पंजीकृत नहीं** — `Detector.Detect(input string)` को token / क्लाइंट IP / UA नहीं मिलते, इसलिए `Tracker` सीधे `*http.Request` प्राप्त करता है; `all.RegisterAll` केवल शून्य-कॉन्फ़िगरेशन डिटेक्टर पंजीकृत करता रहता है।
+- **टेस्ट** — `session` पैकेज में 3 टेस्ट फ़ाइलें (store / tracker / tamper), `go test ./... -race` पास।
 
 ---
 

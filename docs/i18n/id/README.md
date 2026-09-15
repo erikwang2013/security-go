@@ -2,7 +2,7 @@
 
 [简体中文](../../../README.md) · [English](../../../README-EN.md)
 
-Pustaka deteksi serangan yang ditulis dalam bahasa Go, mencakup **32 detektor**, **5 kategori serangan utama**, dan **3 backend penyimpanan yang dapat dipasang**. Antarmuka terpadu + pola registry, murni pustaka deteksi, cocok untuk kerangka HTTP Go mana pun.
+Pustaka deteksi serangan yang ditulis dalam bahasa Go, mencakup **36 detektor**, **6 kategori serangan utama**, dan **3 backend penyimpanan yang dapat dipasang**. Antarmuka terpadu + pola registry, murni pustaka deteksi, cocok untuk kerangka HTTP Go mana pun.
 
 ## Konsep Desain
 
@@ -11,7 +11,7 @@ Pustaka deteksi serangan yang ditulis dalam bahasa Go, mencakup **32 detektor**,
 - **Deteksi tanpa dependensi** — semua detektor hanya menggunakan `regexp` dari pustaka standar Go, tanpa dependensi eksternal
 - **Antarmuka terpadu** — setiap detektor mengimplementasikan antarmuka `Detector` (`Name()` + `Detect()`), dikelola secara terpadu melalui registry `Engine`
 - **Regex pra-kompilasi** — semua pola dikompilasi saat inisialisasi `var`, tanpa overhead saat runtime
-- **Konfigurasi sesuai kebutuhan** — detektor injeksi/protokol/data/file bersifat plug-and-play; validator HTTP memerlukan konfigurasi kustom aplikasi
+- **Konfigurasi sesuai kebutuhan** — detektor injeksi/protokol/data/file bersifat plug-and-play; validator HTTP dan deteksi keamanan sesi memerlukan konfigurasi kustom aplikasi
 
 ### Arsitektur Desain
 
@@ -48,14 +48,25 @@ Pustaka deteksi serangan yang ditulis dalam bahasa Go, mencakup **32 detektor**,
           │                                                               │
    ┌──────▼──────────┐                                         ┌──────────▼──────────┐
    │     httpval     │                                         │       storage       │
-   │     (5 个)      │                                         │  ┌──────────────┐   │
+   │     (7 个)      │                                         │  ┌──────────────┐   │
    │                 │                                         │  │   Backend    │   │
    │  method, size,  │                                         │  │   interface  │   │
    │  type, csrf,    │                                         │  └──┬───┬───┬───┘   │
+   │  cookie,nested  │                                         │                    │
    │  ip_blacklist   │◄────── 使用 storage.Backend ──────────►│  Memory File Redis │
    │  (需配置参数)    │                                         │                    │
    └─────────────────┘                                         └────────────────────┘
+
+   ┌─────────────────────────────────────────────────────────────────────┐
+   │  session (2)   outside the Engine registry                          │
+   │                                                                     │
+   │  Tracker (session_guard)  +  Signer (data_tamper)                   │
+   │  Issue / Check / Observe / Guard / Revoke    Sign / Verify          │
+   └─────────────────────────────────────────────────────────────────────┘
 ```
+
+> Paket `session` tidak didaftarkan melalui `Engine`: validasi sesi harus membaca `*http.Request` secara lengkap (token, IP klien, User-Agent),
+> dan memerlukan penyimpanan serta kunci dari aplikasi, sehingga dipanggil langsung sebagai middleware, lihat bagian "Konfigurasi Keamanan Sesi" di bawah.
 
 ### Alur Data
 
@@ -111,7 +122,9 @@ HTTP Request
 | **Pembajakan WebSocket** | Injeksi header Upgrade, bypass Origin null, URL `ws://` |
 | **DNS Rebinding** | IP internal pada Host header, localhost, nama host pendek tanpa TLD |
 
-### Validasi Lapisan Protokol HTTP (5)
+### Validasi Lapisan Protokol HTTP (7)
+| **Kedalaman Penyarangan JSON** | Memindai secara streaming dengan `json.Decoder`: menandai bom JSON saat kedalaman atau jumlah elemen melewati batas (kedalaman bawaan 32). JSON tidak valid atau terpotong tidak pernah memicu |
+| **Atribut Set-Cookie** | Menandai `Set-Cookie` tanpa `Secure`/`HttpOnly`/`SameSite`, nilai terlalu panjang, atau nilai kosong; atribut yang hilang digabung dalam satu hasil |
 
 | Detektor | Keterangan |
 |--------|------|
@@ -125,7 +138,7 @@ HTTP Request
 
 | Detektor | Pola Deteksi |
 |--------|---------|
-| **Deserialisasi PHP** | Objek serialisasi `O:angka:` / `C:angka:`, `unserialize()`, metode ajaib (`__wakeup`/`__destruct`) |
+| **Deserialisasi** | Objek serialisasi `O:angka:` / `C:angka:`, `unserialize()`, metode ajaib (`__wakeup`/`__destruct`); mencakup muatan PHP / pickle / Java / .NET |
 | **Injeksi CSV** | `=cmd\|`, `@SUM(`, prefiks rumus `+`/`-`, `HYPERLINK`/`DDE` |
 | **Injeksi Header Email** | Injeksi Bcc/Cc/From/To, MIME multipart, parameter boundary |
 | **Serangan JWT** | Bypass `alg: none`, path traversal `kid`, deteksi tanda tangan kosong (analisis decoding struktur) |
@@ -138,6 +151,13 @@ HTTP Request
 | **Path Traversal** | `../`, `..\\`, `php://filter`/`php://input`, null byte, bypass encoding URL, `/etc/passwd` |
 | **Upload Berbahaya** | Daftar putih ekstensi (15 jenis) + pemindaian konten tag PHP `<?php`/`<?=` |
 | **Kebocoran Data** | Nomor kartu kredit, AWS Access Key, kunci privat `-----BEGIN`, string koneksi database, API Token, JWT Secret, GitHub PAT |
+
+### Keamanan Sesi (2)
+
+| Detektor | Pola Deteksi |
+|--------|---------|
+| **Penjaga Sesi** (`session_guard`) | token diikat ke klien saat sesi dibuat, dibandingkan pada setiap permintaan: perubahan User-Agent atau sidik jari perangkat dianggap **klien dibajak** (Critical); IP klien jatuh ke subnet atau negara lain dianggap **login dari lokasi lain** (High/Critical); `Observe()` saat login membandingkan subnet historis, munculnya subnet baru langsung memicu peringatan. Sesi diperpanjang secara sliding, `Revoke()` dapat langsung membatalkan; `RecordFailure()` menghitung percobaan gagal dan mengunci token begitu ambang tercapai dalam jendela waktu, `Check()` lalu melaporkan `token_locked`, dan `ClearFailures()` mereset hitungan saat login berhasil |
+| **Manipulasi Data** (`data_tamper`) | Parameter permintaan ditandatangani dengan HMAC-SHA256 (`timestamp.nonce.signature`), mengidentifikasi perubahan parameter, ketidakcocokan kunci, selisih timestamp, dan pemutaran ulang tanda tangan (penghitung nonce) |
 
 ### Backend Penyimpanan (3)
 
@@ -224,6 +244,56 @@ e.Register(bl)
 // 攻击发生时记录
 blocked, _ := bl.RecordAttack(clientIP)
 ```
+
+### Konfigurasi Keamanan Sesi
+
+Paket `session` digunakan langsung sebagai middleware, tanpa melalui `Engine`. Penyimpanan perlu disiapkan aplikasi sendiri (implementasi memori tersedia secara default, dapat diganti dengan Redis dll):
+
+```go
+import "github.com/erikwang2013/security-go/session"
+
+st := session.NewMemoryStore()
+defer st.Close()
+
+tr := session.NewTracker(st)
+tr.CountryOf = geo.Lookup // 可选：接入 GeoIP，用于识别跨国家登录
+
+// 登录成功后绑定会话（token 由你的登录流程生成）
+// 异地登录检测：比对该用户历史登录网段，出现新网段即告警
+if res := tr.Observe("user-1", r); res.Detected {
+    log.Printf("[%s] %s (%v)", res.Name, res.Message, res.Details["reason"])
+}
+if err := tr.Issue(token, r); err != nil {      // 绑定 token → IP 网段 / UA / 设备指纹
+    http.Error(w, "session error", http.StatusInternalServerError)
+    return
+}
+
+// 保护路由：命中劫持或异地登录直接返回 401
+mux.Handle("/api/", tr.Guard(apiHandler))
+
+// 或只做检测、自行决定处置
+if res := tr.Check(r); res.Detected {
+    log.Printf("[%s] %s (%v)", res.Name, res.Message, res.Details["reason"])
+}
+
+// 登出
+tr.Revoke(token)
+```
+
+Deteksi manipulasi data: klien dan server berbagi kunci rahasia, klien menandatangani parameter, server menghitung ulang untuk verifikasi:
+
+```go
+signer := session.NewSigner(secret, storage.NewMemory()) // 第二个参数用于拦截签名重放，可为 nil
+
+sig, _ := signer.Sign(map[string]string{"amount": "100", "to": "bob"}) // 客户端：随参数一起提交
+
+if res := signer.Verify(map[string]string{"amount": "100", "to": "bob"}, sig); res.Detected {
+    log.Printf("[%s] %s (%v)", res.Name, res.Message, res.Details["reason"])
+}
+```
+
+> `TrustProxyHeaders` dinonaktifkan secara default: `X-Forwarded-For` / `X-Real-IP` dapat dikendalikan klien, aktifkan hanya di belakang reverse proxy sendiri.
+> `FailClosed` dinonaktifkan secara default (lolos saat penyimpanan gagal, konsisten dengan `IPBlacklist`); sebaiknya aktifkan untuk bisnis yang sensitif terhadap sesi.
 
 ### Detektor Kustom
 

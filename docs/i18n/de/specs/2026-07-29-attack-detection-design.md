@@ -2,7 +2,7 @@
 
 ## Übersicht
 
-Eine reine Go-Bibliothek zur Angriffserkennung mit einheitlicher Schnittstelle + Registry-Muster, die 32 Detektoren in 5 Kategorien abdeckt. **Implementierung abgeschlossen (2026-07-29).**
+Eine reine Go-Bibliothek zur Angriffserkennung mit einheitlicher Schnittstelle + Registry-Muster, die 36 Detektoren in 6 Kategorien abdeckt. **Implementierung abgeschlossen (2026-07-29); das Paket `session` wurde am 2026-09-15 ergänzt.**
 
 ## Paketstruktur
 
@@ -13,9 +13,13 @@ security-go/
 ├── all/all.go               # RegisterAll — 注册所有内置 detector
 ├── injection/               # 注入类攻击 (10)
 ├── protocol/                # 协议与请求攻击 (9)
-├── httpval/                 # HTTP 协议层校验 (5)
+├── httpval/                 # HTTP 协议层校验 (7)
 ├── data/                    # 数据与序列化攻击 (5)
 ├── file/                    # 文件与敏感数据 (3)
+├── session/                 # 会话安全 (2) — 不经过 Engine
+│   ├── store.go             # Store interface + MemoryStore
+│   ├── tracker.go           # Tracker — 客户端被劫持 / 异地登录
+│   └── tamper.go            # Signer — 篡改数据
 └── storage/                 # 可插拔存储后端
     ├── storage.go           # Backend interface
     ├── memory.go            # 内存实现 (带 TTL 清理)
@@ -57,6 +61,8 @@ Die vollständigen API-Schnittstellen (`Result`, `Detector`, `Engine`, Storage-B
 | httpval | content_type | MIME whitelist → 415 |
 | httpval | csrf_origin | Cross-origin Origin vs Host match |
 | httpval | ip_blacklist | Window-based rate limit → auto ban (5/60s → 15min) |
+| httpval | nested_depth | JSON body bomb: nesting depth / element count exceeded (streamed; non-JSON never matches) |
+| httpval | cookie_attrs | Set-Cookie missing Secure/HttpOnly/SameSite, overlong or empty value |
 | data | deserialization | PHP `O:数字:`, `C:数字:`, unserialize() |
 | data | csv_injection | `=`, `@`, `+`, `-` formula prefix |
 | data | mail_header | Bcc/Cc/From/To injection, MIME |
@@ -65,10 +71,12 @@ Die vollständigen API-Schnittstellen (`Result`, `Detector`, `Engine`, Storage-B
 | file | path_traversal | `../`, `..\\`, php://filter, null byte |
 | file | upload | Extension whitelist + PHP tag content scan |
 | file | data_leak | Credit card, AWS key, private key, connection string, JWT secret |
+| session | session_guard | token↔Client-Bindung: Änderung von UA/Fingerabdruck (Client-Entführung), Wechsel von IP-Subnetz/Land (Anmeldung von einem anderen Ort), Historie der Anmeldenetze |
+| session | data_tamper | HMAC-SHA256 über kanonische Parameter, ±5m Zeitstempel-Fenster, Nonce-Zähler gegen Replay |
 
 ## Nicht-Ziele
 
-- Kein HTTP-Middleware (reine Erkennungsbibliothek)
+- Keine Allzweck-HTTP-Middleware — die einzige Ausnahme ist `session.Tracker.Guard`, ein dünner Wrapper, der 401 zurückgibt, wenn `Check` anschlägt
 - Keine Echtzeit-Anfrageabfangung (der Aufrufer führt die Erkennung aus)
 - Keine Angriffsblockierung (nur Erkennung; ip_blacklist bietet Unterstützung für Sperrlisten)
 
@@ -79,6 +87,16 @@ Die vollständigen API-Schnittstellen (`Result`, `Detector`, `Engine`, Storage-B
 - **Code-Review abgeschlossen** — 3 Bugs behoben (siehe Review-Bericht), `go vet` ohne Warnungen
 - **Bekannte Einschränkungen** — Untermodul `storage/redis/` benötigt `go mod tidy`; der Receiver-Stil im protocol-Paket muss noch vereinheitlicht werden
 - **Bericht** — `docs/superpowers/reports/2026-07-29-code-review-report.md`
+
+## Addendum — Paket `session` (2026-09-15)
+
+Die Sitzungssicherheit wurde als 6. Kategorie ergänzt; die Designvorgaben entsprechen dem oben Gesagten:
+
+- **`session.Tracker`** (`session_guard`) — `Issue` bindet token → IP-Subnetz / UA / Gerätefingerabdruck; `Check` vergleicht bei jeder Anfrage und schlägt an mit `client_hijack` (Änderung von UA oder Fingerabdruck, Critical) oder `remote_login` (Länderwechsel Critical / Subnetzwechsel High); `Guard` gibt bei Treffer 401 zurück; `Observe` vergleicht bei der Anmeldung die historischen Subnetze des Benutzers; `Revoke` macht die Sitzung sofort ungültig.
+- **`session.Signer`** (`data_tamper`) — HMAC-SHA256-Signatur der Parameter `<Zeitstempel>.<nonce>.<Signatur>`; die Prüfreihenfolge ist Zeitstempel → Signatur → Nonce-Zähler, daher kann eine gefälschte Signatur keine gültige Nonce verbrauchen. Der Replay-Zähler nutzt `storage.Backend` erneut.
+- **Speicher** — Die Sitzungsstruktur lässt sich nicht mit dem nur zählenden/sperrenden `storage.Backend` ausdrücken, daher wurden `session.Store` (`Save` / `Load` / `Delete`) + `MemoryStore` ergänzt; `storage.Backend` und seine drei Implementierungen bleiben unverändert.
+- **Keine Registrierung in der `Engine`** — `Detector.Detect(input string)` erreicht token / Client-IP / UA nicht, daher nimmt `Tracker` direkt `*http.Request` entgegen; `all.RegisterAll` registriert weiterhin nur die zero-config-Detektoren.
+- **Tests** — 3 Testdateien im Paket `session` (store / tracker / tamper), `go test ./... -race` erfolgreich.
 
 ---
 

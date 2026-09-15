@@ -2,7 +2,7 @@
 
 [简体中文](../../../README.md) · [English](../../../README-EN.md) · [API Reference](api.md)
 
-An attack detection package written in Go, covering **32 detectors**, **5 major attack categories**, and **3 pluggable storage backends**. Unified interface + registry pattern; a pure detection library that adapts to any Go HTTP framework.
+An attack detection package written in Go, covering **36 detectors**, **6 major attack categories**, and **3 pluggable storage backends**. Unified interface + registry pattern; a pure detection library that adapts to any Go HTTP framework.
 
 ## Design Philosophy
 
@@ -11,7 +11,7 @@ An attack detection package written in Go, covering **32 detectors**, **5 major 
 - **Zero-dependency detection** — all detectors use only the Go standard library `regexp`, no external dependencies
 - **Unified interface** — every detector implements the `Detector` interface (`Name()` + `Detect()`), managed uniformly through the `Engine` registry
 - **Pre-compiled regex** — all patterns are compiled at `var` initialization, zero runtime overhead
-- **On-demand configuration** — injection/protocol/data/file detectors are plug-and-play; HTTP validators require application-specific configuration
+- **On-demand configuration** — injection/protocol/data/file detectors are plug-and-play; HTTP validators and session security checks require application-specific configuration
 
 ### Architecture
 
@@ -48,14 +48,25 @@ An attack detection package written in Go, covering **32 detectors**, **5 major 
           │                                                               │
    ┌──────▼──────────┐                                         ┌──────────▼──────────┐
    │     httpval     │                                         │       storage       │
-   │     (5 个)      │                                         │  ┌──────────────┐   │
+   │     (7 个)      │                                         │  ┌──────────────┐   │
    │                 │                                         │  │   Backend    │   │
    │  method, size,  │                                         │  │   interface  │   │
    │  type, csrf,    │                                         │  └──┬───┬───┬───┘   │
+   │  cookie,nested  │                                         │                    │
    │  ip_blacklist   │◄────── 使用 storage.Backend ──────────►│  Memory File Redis │
    │  (需配置参数)    │                                         │                    │
    └─────────────────┘                                         └────────────────────┘
+
+   ┌─────────────────────────────────────────────────────────────────────┐
+   │  session (2)   outside the Engine registry                          │
+   │                                                                     │
+   │  Tracker (session_guard)  +  Signer (data_tamper)                   │
+   │  Issue / Check / Observe / Guard / Revoke    Sign / Verify          │
+   └─────────────────────────────────────────────────────────────────────┘
 ```
+
+> The `session` package is not registered with the `Engine`: session validation must read the complete `*http.Request` (token, client IP, User-Agent),
+> and requires the application to provide storage and a secret key, so it is called directly as middleware — see "Session Security Configuration" below.
 
 ### Data Flow
 
@@ -111,7 +122,9 @@ HTTP Request
 | **WebSocket Hijacking** | Upgrade header injection, null Origin bypass, `ws://` URLs |
 | **DNS Rebinding** | Internal IP in Host header, localhost, short hostnames without TLD |
 
-### HTTP Protocol-Layer Validation (5)
+### HTTP Protocol-Layer Validation (7)
+| **JSON Nesting Depth** | Streams with `json.Decoder`; flags a JSON bomb when nesting depth or element count exceeds the limit (default depth 32). Malformed or truncated JSON never alerts |
+| **Set-Cookie Attributes** | Flags `Set-Cookie` missing `Secure`/`HttpOnly`/`SameSite`, an overlong value, or an empty value; all missing attributes in one result |
 
 | Detector | Description |
 |--------|------|
@@ -125,7 +138,7 @@ HTTP Request
 
 | Detector | Detection Patterns |
 |--------|---------|
-| **PHP Deserialization** | `O:digits:` / `C:digits:` serialized objects, `unserialize()`, magic methods (`__wakeup`/`__destruct`) |
+| **Deserialization** | `O:digits:` / `C:digits:` serialized objects, `unserialize()`, magic methods (`__wakeup`/`__destruct`); covers PHP / pickle / Java / .NET payloads |
 | **CSV Injection** | `=cmd\|`, `@SUM(`, `+`/`-` formula prefixes, `HYPERLINK`/`DDE` |
 | **Mail Header Injection** | Bcc/Cc/From/To injection, MIME multipart, boundary parameters |
 | **JWT Attack** | `alg: none` bypass, `kid` path traversal, empty-signature detection (structural decode analysis) |
@@ -138,6 +151,13 @@ HTTP Request
 | **Path Traversal** | `../`, `..\\`, `php://filter`/`php://input`, null bytes, URL-encoded bypass, `/etc/passwd` |
 | **Malicious Upload** | Extension whitelist (15 types) + PHP tag `<?php`/`<?=` content scan |
 | **Data Leak** | Credit card numbers, AWS Access Keys, private keys `-----BEGIN`, database connection strings, API tokens, JWT secrets, GitHub PATs |
+
+### Session Security (2)
+
+| Detector | Detection Patterns |
+|--------|---------|
+| **Session Guard** (`session_guard`) | Binds the token to the client that established the session and compares on every request: a change in User-Agent or device fingerprint is judged **client hijacking** (Critical); a client IP landing in another subnet or country is judged **remote login** (High/Critical); `Observe()` compares the login network against history at login time and alerts whenever a new subnet appears. Sessions slide-renew, and `Revoke()` invalidates immediately; `RecordFailure()` counts failed attempts and locks the token once the threshold is hit inside the window, `Check()` then reports `token_locked`, and `ClearFailures()` resets the count on a successful login |
+| **Data Tampering** (`data_tamper`) | HMAC-SHA256 signature over the request parameters (`timestamp.nonce.signature`), identifying altered parameters, key mismatch, timestamp skew, and signature replay (nonce counter) |
 
 ### Storage Backends (3)
 
@@ -224,6 +244,56 @@ e.Register(bl)
 // 攻击发生时记录
 blocked, _ := bl.RecordAttack(clientIP)
 ```
+
+### Session Security Configuration
+
+The `session` package is used directly as middleware, without going through the `Engine`. Storage must be provided by the application (an in-memory implementation is available by default and can be replaced with Redis, etc.):
+
+```go
+import "github.com/erikwang2013/security-go/session"
+
+st := session.NewMemoryStore()
+defer st.Close()
+
+tr := session.NewTracker(st)
+tr.CountryOf = geo.Lookup // 可选：接入 GeoIP，用于识别跨国家登录
+
+// 登录成功后绑定会话（token 由你的登录流程生成）
+// 异地登录检测：比对该用户历史登录网段，出现新网段即告警
+if res := tr.Observe("user-1", r); res.Detected {
+    log.Printf("[%s] %s (%v)", res.Name, res.Message, res.Details["reason"])
+}
+if err := tr.Issue(token, r); err != nil {      // 绑定 token → IP 网段 / UA / 设备指纹
+    http.Error(w, "session error", http.StatusInternalServerError)
+    return
+}
+
+// 保护路由：命中劫持或异地登录直接返回 401
+mux.Handle("/api/", tr.Guard(apiHandler))
+
+// 或只做检测、自行决定处置
+if res := tr.Check(r); res.Detected {
+    log.Printf("[%s] %s (%v)", res.Name, res.Message, res.Details["reason"])
+}
+
+// 登出
+tr.Revoke(token)
+```
+
+Data tamper detection: the client and server share a secret; the client signs the parameters and the server recomputes and verifies:
+
+```go
+signer := session.NewSigner(secret, storage.NewMemory()) // 第二个参数用于拦截签名重放，可为 nil
+
+sig, _ := signer.Sign(map[string]string{"amount": "100", "to": "bob"}) // 客户端：随参数一起提交
+
+if res := signer.Verify(map[string]string{"amount": "100", "to": "bob"}, sig); res.Detected {
+    log.Printf("[%s] %s (%v)", res.Name, res.Message, res.Details["reason"])
+}
+```
+
+> `TrustProxyHeaders` is disabled by default: `X-Forwarded-For` / `X-Real-IP` are client-controllable, so enable it only behind your own reverse proxy.
+> `FailClosed` is disabled by default (requests pass through on storage failure, consistent with `IPBlacklist`); enabling it is recommended for session-sensitive services.
 
 ### Custom Detector
 

@@ -114,6 +114,105 @@ e.Register(bl)
 blocked, _ := bl.RecordAttack(clientIP)
 ```
 
+### Kedalaman Penyarangan JSON & Atribut Cookie
+
+| Konstruktor | Deskripsi |
+|--------|------|
+| `NewNestedDepth(maxDepth, maxKeys) *NestedDepth` | Memindai body JSON secara streaming: melaporkan `nested_depth` saat kedalaman (bawaan 32) atau jumlah elemen terlampaui. JSON tidak valid atau terpotong tidak pernah cocok |
+| `NewCookieAttrs(requireSecure, requireHttpOnly, requireSameSite) *CookieAttrs` | Memvalidasi satu `Set-Cookie`: atribut hilang, nilai terlalu panjang (`MaxValueLen`), nilai kosong (`RequireNonEmpty`) |
+
+## Keamanan Sesi
+
+Paket `session` mendeteksi **klien dibajak**, **manipulasi data**, **login dari lokasi lain**. Paket ini memerlukan `*http.Request` lengkap (token, IP klien, User-Agent) serta penyimpanan dan kunci yang disiapkan aplikasi, sehingga tidak didaftarkan ke `Engine` dan dipanggil langsung sebagai middleware/fungsi.
+
+### Antarmuka Store
+
+Pengikatan sesi tidak dapat diekspresikan dengan `storage.Backend` (hanya berisi penghitung dan blokir), sehingga `session` menyediakan antarmuka kecil tersendiri:
+
+```go
+type Store interface {
+    Save(key string, value []byte, ttl time.Duration) error
+    Load(key string) ([]byte, error)   // 不存在或已过期返回 (nil, nil)
+    Delete(key string) error
+}
+
+session.NewMemoryStore() *MemoryStore // 内存实现，30s 清理过期条目，Close 停止清理
+```
+
+### Session
+
+```go
+type Session struct {
+    IP          string    `json:"ip"`           // 建立会话时的客户端 IP
+    UserAgent   string    `json:"ua,omitempty"`
+    Fingerprint string    `json:"fp,omitempty"` // 设备指纹（X-Device-Fingerprint 头）
+    Country     string    `json:"country,omitempty"`
+    IssuedAt    time.Time `json:"issued_at"`
+    LastSeen    time.Time `json:"last_seen"`    // 每次 Check 滑动续期
+}
+```
+
+### Tracker
+
+```go
+type Tracker struct {
+    Store             Store
+    TTL               time.Duration              // 会话生命周期，默认 30m，每次 Check 滑动续期
+    SubnetBits        int                        // 同地判定前缀，默认 24（IPv6 自动 +24）
+    CountryOf         func(ip string) string     // 可选 GeoIP 钩子；为 nil 时跳过国家判定
+    KnownNets         int                        // Observe 每用户保留的登录网段数，默认 8
+    KnownNetTTL       time.Duration              // 登录网段保留时长，默认 90 天
+    TokenSource       func(*http.Request) string // 默认 DefaultTokenSource
+    TrustProxyHeaders bool                       // 默认 false
+    FailClosed        bool                       // 默认 false
+}
+```
+
+| Metode | Keterangan |
+|------|------|
+| `NewTracker(store) *Tracker` | Membuat dan mengisi nilai default |
+| `Issue(token, r) error` | Setelah login berhasil, mengikat token → subnet IP / UA / sidik jari; token kosong mengembalikan error |
+| `Check(r) *Result` | Validasi setiap permintaan, mengembalikan `Detected: true` saat terdeteksi; memperpanjang secara sliding saat lolos |
+| `Observe(user, r) *Result` | Saat login membandingkan subnet historis pengguna tersebut, memicu peringatan saat muncul subnet baru; login pertama tanpa baseline tidak memicu peringatan |
+| `Guard(http.Handler) http.Handler` | Pembungkus middleware, mengembalikan 401 saat `Check` terdeteksi |
+| `Revoke(token) error` | Logout, sesi langsung tidak berlaku |
+| `DefaultTokenSource(r) string` | Mengambil `Authorization: Bearer <token>`, lalu Cookie `session` |
+| `RecordFailure(token) error` | Menghitung satu autentikasi gagal; saat `Failures` (bawaan 5 dalam 5 menit) tercapai, kunci ditulis, `Lockout` bawaan 15 menit |
+| `IsLocked(token) (bool, time.Time)` | Apakah token terkunci dan sampai kapan; galat penyimpanan dibaca sebagai tidak terkunci |
+| `ClearFailures(token) error` | Mereset hitungan kegagalan setelah login berhasil (kunci berjalan dengan pengatur waktunya sendiri) |
+
+Nilai `Details["reason"]`:
+
+| reason | Kondisi pemicu | Tingkat keparahan |
+|--------|---------|---------|
+| `missing_token` | Permintaan tidak membawa token | High |
+| `unknown_token` | token belum diterbitkan, sudah di-`Revoke`, atau sudah kedaluwarsa | High |
+| `token_locked` | Ambang kegagalan tercapai dalam jendela waktu, token terkunci | Critical |
+| `client_hijack` | UA berubah, atau sidik jari perangkat berubah | Critical |
+| `remote_login` | `CountryOf` menilai lintas negara (Critical) / IP lintas subnet (High), digunakan bersama oleh `Check` dan `Observe` | Critical / High |
+| `store_error` | Pembacaan penyimpanan gagal dan `FailClosed = true` | High |
+
+> `TrustProxyHeaders` dinonaktifkan secara default: `X-Forwarded-For` / `X-Real-IP` dapat dikendalikan klien; setelah diaktifkan, penyerang dapat memalsukan IP yang terikat. Aktifkan hanya di belakang reverse proxy sendiri.
+> `FailClosed` dinonaktifkan secara default (lolos saat penyimpanan gagal), konsisten dengan `httpval.IPBlacklist`. Kunci penyimpanan adalah SHA-256 dari token, kebocoran penyimpanan tidak langsung menghasilkan token yang dapat dipakai.
+
+### Signer
+
+```go
+type Signer struct {
+    Secret  []byte           // 共享 HMAC 密钥，用 crypto/rand 生成
+    MaxSkew time.Duration    // 时间戳允许偏差，默认 5m
+    Nonces  storage.Backend  // 可选：非空时用窗口计数拦截签名重放（可跨实例，复用 Redis）
+}
+
+signer := session.NewSigner(secret, mem)
+sig, err := signer.Sign(map[string]string{"amount": "100", "to": "bob"}) // "<unix-ts>.<nonce>.<mac>"
+res := signer.Verify(params, sig)                                        // 参数被改动/密钥不符/超时/重放
+```
+
+Parameter dinormalisasi dengan `url.Values.Encode()` (urut + escape), urutan map tidak memengaruhi hasil. Urutan verifikasi adalah timestamp → tanda tangan → penghitung nonce, sehingga tanda tangan palsu tidak dapat menghabiskan nonce yang sah; saat `Nonces` bernilai nil, pembatasan replay hanya mengandalkan jendela timestamp.
+
+Nilai `Details["reason"]`: `signer_not_configured` (Critical), `signature_mismatch` (Critical), `replay` (Critical), `signature_malformed`, `timestamp_invalid`, `signature_expired`, `timestamp_in_future` (High).
+
 ## Contoh Detektor Kustom
 
 ```go

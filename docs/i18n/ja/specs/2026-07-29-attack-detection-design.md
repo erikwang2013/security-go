@@ -2,7 +2,7 @@
 
 ## 概要
 
-純粋な Go 攻撃検出ライブラリ。統一インターフェース + レジストリパターンを提供し、5 大カテゴリ 32 個の検出器をカバーします。**実装完了 (2026-07-29)。**
+純粋な Go 攻撃検出ライブラリ。統一インターフェース + レジストリパターンを提供し、6 大カテゴリ 36 個の検出器をカバーします。**実装完了 (2026-07-29)。`session` パッケージは 2026-09-15 に追加。**
 
 ## パッケージ構造
 
@@ -13,9 +13,13 @@ security-go/
 ├── all/all.go               # RegisterAll — 注册所有内置 detector
 ├── injection/               # 注入类攻击 (10)
 ├── protocol/                # 协议与请求攻击 (9)
-├── httpval/                 # HTTP 协议层校验 (5)
+├── httpval/                 # HTTP 协议层校验 (7)
 ├── data/                    # 数据与序列化攻击 (5)
 ├── file/                    # 文件与敏感数据 (3)
+├── session/                 # 会话安全 (2) — 不经过 Engine
+│   ├── store.go             # Store interface + MemoryStore
+│   ├── tracker.go           # Tracker — 客户端被劫持 / 异地登录
+│   └── tamper.go            # Signer — 篡改数据
 └── storage/                 # 可插拔存储后端
     ├── storage.go           # Backend interface
     ├── memory.go            # 内存实现 (带 TTL 清理)
@@ -57,6 +61,8 @@ security-go/
 | httpval | content_type | MIME whitelist → 415 |
 | httpval | csrf_origin | Cross-origin Origin vs Host match |
 | httpval | ip_blacklist | Window-based rate limit → auto ban (5/60s → 15min) |
+| httpval | nested_depth | JSON body bomb: nesting depth / element count exceeded (streamed; non-JSON never matches) |
+| httpval | cookie_attrs | Set-Cookie missing Secure/HttpOnly/SameSite, overlong or empty value |
 | data | deserialization | PHP `O:数字:`, `C:数字:`, unserialize() |
 | data | csv_injection | `=`, `@`, `+`, `-` formula prefix |
 | data | mail_header | Bcc/Cc/From/To injection, MIME |
@@ -65,10 +71,12 @@ security-go/
 | file | path_traversal | `../`, `..\\`, php://filter, null byte |
 | file | upload | Extension whitelist + PHP tag content scan |
 | file | data_leak | Credit card, AWS key, private key, connection string, JWT secret |
+| session | session_guard | token↔client binding: UA/fingerprint change (client hijack), IP subnet/country change (remote login), login-network history |
+| session | data_tamper | HMAC-SHA256 over canonical params, ±5m timestamp window, nonce replay counter |
 
 ## 対象外 (Non-Goals)
 
-- HTTP ミドルウェアは提供しない（純粋な検出ライブラリ）
+- HTTP ミドルウェアは提供しない（純粋な検出ライブラリ） — 唯一の例外は `session.Tracker.Guard` で、`Check` が検出したときに 401 を返す薄いラッパーです
 - リアルタイムのリクエスト傍受はしない（検出は呼び出し側が実行）
 - 攻撃のブロックはしない（検出のみ。ip_blacklist がブロック機能を提供）
 
@@ -79,6 +87,16 @@ security-go/
 - **コードレビュー完了** — 3 個のバグを修正（レビュー報告参照）、`go vet` 警告ゼロ
 - **既知の制限** — `storage/redis/` サブモジュールには `go mod tidy` が必要。protocol パッケージの receiver スタイルは統一待ち
 - **レポート** — [`../reports/2026-07-29-code-review-report.md`](../reports/2026-07-29-code-review-report.md)
+
+## 追加事項 — session パッケージ (2026-09-15)
+
+セッションセキュリティを第 6 カテゴリとして追加しました。設計上の制約は上記と同じです：
+
+- **`session.Tracker`** (`session_guard`) — `Issue` が token → IP サブネット / UA / デバイスフィンガープリントをバインド；`Check` がリクエストごとに比較し、`client_hijack`（UA またはフィンガープリントの変化、Critical）または `remote_login`（クロスカントリー Critical / 別サブネット High）を検出；`Guard` は検出時に 401 を返す；`Observe` はログイン時にそのユーザーの過去のサブネットと比較；`Revoke` で即座に無効化。
+- **`session.Signer`** (`data_tamper`) — パラメータに HMAC-SHA256 署名 `<タイムスタンプ>.<nonce>.<署名>` を行い、検証順序はタイムスタンプ → 署名 → nonce カウンターであるため、偽造署名が正当な nonce を消費することはできません。リプレイカウンターは `storage.Backend` を再利用。
+- **ストレージ** — セッション構造はカウント/ブロックのみをサポートする `storage.Backend` では表現できないため、`session.Store`（`Save` / `Load` / `Delete`）+ `MemoryStore` を追加；`storage.Backend` とその 3 つの実装は変更なし。
+- **`Engine` には登録しない** — `Detector.Detect(input string)` では token / クライアント IP / UA を取得できないため、`Tracker` は `*http.Request` を直接受け取ります；`all.RegisterAll` はゼロ設定検出器のみを登録する動作を維持。
+- **テスト** — `session` パッケージには 3 つのテストファイル（store / tracker / tamper）、`go test ./... -race` 通過。
 
 ---
 

@@ -2,7 +2,7 @@
 
 [English](README-EN.md) · [API 接口文档](docs/api.md)
 
-Go 语言编写的攻击检测包，覆盖 **32 个检测器**、**5 大攻击类别**、**3 种可插拔存储后端**。统一接口 + 注册表模式，纯检测库，适配任何 Go HTTP 框架。
+Go 语言编写的攻击检测包，覆盖 **36 个检测器**、**6 大攻击类别**、**3 种可插拔存储后端**。统一接口 + 注册表模式，纯检测库，适配任何 Go HTTP 框架。
 
 ## 设计思路
 
@@ -11,7 +11,7 @@ Go 语言编写的攻击检测包，覆盖 **32 个检测器**、**5 大攻击�
 - **零依赖检测** — 所有检测器仅使用 Go 标准库 `regexp`，无外部依赖
 - **统一接口** — 每个检测器实现 `Detector` 接口（`Name()` + `Detect()`），通过 `Engine` 注册表统一管理
 - **预编译正则** — 所有模式在 `var` 初始化时编译，运行时零开销
-- **按需配置** — 注入/协议/数据/文件检测器即插即用；HTTP 校验器需应用自定义配置
+- **按需配置** — 注入/协议/数据/文件检测器即插即用；HTTP 校验器与会话安全检测需应用自定义配置
 
 ### 设计架构
 
@@ -48,14 +48,25 @@ Go 语言编写的攻击检测包，覆盖 **32 个检测器**、**5 大攻击�
           │                                                               │
    ┌──────▼──────────┐                                         ┌──────────▼──────────┐
    │     httpval     │                                         │       storage       │
-   │     (5 个)      │                                         │  ┌──────────────┐   │
+   │     (7 个)      │                                         │  ┌──────────────┐   │
    │                 │                                         │  │   Backend    │   │
    │  method, size,  │                                         │  │   interface  │   │
    │  type, csrf,    │                                         │  └──┬───┬───┬───┘   │
+   │  cookie,nested  │                                         │                    │
    │  ip_blacklist   │◄────── 使用 storage.Backend ──────────►│  Memory File Redis │
    │  (需配置参数)    │                                         │                    │
    └─────────────────┘                                         └────────────────────┘
+
+   ┌─────────────────────────────────────────────────────────────────────┐
+   │  session (2)   outside the Engine registry                          │
+   │                                                                     │
+   │  Tracker (session_guard)  +  Signer (data_tamper)                   │
+   │  Issue / Check / Observe / Guard / Revoke    Sign / Verify          │
+   └─────────────────────────────────────────────────────────────────────┘
 ```
+
+> `session` 包不经过 `Engine` 注册：会话校验必须读到完整的 `*http.Request`（token、客户端 IP、User-Agent），
+> 且需要应用提供存储与密钥，因此直接作为中间件调用，见下文「会话安全配置」。
 
 ### 数据流
 
@@ -111,7 +122,9 @@ HTTP Request
 | **WebSocket 劫持** | Upgrade 头注入、null Origin 绕过、`ws://` URL |
 | **DNS 重绑定** | Host 头内网 IP、localhost、无 TLD 短主机名 |
 
-### HTTP 协议层校验 (5)
+### HTTP 协议层校验 (7)
+| **JSON 嵌套深度** | `json.Decoder` 流式扫描：嵌套层级或元素数超限即判 JSON 炸弹（默认深度 32）；非法或截断 JSON 不告警 |
+| **Cookie 属性校验** | `Set-Cookie` 缺 `Secure`/`HttpOnly`/`SameSite`、值超长或为空；缺失属性合并为一条结果 |
 
 | 检测器 | 说明 |
 |--------|------|
@@ -125,7 +138,7 @@ HTTP Request
 
 | 检测器 | 检测模式 |
 |--------|---------|
-| **PHP 反序列化** | `O:数字:` / `C:数字:` 序列化对象、`unserialize()`、魔术方法（`__wakeup`/`__destruct`） |
+| **反序列化** | `O:数字:` / `C:数字:` 序列化对象、`unserialize()`、魔术方法（`__wakeup`/`__destruct`）；覆盖 PHP / pickle / Java / .NET 四类载荷 |
 | **CSV 注入** | `=cmd\|`、`@SUM(`、`+`/`-` 公式前缀、`HYPERLINK`/`DDE` |
 | **邮件头注入** | Bcc/Cc/From/To 注入、MIME multipart、boundary 参数 |
 | **JWT 攻击** | `alg: none` 绕过、`kid` 路径遍历、空签名检测（结构解码分析） |
@@ -138,6 +151,13 @@ HTTP Request
 | **路径遍历** | `../`、`..\\`、`php://filter`/`php://input`、null 字节、URL 编码绕过、`/etc/passwd` |
 | **恶意上传** | 扩展名白名单（15种）+ PHP 标签 `<?php`/`<?=` 内容扫描 |
 | **数据泄露** | 信用卡号、AWS Access Key、私钥 `-----BEGIN`、数据库连接串、API Token、JWT Secret、GitHub PAT |
+
+### 会话安全 (2)
+
+| 检测器 | 检测模式 |
+|--------|---------|
+| **会话守护** (`session_guard`) | token 与会话建立时的客户端绑定，逐请求比对：User-Agent 或设备指纹变化判定**客户端被劫持**（Critical）；客户端 IP 落到其他网段或国家判定**异地登录**（High/Critical）；`Observe()` 在登录时比对历史网段，出现新网段即告警。会话滑动续期，`Revoke()` 可立即失效；`RecordFailure()` 累计失败次数，窗口内超阈值即锁定 token，`Check()` 报 `token_locked`，`ClearFailures()` 在登录成功时清零 |
+| **数据篡改** (`data_tamper`) | 对请求参数做 HMAC-SHA256 签名（`时间戳.nonce.签名`），识别参数改动、密钥不符、时间戳超差、签名重放（nonce 计数器） |
 
 ### 存储后端 (3)
 
@@ -224,6 +244,56 @@ e.Register(bl)
 // 攻击发生时记录
 blocked, _ := bl.RecordAttack(clientIP)
 ```
+
+### 会话安全配置
+
+`session` 包直接作为中间件使用，不经过 `Engine`。存储需应用自备（默认提供内存实现，可替换为 Redis 等）：
+
+```go
+import "github.com/erikwang2013/security-go/session"
+
+st := session.NewMemoryStore()
+defer st.Close()
+
+tr := session.NewTracker(st)
+tr.CountryOf = geo.Lookup // 可选：接入 GeoIP，用于识别跨国家登录
+
+// 登录成功后绑定会话（token 由你的登录流程生成）
+// 异地登录检测：比对该用户历史登录网段，出现新网段即告警
+if res := tr.Observe("user-1", r); res.Detected {
+    log.Printf("[%s] %s (%v)", res.Name, res.Message, res.Details["reason"])
+}
+if err := tr.Issue(token, r); err != nil {      // 绑定 token → IP 网段 / UA / 设备指纹
+    http.Error(w, "session error", http.StatusInternalServerError)
+    return
+}
+
+// 保护路由：命中劫持或异地登录直接返回 401
+mux.Handle("/api/", tr.Guard(apiHandler))
+
+// 或只做检测、自行决定处置
+if res := tr.Check(r); res.Detected {
+    log.Printf("[%s] %s (%v)", res.Name, res.Message, res.Details["reason"])
+}
+
+// 登出
+tr.Revoke(token)
+```
+
+数据篡改检测：客户端与服务端共享密钥，客户端对参数签名，服务端重算校验：
+
+```go
+signer := session.NewSigner(secret, storage.NewMemory()) // 第二个参数用于拦截签名重放，可为 nil
+
+sig, _ := signer.Sign(map[string]string{"amount": "100", "to": "bob"}) // 客户端：随参数一起提交
+
+if res := signer.Verify(map[string]string{"amount": "100", "to": "bob"}, sig); res.Detected {
+    log.Printf("[%s] %s (%v)", res.Name, res.Message, res.Details["reason"])
+}
+```
+
+> `TrustProxyHeaders` 默认关闭：`X-Forwarded-For` / `X-Real-IP` 由客户端可控，仅在自有反向代理后开启。
+> `FailClosed` 默认关闭（存储故障时放行，与 `IPBlacklist` 一致）；对会话敏感的业务建议开启。
 
 ### 自定义检测器
 
