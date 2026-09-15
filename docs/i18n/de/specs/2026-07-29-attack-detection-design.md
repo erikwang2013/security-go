@@ -19,6 +19,8 @@ security-go/
 ├── session/                 # 会话安全 (2) — 不经过 Engine
 │   ├── store.go             # Store interface + MemoryStore
 │   ├── tracker.go           # Tracker — 客户端被劫持 / 异地登录
+│   ├── lockout.go           # 失败计数、锁定查找与键
+│   ├── bruteforce.go        # 渐进退避 / 撞库检测 / GuardLogin
 │   └── tamper.go            # Signer — 篡改数据
 └── storage/                 # 可插拔存储后端
     ├── storage.go           # Backend interface
@@ -71,7 +73,7 @@ Die vollständigen API-Schnittstellen (`Result`, `Detector`, `Engine`, Storage-B
 | file | path_traversal | `../`, `..\\`, php://filter, null byte |
 | file | upload | Extension whitelist + PHP tag content scan |
 | file | data_leak | Credit card, AWS key, private key, connection string, JWT secret |
-| session | session_guard | token↔Client-Bindung: Änderung von UA/Fingerabdruck (Client-Entführung), Wechsel von IP-Subnetz/Land (Anmeldung von einem anderen Ort), Historie der Anmeldenetze |
+| session | session_guard | token↔Client-Bindung: Änderung von UA/Fingerabdruck (Client-Entführung), Wechsel von IP-Subnetz/Land (Anmeldung von einem anderen Ort), Historie der Anmeldenetze; brute-force lockout with progressive backoff and per-IP credential-stuffing detection |
 | session | data_tamper | HMAC-SHA256 über kanonische Parameter, ±5m Zeitstempel-Fenster, Nonce-Zähler gegen Replay |
 
 ## Nicht-Ziele
@@ -94,9 +96,10 @@ Die Sitzungssicherheit wurde als 6. Kategorie ergänzt; die Designvorgaben entsp
 
 - **`session.Tracker`** (`session_guard`) — `Issue` bindet token → IP-Subnetz / UA / Gerätefingerabdruck; `Check` vergleicht bei jeder Anfrage und schlägt an mit `client_hijack` (Änderung von UA oder Fingerabdruck, Critical) oder `remote_login` (Länderwechsel Critical / Subnetzwechsel High); `Guard` gibt bei Treffer 401 zurück; `Observe` vergleicht bei der Anmeldung die historischen Subnetze des Benutzers; `Revoke` macht die Sitzung sofort ungültig.
 - **`session.Signer`** (`data_tamper`) — HMAC-SHA256-Signatur der Parameter `<Zeitstempel>.<nonce>.<Signatur>`; die Prüfreihenfolge ist Zeitstempel → Signatur → Nonce-Zähler, daher kann eine gefälschte Signatur keine gültige Nonce verbrauchen. Der Replay-Zähler nutzt `storage.Backend` erneut.
+- **Brute-Force-Schutz** — `RecordFailure(identity, r)` zählt Anmeldefehler und sperrt bei Erreichen der Schwelle, wobei sich jede Sperre bis `MaxLockout` (Standard 24 h) verdoppelt; `CheckLogin` zählt zusätzlich die verschiedenen Identitäten je Client-IP und meldet `credential_stuffing` bei `StuffingLimit` (Standard 10); `GuardLogin` ist die Middleware des Authentifizierungs-Endpunkts und antwortet mit 429 plus `Retry-After`. Der progressive Backoff verhindert, dass das Sperren eines beliebigen Kontos selbst zum DoS-Vektor wird.
 - **Speicher** — Die Sitzungsstruktur lässt sich nicht mit dem nur zählenden/sperrenden `storage.Backend` ausdrücken, daher wurden `session.Store` (`Save` / `Load` / `Delete`) + `MemoryStore` ergänzt; `storage.Backend` und seine drei Implementierungen bleiben unverändert.
 - **Keine Registrierung in der `Engine`** — `Detector.Detect(input string)` erreicht token / Client-IP / UA nicht, daher nimmt `Tracker` direkt `*http.Request` entgegen; `all.RegisterAll` registriert weiterhin nur die zero-config-Detektoren.
-- **Tests** — 3 Testdateien im Paket `session` (store / tracker / tamper), `go test ./... -race` erfolgreich.
+- **Tests** — 5 Testdateien im Paket `session` (store / tracker / tamper / lockout / bruteforce), `go test ./... -race` erfolgreich.
 
 ---
 

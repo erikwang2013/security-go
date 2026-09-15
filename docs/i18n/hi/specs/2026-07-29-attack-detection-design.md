@@ -19,6 +19,8 @@ security-go/
 ├── session/                 # 会话安全 (2) — 不经过 Engine
 │   ├── store.go             # Store interface + MemoryStore
 │   ├── tracker.go           # Tracker — 客户端被劫持 / 异地登录
+│   ├── lockout.go           # 失败计数、锁定查找与键
+│   ├── bruteforce.go        # 渐进退避 / 撞库检测 / GuardLogin
 │   └── tamper.go            # Signer — 篡改数据
 └── storage/                 # 可插拔存储后端
     ├── storage.go           # Backend interface
@@ -71,7 +73,7 @@ security-go/
 | file | path_traversal | `../`, `..\\`, php://filter, null byte |
 | file | upload | Extension whitelist + PHP tag content scan |
 | file | data_leak | Credit card, AWS key, private key, connection string, JWT secret |
-| session | session_guard | token↔client binding: UA/fingerprint change (client hijack), IP subnet/country change (remote login), login-network history |
+| session | session_guard | token↔client binding: UA/fingerprint change (client hijack), IP subnet/country change (remote login), login-network history; brute-force lockout with progressive backoff and per-IP credential-stuffing detection |
 | session | data_tamper | HMAC-SHA256 over canonical params, ±5m timestamp window, nonce replay counter |
 
 ## गैर-लक्ष्य (Non-Goals)
@@ -94,9 +96,10 @@ security-go/
 
 - **`session.Tracker`** (`session_guard`) — `Issue` token → IP सबनेट / UA / डिवाइस फ़िंगरप्रिंट बाइंड करता है; `Check` प्रत्येक अनुरोध पर तुलना करके `client_hijack` (UA या फ़िंगरप्रिंट बदलाव, Critical) या `remote_login` (देश बदलाव Critical / सबनेट बदलाव High) पर मेल खाता है; `Guard` मेल खाते ही 401 लौटाता है; `Observe` लॉगिन के समय उस उपयोगकर्ता के ऐतिहासिक सबनेट की तुलना करता है; `Revoke` तुरंत अमान्य कर देता है।
 - **`session.Signer`** (`data_tamper`) — पैरामीटर का HMAC-SHA256 सिग्नेचर `<टाइमस्टैम्प>.<nonce>.<सिग्नेचर>`, सत्यापन क्रम टाइमस्टैम्प → सिग्नेचर → nonce काउंटर है, इसलिए नकली सिग्नेचर वैध nonce खर्च नहीं कर सकता। रीप्ले काउंटिंग `storage.Backend` का पुनः उपयोग करती है।
+- **ब्रूट-फ़ोर्स सुरक्षा** — `RecordFailure(identity, r)` लॉगिन विफलताएँ गिनता है और सीमा पर लॉक करता है, हर बार दोगुना होकर `MaxLockout` (डिफ़ॉल्ट 24 घंटे) तक; `CheckLogin` इसके अतिरिक्त प्रति क्लाइंट IP भिन्न पहचानों की गिनती करता है और `StuffingLimit` (डिफ़ॉल्ट 10) पर `credential_stuffing` रिपोर्ट करता है; `GuardLogin` प्रमाणीकरण एंडपॉइंट का मिडलवेयर है और `Retry-After` सहित 429 देता है। क्रमिक विलंब इसलिए है कि किसी भी खाते को लॉक करना स्वयं DoS का ज़रिया न बने।
 - **स्टोरेज** — सत्र संरचना को केवल काउंटिंग/ब्लॉकिंग समर्थित `storage.Backend` से व्यक्त नहीं किया जा सकता, इसलिए `session.Store` (`Save` / `Load` / `Delete`) + `MemoryStore` जोड़े गए; `storage.Backend` और उसके तीनों कार्यान्वयन अपरिवर्तित हैं।
 - **`Engine` में पंजीकृत नहीं** — `Detector.Detect(input string)` को token / क्लाइंट IP / UA नहीं मिलते, इसलिए `Tracker` सीधे `*http.Request` प्राप्त करता है; `all.RegisterAll` केवल शून्य-कॉन्फ़िगरेशन डिटेक्टर पंजीकृत करता रहता है।
-- **टेस्ट** — `session` पैकेज में 3 टेस्ट फ़ाइलें (store / tracker / tamper), `go test ./... -race` पास।
+- **टेस्ट** — `session` पैकेज में 5 टेस्ट फ़ाइलें (store / tracker / tamper / lockout / bruteforce), `go test ./... -race` पास।
 
 ---
 

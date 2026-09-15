@@ -19,6 +19,8 @@ security-go/
 ├── session/                 # 会话安全 (2) — 不经过 Engine
 │   ├── store.go             # Store interface + MemoryStore
 │   ├── tracker.go           # Tracker — 客户端被劫持 / 异地登录
+│   ├── lockout.go           # 失败计数、锁定查找与键
+│   ├── bruteforce.go        # 渐进退避 / 撞库检测 / GuardLogin
 │   └── tamper.go            # Signer — 篡改数据
 └── storage/                 # 可插拔存储后端
     ├── storage.go           # Backend interface
@@ -71,7 +73,7 @@ security-go/
 | file | path_traversal | `../`, `..\\`, php://filter, null বাইট |
 | file | upload | এক্সটেনশন হোয়াইটলিস্ট + PHP ট্যাগ কনটেন্ট স্ক্যান |
 | file | data_leak | ক্রেডিট কার্ড, AWS কী, প্রাইভেট কী, কানেকশন স্ট্রিং, JWT সিক্রেট |
-| session | session_guard | টোকেন ↔ ক্লায়েন্ট বাইন্ডিং: UA/ফিঙ্গারপ্রিন্ট পরিবর্তন (ক্লায়েন্ট হাইজ্যাক), IP সাবনেট/দেশ পরিবর্তন (দূরবর্তী লগইন), লগইন-নেটওয়ার্ক ইতিহাস |
+| session | session_guard | টোকেন ↔ ক্লায়েন্ট বাইন্ডিং: UA/ফিঙ্গারপ্রিন্ট পরিবর্তন (ক্লায়েন্ট হাইজ্যাক), IP সাবনেট/দেশ পরিবর্তন (দূরবর্তী লগইন), লগইন-নেটওয়ার্ক ইতিহাস; brute-force lockout with progressive backoff and per-IP credential-stuffing detection |
 | session | data_tamper | ক্যানোনিকাল প্যারামিটারে HMAC-SHA256, ±5m টাইমস্ট্যাম্প উইন্ডো, nonce রিপ্লে কাউন্টার |
 
 ## অ-লক্ষ্য
@@ -94,9 +96,10 @@ security-go/
 
 - **`session.Tracker`** (`session_guard`) — `Issue` টোকেন → IP সাবনেট / UA / ডিভাইস ফিঙ্গারপ্রিন্ট বাইন্ড করে; `Check` প্রতি রিকোয়েস্টে মেলায়, ফলে `client_hijack` (UA বা ফিঙ্গারপ্রিন্ট পরিবর্তন, Critical) বা `remote_login` (দেশ পরিবর্তন Critical / সাবনেট পরিবর্তন High) ধরা পড়ে; `Guard` সনাক্ত হলে 401 দেয়; `Observe` লগইনের সময় ব্যবহারকারীর পূর্ববর্তী নেটওয়ার্কগুলো মেলায়; `Revoke` অবিলম্বে বাতিল করে।
 - **`session.Signer`** (`data_tamper`) — প্যারামিটারে HMAC-SHA256 সিগনেচার `<টাইমস্ট্যাম্প>.<nonce>.<সিগনেচার>`, যাচাইয়ের ক্রম টাইমস্ট্যাম্প → সিগনেচার → nonce কাউন্টার, তাই জাল সিগনেচার বৈধ nonce খরচ করতে পারে না। রিপ্লে কাউন্টার `storage.Backend` পুনর্ব্যবহার করে।
+- **ব্রুট-ফোর্স সুরক্ষা** — `RecordFailure(identity, r)` লগইন ব্যর্থতা গণনা করে ও সীমায় লক করে, প্রতিবার দ্বিগুণ হয়ে `MaxLockout` (ডিফল্ট ২৪ ঘণ্টা) পর্যন্ত; `CheckLogin` অতিরিক্তভাবে প্রতি ক্লায়েন্ট IP-এর ব্যর্থ হওয়া ভিন্ন আইডেন্টিটি গণনা করে এবং `StuffingLimit` (ডিফল্ট ১০)-এ `credential_stuffing` রিপোর্ট করে; `GuardLogin` প্রমাণীকরণ এন্ডপয়েন্টের মিডলওয়্যার, `Retry-After` সহ 429 দেয়। ক্রমবর্ধমান বিলম্বের উদ্দেশ্য — যেকোনো অ্যাকাউন্ট লক করে DoS করা যেন সম্ভব না হয়।
 - **স্টোরেজ** — শুধু কাউন্ট/ব্লক সাপোর্ট করে এমন `storage.Backend` দিয়ে সেশন স্ট্রাকচার প্রকাশ করা যায় না, তাই `session.Store` (`Save` / `Load` / `Delete`) + `MemoryStore` যোগ করা হয়েছে; `storage.Backend` এবং তার তিনটি ইমপ্লিমেন্টেশন অপরিবর্তিত।
 - **`Engine`-এ রেজিস্টার হয় না** — `Detector.Detect(input string)` টোকেন / ক্লায়েন্ট IP / UA পায় না, তাই `Tracker` সরাসরি `*http.Request` গ্রহণ করে; `all.RegisterAll` শুধু জিরো-কনফিগ ডিটেক্টর রেজিস্টার করে।
-- **টেস্ট** — `session` প্যাকেজে 3টি টেস্ট ফাইল (store / tracker / tamper), `go test ./... -race` পাস করে।
+- **টেস্ট** — `session` প্যাকেজে 5টি টেস্ট ফাইল (store / tracker / tamper / lockout / bruteforce), `go test ./... -race` পাস করে।
 
 ---
 

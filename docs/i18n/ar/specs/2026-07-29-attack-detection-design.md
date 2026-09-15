@@ -19,6 +19,8 @@ security-go/
 ├── session/                 # 会话安全 (2) — 不经过 Engine
 │   ├── store.go             # Store interface + MemoryStore
 │   ├── tracker.go           # Tracker — 客户端被劫持 / 异地登录
+│   ├── lockout.go           # 失败计数、锁定查找与键
+│   ├── bruteforce.go        # 渐进退避 / 撞库检测 / GuardLogin
 │   └── tamper.go            # Signer — 篡改数据
 └── storage/                 # 可插拔存储后端
     ├── storage.go           # Backend interface
@@ -71,7 +73,7 @@ security-go/
 | file | path_traversal | `../`, `..\\`, php://filter, null byte |
 | file | upload | Extension whitelist + PHP tag content scan |
 | file | data_leak | Credit card, AWS key, private key, connection string, JWT secret |
-| session | session_guard | ربط الـ token بالعميل: تغيّر UA/بصمة الجهاز (اختطاف العميل)، تغيّر نطاق IP/البلد (تسجيل الدخول من موقع بعيد)، سجل شبكات تسجيل الدخول |
+| session | session_guard | ربط الـ token بالعميل: تغيّر UA/بصمة الجهاز (اختطاف العميل)، تغيّر نطاق IP/البلد (تسجيل الدخول من موقع بعيد)، سجل شبكات تسجيل الدخول; brute-force lockout with progressive backoff and per-IP credential-stuffing detection |
 | session | data_tamper | HMAC-SHA256 على معاملات مُنظَّمة، نافذة زمنية ±5m، عدّاد nonce لإعادة الإرسال |
 
 ## خارج نطاق الأهداف
@@ -94,9 +96,10 @@ security-go/
 
 - **`session.Tracker`** (`session_guard`) — يربط `Issue` الـ token بـ نطاق IP / UA / بصمة الجهاز؛ ويقارن `Check` مع كل طلب، فيُصيب `client_hijack` (تغيّر UA أو البصمة، Critical) أو `remote_login` (اختلاف البلد Critical / اختلاف النطاق High)؛ و`Guard` يُرجع 401 عند الإصابة؛ ويقارن `Observe` عند تسجيل الدخول النطاقات السابقة للمستخدم؛ و`Revoke` يُبطل الجلسة فورًا.
 - **`session.Signer`** (`data_tamper`) — توقيع HMAC-SHA256 لمعاملات `<الطابع الزمني>.<nonce>.<التوقيع>`، وترتيب التحقق هو الطابع الزمني ← التوقيع ← عدّاد nonce، لذلك لا يمكن لتوقيع مزوّر أن يستهلك nonce صالحًا. يعيد عدّاد إعادة الإرسال استخدام `storage.Backend`.
+- **الحماية من القوة الغاشمة** — يحصي `RecordFailure(identity, r)` حالات فشل الدخول ويقفل عند بلوغ الحد، ويتضاعف كل قفل حتى `MaxLockout` (افتراضيًا 24 ساعة)؛ ويحصي `CheckLogin` إضافةً الهويات المختلفة لكل عنوان IP ويُبلّغ `credential_stuffing` عند `StuffingLimit` (افتراضيًا 10)؛ و`GuardLogin` وسيط نقطة المصادقة ويعيد 429 مع `Retry-After`. الغرض من التأخير التدريجي ألا يصبح قفل أي حساب وسيلة DoS.
 - **التخزين** — لا يمكن التعبير عن بنية الجلسة بـ `storage.Backend` الذي يدعم العدّ/الحظر فقط، لذا أُضيفت `session.Store` (`Save` / `Load` / `Delete`) + `MemoryStore`؛ ولم يُعدَّل `storage.Backend` ولا تنفيذاته الثلاثة.
 - **لا تُسجَّل في `Engine`** — لا يمكن لـ `Detector.Detect(input string)` الوصول إلى token / عنوان IP للعميل / UA، لذلك يستقبل `Tracker` قيمة `*http.Request` مباشرة؛ ويبقى `all.RegisterAll` يسجّل الكاشفات صفرية التكوين فقط.
-- **الاختبارات** — حزمة `session` بها 3 ملفات اختبار (store / tracker / tamper)، و`go test ./... -race` ينجح.
+- **الاختبارات** — حزمة `session` بها 5 ملفات اختبار (store / tracker / tamper / lockout / bruteforce)، و`go test ./... -race` ينجح.
 
 ---
 

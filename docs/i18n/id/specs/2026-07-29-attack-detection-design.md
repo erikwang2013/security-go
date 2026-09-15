@@ -19,6 +19,8 @@ security-go/
 ├── session/                 # 会话安全 (2) — 不经过 Engine
 │   ├── store.go             # Store interface + MemoryStore
 │   ├── tracker.go           # Tracker — 客户端被劫持 / 异地登录
+│   ├── lockout.go           # 失败计数、锁定查找与键
+│   ├── bruteforce.go        # 渐进退避 / 撞库检测 / GuardLogin
 │   └── tamper.go            # Signer — 篡改数据
 └── storage/                 # 可插拔存储后端
     ├── storage.go           # Backend interface
@@ -71,7 +73,7 @@ Antarmuka API lengkap (`Result`, `Detector`, `Engine`, backend penyimpanan `Back
 | file | path_traversal | `../`, `..\\`, php://filter, null byte |
 | file | upload | Extension whitelist + PHP tag content scan |
 | file | data_leak | Credit card, AWS key, private key, connection string, JWT secret |
-| session | session_guard | token↔client binding: UA/fingerprint change (client hijack), IP subnet/country change (remote login), login-network history |
+| session | session_guard | token↔client binding: UA/fingerprint change (client hijack), IP subnet/country change (remote login), login-network history; brute-force lockout with progressive backoff and per-IP credential-stuffing detection |
 | session | data_tamper | HMAC-SHA256 over canonical params, ±5m timestamp window, nonce replay counter |
 
 ## Non-Goals
@@ -94,9 +96,10 @@ Keamanan sesi ditambahkan sebagai kategori ke-6, dengan batasan desain yang sama
 
 - **`session.Tracker`** (`session_guard`) — `Issue` mengikat token → subnet IP / UA / sidik jari perangkat; `Check` membandingkan setiap permintaan, memicu `client_hijack` (perubahan UA atau sidik jari, Critical) atau `remote_login` (lintas negara Critical / lintas subnet High); `Guard` langsung mengembalikan 401 saat terdeteksi; `Observe` saat login membandingkan subnet historis pengguna tersebut; `Revoke` langsung membatalkan.
 - **`session.Signer`** (`data_tamper`) — Tanda tangan HMAC-SHA256 pada parameter `<timestamp>.<nonce>.<signature>`, urutan verifikasi adalah timestamp → tanda tangan → penghitung nonce, sehingga tanda tangan palsu tidak dapat menghabiskan nonce yang sah. Penghitung replay menggunakan kembali `storage.Backend`.
+- **Perlindungan brute force** — `RecordFailure(identity, r)` menghitung kegagalan login dan mengunci pada ambang, berlipat dua tiap kali hingga `MaxLockout` (bawaan 24 jam); `CheckLogin` juga menghitung identitas berbeda per IP klien dan melaporkan `credential_stuffing` pada `StuffingLimit` (bawaan 10); `GuardLogin` adalah middleware endpoint autentikasi, menjawab 429 dengan `Retry-After`. Backoff progresif ada agar mengunci akun sembarang tidak menjadi vektor DoS.
 - **Penyimpanan** — Struktur sesi tidak dapat diekspresikan dengan `storage.Backend` yang hanya mendukung penghitung/blokir, sehingga ditambahkan `session.Store` (`Save` / `Load` / `Delete`) + `MemoryStore`; `storage.Backend` dan ketiga implementasinya tidak diubah.
 - **Tidak didaftarkan ke `Engine`** — `Detector.Detect(input string)` tidak dapat mengakses token / IP klien / UA, sehingga `Tracker` menerima `*http.Request` secara langsung; `all.RegisterAll` tetap hanya mendaftarkan detektor tanpa konfigurasi.
-- **Pengujian** — Paket `session` memiliki 3 file pengujian (store / tracker / tamper), `go test ./... -race` lulus.
+- **Pengujian** — Paket `session` memiliki 5 file pengujian (store / tracker / tamper / lockout / bruteforce), `go test ./... -race` lulus.
 
 ---
 

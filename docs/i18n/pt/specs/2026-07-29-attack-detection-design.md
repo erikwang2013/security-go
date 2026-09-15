@@ -19,6 +19,8 @@ security-go/
 ├── session/                 # Segurança de sessão (2) — não passa pelo Engine
 │   ├── store.go             # Interface Store + MemoryStore
 │   ├── tracker.go           # Tracker — sequestro do cliente / login remoto
+│   ├── lockout.go           # Contador de falhas, bloqueio, chaves
+│   ├── bruteforce.go        # Backoff progressivo / stuffing / GuardLogin
 │   └── tamper.go            # Signer — adulteração de dados
 └── storage/                 # Backends de armazenamento plugáveis
     ├── storage.go           # Backend interface
@@ -71,7 +73,7 @@ As APIs completas (`Result`, `Detector`, `Engine`, backend de armazenamento `Bac
 | file | path_traversal | `../`, `..\\`, php://filter, null byte |
 | file | upload | Extension whitelist + PHP tag content scan |
 | file | data_leak | Credit card, AWS key, private key, connection string, JWT secret |
-| session | session_guard | token↔client binding: UA/fingerprint change (client hijack), IP subnet/country change (remote login), login-network history |
+| session | session_guard | token↔client binding: UA/fingerprint change (client hijack), IP subnet/country change (remote login), login-network history; brute-force lockout with progressive backoff and per-IP credential-stuffing detection |
 | session | data_tamper | HMAC-SHA256 over canonical params, ±5m timestamp window, nonce replay counter |
 
 ## Non-Goals
@@ -94,9 +96,10 @@ A segurança de sessão foi adicionada como a 6ª categoria, com as mesmas restr
 
 - **`session.Tracker`** (`session_guard`) — `Issue` vincula token → sub-rede IP / UA / impressão digital; `Check` compara a cada requisição e detecta `client_hijack` (mudança de UA ou impressão digital, Critical) ou `remote_login` (entre países Critical / entre sub-redes High); `Guard` retorna 401 ao detectar; `Observe` compara com as faixas de rede históricas do usuário no login; `Revoke` invalida imediatamente.
 - **`session.Signer`** (`data_tamper`) — assinatura HMAC-SHA256 dos parâmetros `<timestamp>.<nonce>.<assinatura>`, com ordem de validação timestamp → assinatura → contagem de nonce, portanto uma assinatura forjada não consome um nonce legítimo. A contagem de reenvio reutiliza `storage.Backend`.
+- **Proteção contra força bruta** — `RecordFailure(identity, r)` conta falhas de login e bloqueia no limite, dobrando a cada vez até `MaxLockout` (padrão 24 h); `CheckLogin` também conta as identidades distintas por IP de cliente e reporta `credential_stuffing` em `StuffingLimit` (padrão 10); `GuardLogin` é o middleware do endpoint de autenticação, respondendo 429 com `Retry-After`. O backoff progressivo existe para que bloquear uma conta arbitrária não se torne ele próprio um vetor de DoS.
 - **Armazenamento** — a estrutura de sessão não pode ser expressa com o `storage.Backend`, que só suporta contagem/bloqueio, por isso foram adicionados `session.Store` (`Save` / `Load` / `Delete`) + `MemoryStore`; `storage.Backend` e suas três implementações não foram alterados.
 - **Não registrado no `Engine`** — `Detector.Detect(input string)` não obtém token / IP do cliente / UA, então `Tracker` recebe `*http.Request` diretamente; `all.RegisterAll` continua registrando apenas detectores zero-configuração.
-- **Testes** — 3 arquivos de teste no pacote `session` (store / tracker / tamper), `go test ./... -race` passando.
+- **Testes** — 5 arquivos de teste no pacote `session` (store / tracker / tamper / lockout / bruteforce), `go test ./... -race` passando.
 
 ---
 

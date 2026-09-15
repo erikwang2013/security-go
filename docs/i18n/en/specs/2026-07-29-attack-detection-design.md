@@ -19,6 +19,8 @@ security-go/
 ├── session/                 # 会话安全 (2) — 不经过 Engine
 │   ├── store.go             # Store interface + MemoryStore
 │   ├── tracker.go           # Tracker — 客户端被劫持 / 异地登录
+│   ├── lockout.go           # Failure counter, lock lookup, keys
+│   ├── bruteforce.go        # Progressive backoff / stuffing / GuardLogin
 │   └── tamper.go            # Signer — 篡改数据
 └── storage/                 # 可插拔存储后端
     ├── storage.go           # Backend interface
@@ -71,7 +73,7 @@ The full API reference (`Result`, `Detector`, `Engine`, storage `Backend`, HTTP 
 | file | path_traversal | `../`, `..\\`, php://filter, null byte |
 | file | upload | Extension whitelist + PHP tag content scan |
 | file | data_leak | Credit card, AWS key, private key, connection string, JWT secret |
-| session | session_guard | token↔client binding: UA/fingerprint change (client hijack), IP subnet/country change (remote login), login-network history |
+| session | session_guard | token↔client binding: UA/fingerprint change (client hijack), IP subnet/country change (remote login), login-network history; brute-force lockout with progressive backoff and per-IP credential-stuffing detection |
 | session | data_tamper | HMAC-SHA256 over canonical params, ±5m timestamp window, nonce replay counter |
 
 ## Non-Goals
@@ -94,9 +96,10 @@ Session security was added as a 6th category, under the same design constraints:
 
 - **`session.Tracker`** (`session_guard`) — `Issue` binds a token to the IP subnet / User-Agent / device fingerprint; `Check` compares on every request and fires `client_hijack` (UA or fingerprint changed, Critical) or `remote_login` (country changed Critical / subnet changed High); `Guard` answers 401 on any detection; `Observe` compares the login network against the user's history; `Revoke` ends a session immediately.
 - **`session.Signer`** (`data_tamper`) — HMAC-SHA256 over parameters, `<timestamp>.<nonce>.<mac>`. Verification runs timestamp → signature → nonce counter, so a forged signature cannot burn a legitimate nonce. Replay counting reuses `storage.Backend`.
+- **Brute-force protection** — `RecordFailure(identity, r)` counts login failures and locks at the threshold, doubling each episode up to `MaxLockout` (default 24h); `CheckLogin` additionally counts the distinct identities per client IP and reports `credential_stuffing` at `StuffingLimit` (default 10); `GuardLogin` is the authentication-endpoint middleware, answering 429 with `Retry-After`. Progressive backoff exists so that locking an arbitrary account cannot itself become a DoS vector.
 - **Storage** — a session binding cannot be expressed by `storage.Backend`, which only counts and bans, so `session.Store` (`Save` / `Load` / `Delete`) plus `MemoryStore` were added; `storage.Backend` and its three implementations are unchanged.
 - **Not registered with the `Engine`** — `Detector.Detect(input string)` cannot see the token, client IP or User-Agent, so `Tracker` takes the `*http.Request` directly; `all.RegisterAll` still registers only zero-config detectors.
-- **Tests** — 3 test files in `session` (store / tracker / tamper); `go test ./... -race` passes.
+- **Tests** — 5 test files in `session` (store / tracker / tamper / lockout / bruteforce); `go test ./... -race` passes.
 
 ---
 

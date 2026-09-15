@@ -19,6 +19,8 @@ security-go/
 ├── session/                 # 会话安全 (2) — 不经过 Engine
 │   ├── store.go             # Store interface + MemoryStore
 │   ├── tracker.go           # Tracker — 客户端被劫持 / 异地登录
+│   ├── lockout.go           # 失败计数、锁定查找与键
+│   ├── bruteforce.go        # 渐进退避 / 撞库检测 / GuardLogin
 │   └── tamper.go            # Signer — 篡改数据
 └── storage/                 # 可插拔存储后端
     ├── storage.go           # Backend interface
@@ -71,7 +73,7 @@ security-go/
 | file | path_traversal | `../`, `..\\`, php://filter, null byte |
 | file | upload | Extension whitelist + PHP tag content scan |
 | file | data_leak | Credit card, AWS key, private key, connection string, JWT secret |
-| session | session_guard | token↔client binding: UA/fingerprint change (client hijack), IP subnet/country change (remote login), login-network history |
+| session | session_guard | token↔client binding: UA/fingerprint change (client hijack), IP subnet/country change (remote login), login-network history; brute-force lockout with progressive backoff and per-IP credential-stuffing detection |
 | session | data_tamper | HMAC-SHA256 over canonical params, ±5m timestamp window, nonce replay counter |
 
 ## Non-Goals
@@ -94,9 +96,10 @@ security-go/
 
 - **`session.Tracker`** (`session_guard`) — `Issue` 绑定 token → IP 网段 / UA / 设备指纹；`Check` 逐请求比对，命中 `client_hijack`（UA 或指纹变化，Critical）或 `remote_login`（跨国家 Critical / 跨网段 High）；`Guard` 命中即 401；`Observe` 在登录时比对该用户历史网段；`Revoke` 立即失效。
 - **`session.Signer`** (`data_tamper`) — 参数 HMAC-SHA256 签名 `<时间戳>.<nonce>.<签名>`，校验顺序为时间戳 → 签名 → nonce 计数，因此伪造签名无法消耗合法 nonce。重放计数复用 `storage.Backend`。
+- **暴力破解防护** — `RecordFailure(identity, r)` 记录登录失败，跨阈值即锁定，每次翻倍至 `MaxLockout`（默认 24h）；`CheckLogin` 另按客户端 IP 统计失败过的不同身份，达 `StuffingLimit`（默认 10）报 `credential_stuffing`；`GuardLogin` 为登录端点中间件，命中返回 429 + `Retry-After`。渐进退避是为了不让「锁死任意账号」本身成为 DoS 手段。
 - **存储** — 会话结构无法用只支持计数/封禁的 `storage.Backend` 表达，故新增 `session.Store`（`Save` / `Load` / `Delete`）+ `MemoryStore`；`storage.Backend` 与其三个实现均未改动。
 - **不注册进 `Engine`** — `Detector.Detect(input string)` 取不到 token / 客户端 IP / UA，故 `Tracker` 直接接收 `*http.Request`；`all.RegisterAll` 保持只注册零配置检测器。
-- **测试** — `session` 包 3 个测试文件（store / tracker / tamper），`go test ./... -race` 通过。
+- **测试** — `session` 包 5 个测试文件（store / tracker / tamper / lockout / bruteforce），`go test ./... -race` 通过。
 
 ---
 

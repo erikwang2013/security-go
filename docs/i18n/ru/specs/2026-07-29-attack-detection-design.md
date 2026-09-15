@@ -19,6 +19,8 @@ security-go/
 ├── session/                 # 会话安全 (2) — 不经过 Engine
 │   ├── store.go             # Store interface + MemoryStore
 │   ├── tracker.go           # Tracker — 客户端被劫持 / 异地登录
+│   ├── lockout.go           # 失败计数、锁定查找与键
+│   ├── bruteforce.go        # 渐进退避 / 撞库检测 / GuardLogin
 │   └── tamper.go            # Signer — 篡改数据
 └── storage/                 # 可插拔存储后端
     ├── storage.go           # Backend interface
@@ -72,7 +74,7 @@ security-go/
 | file | path_traversal | `../`, `..\\`, php://filter, null byte |
 | file | upload | Extension whitelist + PHP tag content scan |
 | file | data_leak | Credit card, AWS key, private key, connection string, JWT secret |
-| session | session_guard | token↔client binding: UA/fingerprint change (client hijack), IP subnet/country change (remote login), login-network history |
+| session | session_guard | token↔client binding: UA/fingerprint change (client hijack), IP subnet/country change (remote login), login-network history; brute-force lockout with progressive backoff and per-IP credential-stuffing detection |
 | session | data_tamper | HMAC-SHA256 over canonical params, ±5m timestamp window, nonce replay counter |
 
 ## Вне рамок проекта
@@ -95,9 +97,10 @@ security-go/
 
 - **`session.Tracker`** (`session_guard`) — `Issue` привязывает token → подсеть IP / UA / отпечаток устройства; `Check` сравнивает при каждом запросе, срабатывая на `client_hijack` (изменение UA или отпечатка, Critical) или `remote_login` (смена страны Critical / выход за пределы подсети High); `Guard` возвращает 401 при срабатывании; `Observe` при входе сравнивает исторические подсети пользователя; `Revoke` немедленно аннулирует сессию.
 - **`session.Signer`** (`data_tamper`) — HMAC-SHA256-подпись параметров `<timestamp>.<nonce>.<signature>`, порядок проверки — временная метка → подпись → счётчик nonce, поэтому подделанная подпись не может израсходовать легитимный nonce. Счётчик повторов переиспользует `storage.Backend`.
+- **Защита от перебора** — `RecordFailure(identity, r)` считает неудачные входы и блокирует при достижении порога, каждая блокировка удваивается до `MaxLockout` (по умолчанию 24 ч); `CheckLogin` дополнительно считает разные идентификаторы по IP клиента и сообщает `credential_stuffing` при `StuffingLimit` (по умолчанию 10); `GuardLogin` — middleware точки аутентификации, отвечает 429 с `Retry-After`. Прогрессивная задержка нужна, чтобы блокировка произвольной учётной записи не стала сама по себе вектором DoS.
 - **Хранилище** — структуру сессии нельзя выразить через `storage.Backend`, поддерживающий только счётчики/блокировки, поэтому добавлен `session.Store` (`Save` / `Load` / `Delete`) + `MemoryStore`; `storage.Backend` и три его реализации не изменялись.
 - **Не регистрируется в `Engine`** — `Detector.Detect(input string)` не получает token / IP-адрес клиента / UA, поэтому `Tracker` принимает `*http.Request` напрямую; `all.RegisterAll` по-прежнему регистрирует только детекторы с нулевой конфигурацией.
-- **Тесты** — в пакете `session` 3 файла тестов (store / tracker / tamper), `go test ./... -race` проходит.
+- **Тесты** — в пакете `session` 5 файла тестов (store / tracker / tamper / lockout / bruteforce), `go test ./... -race` проходит.
 
 ---
 

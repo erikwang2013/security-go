@@ -19,6 +19,8 @@ security-go/
 ├── session/                 # 会话安全 (2) — 不经过 Engine
 │   ├── store.go             # Store interface + MemoryStore
 │   ├── tracker.go           # Tracker — 客户端被劫持 / 异地登录
+│   ├── lockout.go           # 失败计数、锁定查找与键
+│   ├── bruteforce.go        # 渐进退避 / 撞库检测 / GuardLogin
 │   └── tamper.go            # Signer — 篡改数据
 └── storage/                 # 可插拔存储后端
     ├── storage.go           # Backend interface
@@ -71,7 +73,7 @@ security-go/
 | file | path_traversal | `../`, `..\\`, php://filter, null byte |
 | file | upload | Extension whitelist + PHP tag content scan |
 | file | data_leak | Credit card, AWS key, private key, connection string, JWT secret |
-| session | session_guard | token↔client binding: UA/fingerprint change (client hijack), IP subnet/country change (remote login), login-network history |
+| session | session_guard | token↔client binding: UA/fingerprint change (client hijack), IP subnet/country change (remote login), login-network history; brute-force lockout with progressive backoff and per-IP credential-stuffing detection |
 | session | data_tamper | HMAC-SHA256 over canonical params, ±5m timestamp window, nonce replay counter |
 
 ## 対象外 (Non-Goals)
@@ -94,9 +96,10 @@ security-go/
 
 - **`session.Tracker`** (`session_guard`) — `Issue` が token → IP サブネット / UA / デバイスフィンガープリントをバインド；`Check` がリクエストごとに比較し、`client_hijack`（UA またはフィンガープリントの変化、Critical）または `remote_login`（クロスカントリー Critical / 別サブネット High）を検出；`Guard` は検出時に 401 を返す；`Observe` はログイン時にそのユーザーの過去のサブネットと比較；`Revoke` で即座に無効化。
 - **`session.Signer`** (`data_tamper`) — パラメータに HMAC-SHA256 署名 `<タイムスタンプ>.<nonce>.<署名>` を行い、検証順序はタイムスタンプ → 署名 → nonce カウンターであるため、偽造署名が正当な nonce を消費することはできません。リプレイカウンターは `storage.Backend` を再利用。
+- **ブルートフォース対策** — `RecordFailure(identity, r)` がログイン失敗を計上し、しきい値でロック、以降 1 回ごとに倍増して `MaxLockout`（既定 24 時間）まで。`CheckLogin` はさらにクライアント IP ごとに失敗した異なる識別子を数え、`StuffingLimit`（既定 10）で `credential_stuffing` を報告。`GuardLogin` は認証エンドポイント用ミドルウェアで、429 と `Retry-After` を返します。漸進的バックオフは、任意のアカウントをロックすること自体が DoS 手段にならないようにするためです。
 - **ストレージ** — セッション構造はカウント/ブロックのみをサポートする `storage.Backend` では表現できないため、`session.Store`（`Save` / `Load` / `Delete`）+ `MemoryStore` を追加；`storage.Backend` とその 3 つの実装は変更なし。
 - **`Engine` には登録しない** — `Detector.Detect(input string)` では token / クライアント IP / UA を取得できないため、`Tracker` は `*http.Request` を直接受け取ります；`all.RegisterAll` はゼロ設定検出器のみを登録する動作を維持。
-- **テスト** — `session` パッケージには 3 つのテストファイル（store / tracker / tamper）、`go test ./... -race` 通過。
+- **テスト** — `session` パッケージには 5 つのテストファイル（store / tracker / tamper / lockout / bruteforce）、`go test ./... -race` 通過。
 
 ---
 
