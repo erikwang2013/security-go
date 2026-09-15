@@ -14,7 +14,8 @@ import (
 // RegisterAll registers all built-in detectors that do not require
 // external configuration (injection, protocol, data, file).
 // HTTP validation detectors (httpval) must be registered individually
-// as they require application-specific settings.
+// as they require application-specific settings, and session tracking
+// (session) works on *http.Request rather than a detector input.
 func RegisterAll(e *security.Engine) {
 	e.Register(&injection.XSS{})
 	e.Register(&injection.SQL{})
