@@ -165,6 +165,9 @@ type Tracker struct {
     TokenSource       func(*http.Request) string // 默认 DefaultTokenSource
     TrustProxyHeaders bool                       // 默认 false
     FailClosed        bool                       // 默认 false
+    MaxLockout        time.Duration              // 每次锁定翻倍的上限，默认 24h
+    BackoffWindow     time.Duration              // 升级计数的保留时长，默认 24h
+    StuffingLimit     int                        // 同一 IP 允许失败的不同身份数上限，默认 10
 }
 ```
 
@@ -177,7 +180,9 @@ type Tracker struct {
 | `Guard(http.Handler) http.Handler` | обёртка-мидлвар: при срабатывании `Check` возвращает 401 |
 | `Revoke(token) error` | выход из системы, сессия аннулируется немедленно |
 | `DefaultTokenSource(r) string` | берёт `Authorization: Bearer <token>`, затем Cookie `session` |
-| `RecordFailure(token) error` | Считает одну неудачную аутентификацию; при достижении `Failures` (по умолчанию 5 за 5 минут) записывается блокировка, `Lockout` по умолчанию 15 минут |
+| `RecordFailure(identity, r) error` | Считает один неудачный вход (identity — ключ аутентификации, например имя пользователя; r даёт IP клиента). При достижении `Failures` (по умолчанию 5 за 5 минут) идентификатор блокируется, каждая блокировка удваивается до `MaxLockout` (по умолчанию 24 ч) |
+| `CheckLogin(identity, r) *Result` | Предварительная проверка попытки входа: `token_locked` при заблокированном идентификаторе, `credential_stuffing` если IP уже провалился против `StuffingLimit` (по умолчанию 10) разных идентификаторов — оба Critical |
+| `GuardLogin(next, identity) http.Handler` | Middleware для точки аутентификации: 429 с `Retry-After` при срабатывании; после обработчика 401 считается неудачей, а 2xx сбрасывает счётчик |
 | `IsLocked(token) (bool, time.Time)` | Заблокирован ли токен и до какого времени; ошибка хранилища читается как «не заблокирован» |
 | `ClearFailures(token) error` | Сбрасывает счётчик неудач после успешного входа (блокировка идёт по своему таймеру) |
 
@@ -188,6 +193,7 @@ type Tracker struct {
 | `missing_token` | запрос не содержит token | High |
 | `unknown_token` | token не выдан, отозван через `Revoke` или истёк | High |
 | `token_locked` | Порог неудач достигнут внутри окна, токен заблокирован | Critical |
+| `credential_stuffing` | Один IP провалился против `StuffingLimit` разных идентификаторов внутри окна | Critical |
 | `client_hijack` | изменение UA или отпечатка устройства | Critical |
 | `remote_login` | `CountryOf` определяет смену страны (Critical) / IP выходит за пределы подсети (High); общий для `Check` и `Observe` | Critical / High |
 | `store_error` | ошибка чтения хранилища при `FailClosed = true` | High |

@@ -4,72 +4,49 @@ package session
 
 import (
 	"errors"
-	"strconv"
 	"strings"
 	"time"
 )
 
-// RecordFailure counts a failed authentication attempt for token and locks the
-// token out once Failures attempts fail within FailureWindow. Call it once per
-// failed login attempt; a successful login calls ClearFailures so the count does
-// not carry over.
-func (t *Tracker) RecordFailure(token string) error {
-	if token == "" || t.Store == nil {
-		return errors.New("session: empty token")
-	}
-	key := failureKey(token)
-	value, err := t.Store.Load(key)
-	if err != nil {
-		return err
-	}
-	n := 0
-	if value != nil {
-		n, _ = strconv.Atoi(string(value))
-	}
-	n++
-	if n >= t.failures() {
-		until := time.Now().Add(t.lockoutDuration())
-		if err := t.Store.Save(lockKey(token), []byte(until.UTC().Format(time.RFC3339)), t.lockoutDuration()); err != nil {
-			return err
-		}
-	}
-	// The counter is written after the lock so a partial failure still leaves
-	// the token locked. A lost count here only resets the counter, not the lock.
-	return t.Store.Save(key, []byte(strconv.Itoa(n)), t.failureWindow())
-}
+// Storage primitives for the brute-force lockout. RecordFailure, CheckLogin and
+// GuardLogin live in bruteforce.go; this file holds the keys, the lock lookup
+// and the configured durations.
 
-// IsLocked reports whether token is locked out and, when it is, until when. A
-// store error or an empty token reads as unlocked: an outage is never treated
+// IsLocked reports whether identity is locked out and, when it is, until when. A
+// store error or an empty identity reads as unlocked: an outage is never treated
 // as a lockout.
-func (t *Tracker) IsLocked(token string) (bool, time.Time) {
-	if token == "" || t.Store == nil {
+func (t *Tracker) IsLocked(identity string) (bool, time.Time) {
+	if identity == "" || t.Store == nil {
 		return false, time.Time{}
 	}
-	locked, until, err := t.locked(token)
+	locked, until, err := t.locked(identity)
 	if err != nil {
 		return false, time.Time{}
 	}
 	return locked, until
 }
 
-// ClearFailures drops the failure counter for token, so a correct attempt does
-// not count against the next one. A lockout runs on its own timer and is not
-// cleared here.
-func (t *Tracker) ClearFailures(token string) error {
-	if token == "" || t.Store == nil {
-		return errors.New("session: empty token")
+// ClearFailures drops the failure counter and the escalation strikes for
+// identity, so a correct attempt does not count against the next one. A lockout
+// runs on its own timer and is not cleared here.
+func (t *Tracker) ClearFailures(identity string) error {
+	if identity == "" || t.Store == nil {
+		return errors.New("session: empty identity")
 	}
-	return t.Store.Delete(failureKey(token))
+	if err := t.Store.Delete(failureKey(identity)); err != nil {
+		return err
+	}
+	return t.Store.Delete(strikeKey(identity))
 }
 
-func failureKey(token string) string { return failuresPrefix + hashToken(token) }
+func failureKey(identity string) string { return failuresPrefix + hashToken(identity) }
 
-func lockKey(token string) string { return lockPrefix + hashToken(token) }
+func lockKey(identity string) string { return lockPrefix + hashToken(identity) }
 
-// locked reports whether token has an unexpired lockout entry and, when it
+// locked reports whether identity has an unexpired lockout entry and, when it
 // does, until when. A missing or malformed entry reads as unlocked.
-func (t *Tracker) locked(token string) (bool, time.Time, error) {
-	value, err := t.Store.Load(lockKey(token))
+func (t *Tracker) locked(identity string) (bool, time.Time, error) {
+	value, err := t.Store.Load(lockKey(identity))
 	if err != nil {
 		return false, time.Time{}, err
 	}
@@ -86,8 +63,8 @@ func (t *Tracker) locked(token string) (bool, time.Time, error) {
 	return true, until, nil
 }
 
-// failures returns the number of failures within FailureWindow that lock a
-// token out.
+// failures returns the number of failures within FailureWindow that lock an
+// identity out.
 func (t *Tracker) failures() int {
 	if t.Failures <= 0 {
 		return defaultFailures
@@ -103,7 +80,7 @@ func (t *Tracker) failureWindow() time.Duration {
 	return t.FailureWindow
 }
 
-// lockoutDuration returns how long a lockout lasts.
+// lockoutDuration returns the base lockout, before any escalation.
 func (t *Tracker) lockoutDuration() time.Duration {
 	if t.Lockout <= 0 {
 		return defaultLockout

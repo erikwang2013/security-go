@@ -165,6 +165,9 @@ type Tracker struct {
     TokenSource       func(*http.Request) string // 默认 DefaultTokenSource
     TrustProxyHeaders bool                       // 默认 false
     FailClosed        bool                       // 默认 false
+    MaxLockout        time.Duration              // 每次锁定翻倍的上限，默认 24h
+    BackoffWindow     time.Duration              // 升级计数的保留时长，默认 24h
+    StuffingLimit     int                        // 同一 IP 允许失败的不同身份数上限，默认 10
 }
 ```
 
@@ -177,7 +180,9 @@ type Tracker struct {
 | `Guard(http.Handler) http.Handler` | 미들웨어 래퍼로, `Check` 적중 시 401 반환 |
 | `Revoke(token) error` | 로그아웃, 세션 즉시 무효화 |
 | `DefaultTokenSource(r) string` | `Authorization: Bearer <token>` 우선, 그다음 `session` Cookie |
-| `RecordFailure(token) error` | 인증 실패를 1회 계산하며, 윈도우 내 `Failures`(기본 5회 / 5분)에 도달하면 잠금을 기록합니다. `Lockout` 기본 15분 |
+| `RecordFailure(identity, r) error` | 로그인 실패를 1회 계산(identity는 사용자 이름 등 인증 키, r은 클라이언트 IP 제공). 윈도우 내 `Failures`(기본 5회 / 5분)에 도달하면 잠그고, 매번 두 배로 늘어 `MaxLockout`(기본 24시간)까지 |
+| `CheckLogin(identity, r) *Result` | 로그인 시도의 사전 검사: 식별자가 잠겨 있으면 `token_locked`, 클라이언트 IP가 이미 `StuffingLimit`(기본 10)개의 서로 다른 식별자에 실패했으면 `credential_stuffing` — 둘 다 Critical |
+| `GuardLogin(next, identity) http.Handler` | 인증 엔드포인트용 미들웨어: 해당 시 `Retry-After`와 함께 429. 핸들러 이후 401은 실패로 계산하고 2xx는 횟수를 초기화합니다 |
 | `IsLocked(token) (bool, time.Time)` | 토큰이 잠겼는지와 해제 시각. 저장소 오류는 잠기지 않은 것으로 처리 |
 | `ClearFailures(token) error` | 로그인 성공 시 실패 횟수를 초기화합니다(잠금은 자체 타이머로 동작하며 해제되지 않음) |
 
@@ -188,6 +193,7 @@ type Tracker struct {
 | `missing_token` | 요청에 token이 없음 | High |
 | `unknown_token` | token이 발급되지 않았거나 `Revoke`되었거나 만료됨 | High |
 | `token_locked` | 윈도우 내 실패 횟수가 임계값 도달, 토큰 잠김 | Critical |
+| `credential_stuffing` | 하나의 IP가 윈도우 내 `StuffingLimit`개의 서로 다른 식별자에 실패 | Critical |
 | `client_hijack` | UA 변경 또는 기기 지문 변경 | Critical |
 | `remote_login` | `CountryOf`가 국가 간 이동(Critical) / IP 대역 간 이동(High)으로 판정, `Check`와 `Observe` 공용 | Critical / High |
 | `store_error` | 저장소 읽기 실패이고 `FailClosed = true` | High |

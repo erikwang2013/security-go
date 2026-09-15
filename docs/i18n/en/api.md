@@ -165,6 +165,9 @@ type Tracker struct {
     TokenSource       func(*http.Request) string // 默认 DefaultTokenSource
     TrustProxyHeaders bool                       // 默认 false
     FailClosed        bool                       // 默认 false
+    MaxLockout        time.Duration              // 每次锁定翻倍的上限，默认 24h
+    BackoffWindow     time.Duration              // 升级计数的保留时长，默认 24h
+    StuffingLimit     int                        // 同一 IP 允许失败的不同身份数上限，默认 10
 }
 ```
 
@@ -177,7 +180,9 @@ type Tracker struct {
 | `Guard(http.Handler) http.Handler` | Middleware wrapper; returns 401 as soon as `Check` hits |
 | `Revoke(token) error` | Logout; the session becomes invalid immediately |
 | `DefaultTokenSource(r) string` | Reads `Authorization: Bearer <token>`, then the `session` cookie |
-| `RecordFailure(token) error` | Counts one failed authentication; reaching `Failures` (default 5 in 5 minutes) writes a lockout, `Lockout` default 15 minutes |
+| `RecordFailure(identity, r) error` | Counts one failed login (identity is the authentication key such as a username; r supplies the client IP). Reaching `Failures` (default 5 in 5 minutes) locks the identity, doubling each episode up to `MaxLockout` (default 24h) |
+| `CheckLogin(identity, r) *Result` | Pre-flight for a login attempt: `token_locked` when the identity is locked, `credential_stuffing` when the client IP has already failed against `StuffingLimit` (default 10) distinct identities — both Critical |
+| `GuardLogin(next, identity) http.Handler` | Middleware for an authentication endpoint: 429 with `Retry-After` when it fires; a 401 afterwards counts as a failure and a 2xx clears the counter |
 | `IsLocked(token) (bool, time.Time)` | Whether the token is locked and until when; a store error reads as unlocked |
 | `ClearFailures(token) error` | Resets the failure count on a successful login (a lockout runs its own timer and is not cleared) |
 
@@ -188,6 +193,7 @@ type Tracker struct {
 | `missing_token` | The request carries no token | High |
 | `unknown_token` | The token was never issued, has been `Revoke`d, or has expired | High |
 | `token_locked` | Failure threshold reached inside the window, token locked out | Critical |
+| `credential_stuffing` | One client IP failed against `StuffingLimit` distinct identities inside the window | Critical |
 | `client_hijack` | The UA changed, or the device fingerprint changed | Critical |
 | `remote_login` | `CountryOf` judges a country change (Critical) / an IP subnet change (High); shared by `Check` and `Observe` | Critical / High |
 | `store_error` | The storage read failed and `FailClosed = true` | High |

@@ -165,6 +165,9 @@ type Tracker struct {
     TokenSource       func(*http.Request) string // 默认 DefaultTokenSource
     TrustProxyHeaders bool                       // 默认 false
     FailClosed        bool                       // 默认 false
+    MaxLockout        time.Duration              // 每次锁定翻倍的上限，默认 24h
+    BackoffWindow     time.Duration              // 升级计数的保留时长，默认 24h
+    StuffingLimit     int                        // 同一 IP 允许失败的不同身份数上限，默认 10
 }
 ```
 
@@ -177,7 +180,9 @@ type Tracker struct {
 | `Guard(http.Handler) http.Handler` | تغليف كوسيط، وعند إصابة `Check` يُرجع 401 |
 | `Revoke(token) error` | تسجيل الخروج، فتُبطل الجلسة فورًا |
 | `DefaultTokenSource(r) string` | يأخذ `Authorization: Bearer <token>`، ثم كوكي `session` |
-| `RecordFailure(token) error` | يحصي محاولة مصادقة فاشلة؛ وعند بلوغ `Failures` (افتراضيًا 5 خلال 5 دقائق) يُكتب القفل، و`Lockout` افتراضيًا 15 دقيقة |
+| `RecordFailure(identity, r) error` | يحصي فشل تسجيل دخول واحد (identity هو مفتاح المصادقة كاسم المستخدم، وr يوفّر عنوان IP للعميل)؛ عند بلوغ `Failures` (افتراضيًا 5 خلال 5 دقائق) يُقفل الهوية، ويتضاعف كل قفل حتى `MaxLockout` (افتراضيًا 24 ساعة) |
+| `CheckLogin(identity, r) *Result` | فحص مسبق لمحاولة الدخول: `token_locked` عند قفل الهوية، و`credential_stuffing` عند فشل الـ IP نفسه أمام `StuffingLimit` (افتراضيًا 10) هويات مختلفة — كلاهما Critical |
+| `GuardLogin(next, identity) http.Handler` | وسيط لنقطة تسجيل الدخول: 429 مع `Retry-After` عند الانطباق؛ وبعد المعالج تُحتسب 401 فشلًا و2xx تصفّر العدّاد |
 | `IsLocked(token) (bool, time.Time)` | هل الرمز مقفل ومتى ينتهي القفل؛ خطأ المخزن يُقرأ كغير مقفل |
 | `ClearFailures(token) error` | يصفّر عدّاد الفشل بعد نجاح تسجيل الدخول (القفل يعمل بمؤقته ولا يُلغى) |
 
@@ -188,6 +193,7 @@ type Tracker struct {
 | `missing_token` | الطلب لا يحمل token | High |
 | `unknown_token` | الـ token لم يُصدر، أو تم `Revoke`، أو انتهت صلاحيته | High |
 | `token_locked` | بلوغ حد الفشل داخل النافذة، الرمز مقفل | Critical |
+| `credential_stuffing` | فشل عنوان IP واحد أمام `StuffingLimit` من الهويات المختلفة داخل النافذة | Critical |
 | `client_hijack` | تغيّر UA، أو تغيّر بصمة الجهاز | Critical |
 | `remote_login` | يحكم `CountryOf` باختلاف البلد (Critical) / اختلاف نطاق IP (High)، ويشترك فيه `Check` و`Observe` | Critical / High |
 | `store_error` | فشل قراءة التخزين مع `FailClosed = true` | High |

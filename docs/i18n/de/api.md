@@ -165,6 +165,9 @@ type Tracker struct {
     TokenSource       func(*http.Request) string // 默认 DefaultTokenSource
     TrustProxyHeaders bool                       // 默认 false
     FailClosed        bool                       // 默认 false
+    MaxLockout        time.Duration              // 每次锁定翻倍的上限，默认 24h
+    BackoffWindow     time.Duration              // 升级计数的保留时长，默认 24h
+    StuffingLimit     int                        // 同一 IP 允许失败的不同身份数上限，默认 10
 }
 ```
 
@@ -177,7 +180,9 @@ type Tracker struct {
 | `Guard(http.Handler) http.Handler` | Middleware-Wrapper, der bei Treffer von `Check` 401 zurückgibt |
 | `Revoke(token) error` | Abmeldung, die Sitzung wird sofort ungültig |
 | `DefaultTokenSource(r) string` | Liest `Authorization: Bearer <token>`, andernfalls das Cookie `session` |
-| `RecordFailure(token) error` | Zählt eine fehlgeschlagene Anmeldung; bei Erreichen von `Failures` (Standard 5 in 5 Minuten) wird eine Sperre geschrieben, `Lockout` Standard 15 Minuten |
+| `RecordFailure(identity, r) error` | Zählt eine fehlgeschlagene Anmeldung (identity ist der Authentifizierungsschlüssel wie der Benutzername, r liefert die Client-IP). Bei Erreichen von `Failures` (Standard 5 in 5 Minuten) wird gesperrt, jede Sperre verdoppelt sich bis `MaxLockout` (Standard 24 h) |
+| `CheckLogin(identity, r) *Result` | Vorabprüfung eines Anmeldeversuchs: `token_locked` bei gesperrter Identität, `credential_stuffing`, wenn die Client-IP bereits gegen `StuffingLimit` (Standard 10) verschiedene Identitäten gescheitert ist — beide Critical |
+| `GuardLogin(next, identity) http.Handler` | Middleware für einen Authentifizierungs-Endpunkt: 429 mit `Retry-After` bei Treffer; danach zählt 401 als Fehlversuch und 2xx setzt den Zähler zurück |
 | `IsLocked(token) (bool, time.Time)` | Ob das Token gesperrt ist und bis wann; ein Speicherfehler gilt als nicht gesperrt |
 | `ClearFailures(token) error` | Setzt den Fehlerzähler nach erfolgreicher Anmeldung zurück (eine Sperre läuft über ihren eigenen Timer) |
 
@@ -188,6 +193,7 @@ Werte von `Details["reason"]`:
 | `missing_token` | Die Anfrage enthält kein token | High |
 | `unknown_token` | token wurde nicht ausgestellt, wurde per `Revoke` beendet oder ist abgelaufen | High |
 | `token_locked` | Fehlerschwelle im Fenster erreicht, Token gesperrt | Critical |
+| `credential_stuffing` | Eine Client-IP ist im Fenster gegen `StuffingLimit` verschiedene Identitäten gescheitert | Critical |
 | `client_hijack` | UA geändert oder Gerätefingerabdruck geändert | Critical |
 | `remote_login` | `CountryOf` stellt einen Länderwechsel fest (Critical) / IP in einem anderen Subnetz (High); wird von `Check` und `Observe` gemeinsam genutzt | Critical / High |
 | `store_error` | Speicherlesefehler und `FailClosed = true` | High |

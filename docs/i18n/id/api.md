@@ -165,6 +165,9 @@ type Tracker struct {
     TokenSource       func(*http.Request) string // 默认 DefaultTokenSource
     TrustProxyHeaders bool                       // 默认 false
     FailClosed        bool                       // 默认 false
+    MaxLockout        time.Duration              // 每次锁定翻倍的上限，默认 24h
+    BackoffWindow     time.Duration              // 升级计数的保留时长，默认 24h
+    StuffingLimit     int                        // 同一 IP 允许失败的不同身份数上限，默认 10
 }
 ```
 
@@ -177,7 +180,9 @@ type Tracker struct {
 | `Guard(http.Handler) http.Handler` | Pembungkus middleware, mengembalikan 401 saat `Check` terdeteksi |
 | `Revoke(token) error` | Logout, sesi langsung tidak berlaku |
 | `DefaultTokenSource(r) string` | Mengambil `Authorization: Bearer <token>`, lalu Cookie `session` |
-| `RecordFailure(token) error` | Menghitung satu autentikasi gagal; saat `Failures` (bawaan 5 dalam 5 menit) tercapai, kunci ditulis, `Lockout` bawaan 15 menit |
+| `RecordFailure(identity, r) error` | Menghitung satu login gagal (identity adalah kunci autentikasi seperti nama pengguna, r menyediakan IP klien). Saat mencapai `Failures` (bawaan 5 dalam 5 menit) identitas terkunci, berlipat dua tiap kali hingga `MaxLockout` (bawaan 24 jam) |
+| `CheckLogin(identity, r) *Result` | Pemeriksaan awal percobaan login: `token_locked` bila identitas terkunci, `credential_stuffing` bila IP klien sudah gagal terhadap `StuffingLimit` (bawaan 10) identitas berbeda — keduanya Critical |
+| `GuardLogin(next, identity) http.Handler` | Middleware untuk endpoint autentikasi: 429 dengan `Retry-After` saat terpicu; setelah handler, 401 dihitung gagal dan 2xx mereset hitungan |
 | `IsLocked(token) (bool, time.Time)` | Apakah token terkunci dan sampai kapan; galat penyimpanan dibaca sebagai tidak terkunci |
 | `ClearFailures(token) error` | Mereset hitungan kegagalan setelah login berhasil (kunci berjalan dengan pengatur waktunya sendiri) |
 
@@ -188,6 +193,7 @@ Nilai `Details["reason"]`:
 | `missing_token` | Permintaan tidak membawa token | High |
 | `unknown_token` | token belum diterbitkan, sudah di-`Revoke`, atau sudah kedaluwarsa | High |
 | `token_locked` | Ambang kegagalan tercapai dalam jendela waktu, token terkunci | Critical |
+| `credential_stuffing` | Satu IP gagal terhadap `StuffingLimit` identitas berbeda dalam jendela waktu | Critical |
 | `client_hijack` | UA berubah, atau sidik jari perangkat berubah | Critical |
 | `remote_login` | `CountryOf` menilai lintas negara (Critical) / IP lintas subnet (High), digunakan bersama oleh `Check` dan `Observe` | Critical / High |
 | `store_error` | Pembacaan penyimpanan gagal dan `FailClosed = true` | High |

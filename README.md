@@ -156,7 +156,7 @@ HTTP Request
 
 | 检测器 | 检测模式 |
 |--------|---------|
-| **会话守护** (`session_guard`) | token 与会话建立时的客户端绑定，逐请求比对：User-Agent 或设备指纹变化判定**客户端被劫持**（Critical）；客户端 IP 落到其他网段或国家判定**异地登录**（High/Critical）；`Observe()` 在登录时比对历史网段，出现新网段即告警。会话滑动续期，`Revoke()` 可立即失效；`RecordFailure()` 累计失败次数，窗口内超阈值即锁定 token，`Check()` 报 `token_locked`，`ClearFailures()` 在登录成功时清零 |
+| **会话守护** (`session_guard`) | token 与会话建立时的客户端绑定，逐请求比对：User-Agent 或设备指纹变化判定**客户端被劫持**（Critical）；客户端 IP 落到其他网段或国家判定**异地登录**（High/Critical）；`Observe()` 在登录时比对历史网段，出现新网段即告警。会话滑动续期，`Revoke()` 可立即失效；`RecordFailure()` 累计失败次数，窗口内超阈值即锁定 token，`Check()` 报 `token_locked`，`ClearFailures()` 在登录成功时清零；`CheckLogin()` 另行拦截撞库（同一 IP 失败过的不同身份数达上限报 `credential_stuffing`），且锁定时长逐次翻倍（上限 24h） |
 | **数据篡改** (`data_tamper`) | 对请求参数做 HMAC-SHA256 签名（`时间戳.nonce.签名`），识别参数改动、密钥不符、时间戳超差、签名重放（nonce 计数器） |
 
 ### 存储后端 (3)

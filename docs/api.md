@@ -165,6 +165,9 @@ type Tracker struct {
     TokenSource       func(*http.Request) string // 默认 DefaultTokenSource
     TrustProxyHeaders bool                       // 默认 false
     FailClosed        bool                       // 默认 false
+    MaxLockout        time.Duration              // 每次锁定翻倍的上限，默认 24h
+    BackoffWindow     time.Duration              // 升级计数的保留时长，默认 24h
+    StuffingLimit     int                        // 同一 IP 允许失败的不同身份数上限，默认 10
 }
 ```
 
@@ -177,7 +180,9 @@ type Tracker struct {
 | `Guard(http.Handler) http.Handler` | 中间件包装，`Check` 命中即返回 401 |
 | `Revoke(token) error` | 登出，会话立即失效 |
 | `DefaultTokenSource(r) string` | 取 `Authorization: Bearer <token>`，其次 `session` Cookie |
-| `RecordFailure(token) error` | 记录一次认证失败；窗口内累计达 `Failures`（默认 5 次 / 5 分钟）即写入锁定，`Lockout` 默认 15 分钟 |
+| `RecordFailure(identity, r) error` | 记录一次登录失败（identity 为账号等认证键，r 提供客户端 IP）；窗口内达 `Failures`（默认 5 次 / 5 分钟）即锁定，每次锁定翻倍，上限 `MaxLockout`（默认 24h） |
+| `CheckLogin(identity, r) *Result` | 登录前置检查：身份被锁定报 `token_locked`，或该 IP 已失败过 `StuffingLimit`（默认 10）个不同身份报 `credential_stuffing`，均为 Critical |
+| `GuardLogin(next, identity) http.Handler` | 登录端点中间件：命中即 429 并带 `Retry-After`；放行后 401 记一次失败，2xx 清零 |
 | `IsLocked(token) (bool, time.Time)` | 是否处于锁定及解锁时间；存储故障按未锁定处理 |
 | `ClearFailures(token) error` | 登录成功后清零失败计数（不清除锁定，锁定按自身计时） |
 
@@ -188,6 +193,7 @@ type Tracker struct {
 | `missing_token` | 请求未携带 token | High |
 | `unknown_token` | token 未签发、已 `Revoke` 或已过期 | High |
 | `token_locked` | 窗口内失败次数达阈值，token 被锁定 | Critical |
+| `credential_stuffing` | 同一客户端 IP 在窗口内失败过的不同身份数达 `StuffingLimit` | Critical |
 | `client_hijack` | UA 变化，或设备指纹变化 | Critical |
 | `remote_login` | `CountryOf` 判定跨国家（Critical）/ IP 跨网段（High），`Check` 与 `Observe` 共用 | Critical / High |
 | `store_error` | 存储读取失败且 `FailClosed = true` | High |

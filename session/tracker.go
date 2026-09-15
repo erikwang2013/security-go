@@ -23,11 +23,18 @@ const (
 	defaultKnownNets   = 8
 	defaultKnownNetTTL = 90 * 24 * time.Hour
 	// defaultFailures, defaultFailureWindow and defaultLockout size the
-	// brute-force lockout: that many failures inside the window lock the token
-	// out for that long.
+	// brute-force lockout: that many failures inside the window lock the
+	// identity out for that long.
 	defaultFailures      = 5
 	defaultFailureWindow = 5 * time.Minute
 	defaultLockout       = 15 * time.Minute
+	// defaultMaxLockout caps the progressive backoff, defaultBackoffWindow is
+	// how long escalation strikes are remembered, and defaultStuffingLimit is
+	// how many distinct identities one client may fail against before it reads
+	// as a credential-stuffing sweep.
+	defaultMaxLockout    = 24 * time.Hour
+	defaultBackoffWindow = 24 * time.Hour
+	defaultStuffingLimit = 10
 	// v6Shift widens SubnetBits for IPv6, where a /24 is a single host.
 	v6Shift = 24
 	// FingerprintHeader carries an optional client-side device fingerprint
@@ -37,10 +44,13 @@ const (
 	knownNetsPrefix   = "nets:"
 	failuresPrefix    = "fail:"
 	lockPrefix        = "lock:"
+	strikesPrefix     = "strike:"
+	stuffingPrefix    = "stuff:"
 )
 
 // Tracker binds a token session to the client that created it and reports
-// hijacking and remote-login anomalies on every later request.
+// hijacking and remote-login anomalies on every later request, and guards an
+// authentication endpoint against brute force.
 //
 // Tracker is deliberately not a security.Detector: Detect(input string) cannot
 // see the request, and the client IP and User-Agent are the entire signal.
@@ -75,14 +85,26 @@ type Tracker struct {
 	// FailureWindow is how long the failure counter is kept, so failures spread
 	// out beyond it no longer count. 0 means defaultFailureWindow (5 minutes).
 	FailureWindow time.Duration
-	// Lockout is how long a locked token stays locked. 0 means defaultLockout
-	// (15 minutes).
+	// Lockout is the base lockout applied at the first threshold crossing. Each
+	// further crossing doubles it. 0 means defaultLockout (15 minutes).
 	Lockout time.Duration
+	// MaxLockout caps the progressive backoff. 0 means defaultMaxLockout
+	// (24 hours).
+	MaxLockout time.Duration
+	// BackoffWindow is how long escalation strikes are remembered, so a client
+	// that keeps failing after a lockout expires escalates instead of starting
+	// over. 0 means defaultBackoffWindow (24 hours).
+	BackoffWindow time.Duration
+	// StuffingLimit is how many distinct identities one client IP may fail
+	// against inside FailureWindow before CheckLogin reports
+	// credential_stuffing. 0 means defaultStuffingLimit (10).
+	StuffingLimit int
 }
 
 // NewTracker creates a Tracker with defaults: 30 minute sliding TTL, /24 IP
-// matching, 8 remembered login networks, and tokens read from the
-// "Authorization: Bearer" header or the "session" cookie.
+// matching, 8 remembered login networks, tokens read from the
+// "Authorization: Bearer" header or the "session" cookie, and a 5 failures /
+// 5 minutes → 15 minutes lockout that doubles up to 24 hours.
 func NewTracker(s Store) *Tracker {
 	return &Tracker{
 		Store:         s,
@@ -94,6 +116,9 @@ func NewTracker(s Store) *Tracker {
 		Failures:      defaultFailures,
 		FailureWindow: defaultFailureWindow,
 		Lockout:       defaultLockout,
+		MaxLockout:    defaultMaxLockout,
+		BackoffWindow: defaultBackoffWindow,
+		StuffingLimit: defaultStuffingLimit,
 	}
 }
 

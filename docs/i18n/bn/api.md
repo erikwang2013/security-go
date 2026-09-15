@@ -165,6 +165,9 @@ type Tracker struct {
     TokenSource       func(*http.Request) string // 默认 DefaultTokenSource
     TrustProxyHeaders bool                       // 默认 false
     FailClosed        bool                       // 默认 false
+    MaxLockout        time.Duration              // 每次锁定翻倍的上限，默认 24h
+    BackoffWindow     time.Duration              // 升级计数的保留时长，默认 24h
+    StuffingLimit     int                        // 同一 IP 允许失败的不同身份数上限，默认 10
 }
 ```
 
@@ -177,7 +180,9 @@ type Tracker struct {
 | `Guard(http.Handler) http.Handler` | মিডলওয়্যার র‍্যাপার, `Check` সনাক্ত করলে 401 রিটার্ন করে |
 | `Revoke(token) error` | লগআউট, সেশন তাৎক্ষণিক বাতিল হয় |
 | `DefaultTokenSource(r) string` | `Authorization: Bearer <token>` নেয়, তারপর `session` কুকি |
-| `RecordFailure(token) error` | একটি ব্যর্থ প্রমাণীকরণ গণনা; উইন্ডোর মধ্যে `Failures` (ডিফল্ট ৫, ৫ মিনিটে) ছুঁলে লক লেখা হয়, `Lockout` ডিফল্ট ১৫ মিনিট |
+| `RecordFailure(identity, r) error` | একটি ব্যর্থ লগইন গণনা (identity হলো প্রমাণীকরণ কী যেমন ব্যবহারকারী নাম, r ক্লায়েন্ট IP দেয়); উইন্ডোর মধ্যে `Failures` (ডিফল্ট ৫, ৫ মিনিটে) ছুঁলে আইডেন্টিটি লক হয়, প্রতিবার দ্বিগুণ হয়ে `MaxLockout` (ডিফল্ট ২৪ ঘণ্টা) পর্যন্ত |
+| `CheckLogin(identity, r) *Result` | লগইন প্রচেষ্টার প্রাক-পরীক্ষা: আইডেন্টিটি লক থাকলে `token_locked`, ক্লায়েন্ট IP `StuffingLimit` (ডিফল্ট ১০) টি ভিন্ন আইডেন্টিটিতে ব্যর্থ হলে `credential_stuffing` — দুটোই Critical |
+| `GuardLogin(next, identity) http.Handler` | প্রমাণীকরণ এন্ডপয়েন্টের মিডলওয়্যার: মিললে `Retry-After` সহ 429; হ্যান্ডলারের পরে 401 ব্যর্থতা গণ্য হয়, 2xx গণনা শূন্য করে |
 | `IsLocked(token) (bool, time.Time)` | টোকেন লক করা আছে কি না এবং কখন পর্যন্ত; স্টোর ত্রুটি আনলকড হিসেবে পড়া হয় |
 | `ClearFailures(token) error` | সফল লগইনে ব্যর্থতার গণনা শূন্য করে (লক নিজের টাইমারে চলে, মুছে যায় না) |
 
@@ -188,6 +193,7 @@ type Tracker struct {
 | `missing_token` | রিকোয়েস্টে token নেই | High |
 | `unknown_token` | token ইস্যু হয়নি, `Revoke` হয়েছে বা মেয়াদোত্তীর্ণ | High |
 | `token_locked` | উইন্ডোর মধ্যে ব্যর্থতার সীমা ছোঁয়া, টোকেন লক | Critical |
+| `credential_stuffing` | উইন্ডোর মধ্যে একটি IP `StuffingLimit` টি ভিন্ন আইডেন্টিটিতে ব্যর্থ | Critical |
 | `client_hijack` | UA পরিবর্তন, বা ডিভাইস ফিঙ্গারপ্রিন্ট পরিবর্তন | Critical |
 | `remote_login` | `CountryOf` দেশ পরিবর্তন নির্ণয় করে (Critical) / IP সাবনেট পরিবর্তন (High), `Check` ও `Observe` উভয়ে ব্যবহৃত | Critical / High |
 | `store_error` | স্টোরেজ পড়তে ব্যর্থ এবং `FailClosed = true` | High |

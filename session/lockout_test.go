@@ -51,7 +51,7 @@ func TestRecordFailureBelowThreshold(t *testing.T) {
 	tr := NewTracker(st)
 	tr.Failures = 3
 	for i := 0; i < 2; i++ {
-		if err := tr.RecordFailure(testToken); err != nil {
+		if err := tr.RecordFailure(testToken, fromIP("203.0.113.7:1234")); err != nil {
 			t.Fatalf("RecordFailure %d: %v", i+1, err)
 		}
 	}
@@ -66,7 +66,7 @@ func TestRecordFailureTriggersLockout(t *testing.T) {
 	tr := NewTracker(st)
 	tr.Failures = 3
 	for i := 0; i < 3; i++ {
-		if err := tr.RecordFailure(testToken); err != nil {
+		if err := tr.RecordFailure(testToken, fromIP("203.0.113.7:1234")); err != nil {
 			t.Fatalf("RecordFailure %d: %v", i+1, err)
 		}
 	}
@@ -84,10 +84,10 @@ func TestCheckLockedToken(t *testing.T) {
 	if err := tr.Issue(testToken, req); err != nil {
 		t.Fatalf("Issue: %v", err)
 	}
-	if err := tr.RecordFailure(testToken); err != nil {
+	if err := tr.RecordFailure(testToken, fromIP("203.0.113.7:1234")); err != nil {
 		t.Fatalf("RecordFailure: %v", err)
 	}
-	if err := tr.RecordFailure(testToken); err != nil {
+	if err := tr.RecordFailure(testToken, fromIP("203.0.113.7:1234")); err != nil {
 		t.Fatalf("RecordFailure: %v", err)
 	}
 
@@ -114,7 +114,7 @@ func TestLockoutBeatsUnknownToken(t *testing.T) {
 	defer st.Close()
 	tr := NewTracker(st)
 	tr.Failures = 1
-	if err := tr.RecordFailure(testToken); err != nil {
+	if err := tr.RecordFailure(testToken, fromIP("203.0.113.7:1234")); err != nil {
 		t.Fatalf("RecordFailure: %v", err)
 	}
 	// The token was never issued, but the lock is the more actionable signal.
@@ -161,7 +161,7 @@ func TestClearFailuresResetsCounter(t *testing.T) {
 	tr := NewTracker(st)
 	tr.Failures = 3
 	for i := 0; i < 2; i++ {
-		if err := tr.RecordFailure(testToken); err != nil {
+		if err := tr.RecordFailure(testToken, fromIP("203.0.113.7:1234")); err != nil {
 			t.Fatalf("RecordFailure %d: %v", i+1, err)
 		}
 	}
@@ -169,7 +169,7 @@ func TestClearFailuresResetsCounter(t *testing.T) {
 		t.Fatalf("ClearFailures: %v", err)
 	}
 	for i := 0; i < 2; i++ {
-		if err := tr.RecordFailure(testToken); err != nil {
+		if err := tr.RecordFailure(testToken, fromIP("203.0.113.7:1234")); err != nil {
 			t.Fatalf("RecordFailure after clear %d: %v", i+1, err)
 		}
 	}
@@ -182,7 +182,7 @@ func TestRecordFailureEmptyToken(t *testing.T) {
 	st := newRecordingStore()
 	defer st.Close()
 	tr := NewTracker(st)
-	if err := tr.RecordFailure(""); err == nil {
+	if err := tr.RecordFailure("", fromIP("203.0.113.7:1234")); err == nil {
 		t.Fatal("expected an error for an empty token")
 	}
 	if err := tr.ClearFailures(""); err == nil {
@@ -198,7 +198,7 @@ func TestRecordFailureEmptyToken(t *testing.T) {
 
 func TestRecordFailureNilStore(t *testing.T) {
 	tr := &Tracker{}
-	if err := tr.RecordFailure(testToken); err == nil {
+	if err := tr.RecordFailure(testToken, fromIP("203.0.113.7:1234")); err == nil {
 		t.Fatal("expected an error with no store configured")
 	}
 	if err := tr.ClearFailures(testToken); err == nil {
@@ -219,7 +219,7 @@ func TestLockoutFailClosed(t *testing.T) {
 	if locked, _ := tr.IsLocked(testToken); locked {
 		t.Fatal("expected IsLocked to fail open on a store error")
 	}
-	if err := tr.RecordFailure(testToken); err == nil {
+	if err := tr.RecordFailure(testToken, fromIP("203.0.113.7:1234")); err == nil {
 		t.Fatal("expected RecordFailure to surface the store error")
 	}
 }
@@ -237,10 +237,10 @@ func TestLockoutKeysHashedAndPrefixed(t *testing.T) {
 	defer st.Close()
 	tr := NewTracker(st)
 	tr.Failures = 2
-	if err := tr.RecordFailure(testToken); err != nil {
+	if err := tr.RecordFailure(testToken, fromIP("203.0.113.7:1234")); err != nil {
 		t.Fatalf("RecordFailure: %v", err)
 	}
-	if err := tr.RecordFailure(testToken); err != nil {
+	if err := tr.RecordFailure(testToken, fromIP("203.0.113.7:1234")); err != nil {
 		t.Fatalf("RecordFailure: %v", err)
 	}
 	if err := tr.ClearFailures(testToken); err != nil {
@@ -251,7 +251,8 @@ func TestLockoutKeysHashedAndPrefixed(t *testing.T) {
 		if strings.Contains(key, testToken) {
 			t.Fatalf("store key %q leaks the session token", key)
 		}
-		if !strings.HasPrefix(key, failuresPrefix) && !strings.HasPrefix(key, lockPrefix) {
+		if !strings.HasPrefix(key, failuresPrefix) && !strings.HasPrefix(key, lockPrefix) &&
+			!strings.HasPrefix(key, strikesPrefix) && !strings.HasPrefix(key, stuffingPrefix) {
 			t.Fatalf("unexpected store key %q", key)
 		}
 	}
@@ -265,7 +266,7 @@ func TestGuardAnswers401WhenLocked(t *testing.T) {
 	defer st.Close()
 	tr := NewTracker(st)
 	tr.Failures = 1
-	if err := tr.RecordFailure(testToken); err != nil {
+	if err := tr.RecordFailure(testToken, fromIP("203.0.113.7:1234")); err != nil {
 		t.Fatalf("RecordFailure: %v", err)
 	}
 	handler := tr.Guard(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

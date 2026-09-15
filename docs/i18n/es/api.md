@@ -165,6 +165,9 @@ type Tracker struct {
     TokenSource       func(*http.Request) string // 默认 DefaultTokenSource
     TrustProxyHeaders bool                       // 默认 false
     FailClosed        bool                       // 默认 false
+    MaxLockout        time.Duration              // 每次锁定翻倍的上限，默认 24h
+    BackoffWindow     time.Duration              // 升级计数的保留时长，默认 24h
+    StuffingLimit     int                        // 同一 IP 允许失败的不同身份数上限，默认 10
 }
 ```
 
@@ -177,7 +180,9 @@ type Tracker struct {
 | `Guard(http.Handler) http.Handler` | Envoltorio de middleware: devuelve 401 si `Check` detecta |
 | `Revoke(token) error` | Cierre de sesión: la sesión se invalida de inmediato |
 | `DefaultTokenSource(r) string` | Toma `Authorization: Bearer <token>` y, en su defecto, la cookie `session` |
-| `RecordFailure(token) error` | Cuenta un intento de autenticación fallido; al alcanzar `Failures` (por defecto 5 en 5 minutos) escribe un bloqueo, `Lockout` por defecto 15 minutos |
+| `RecordFailure(identity, r) error` | Cuenta un inicio de sesión fallido (identity es la clave de autenticación, como el usuario; r aporta la IP del cliente). Al alcanzar `Failures` (por defecto 5 en 5 minutos) bloquea la identidad, duplicándose cada vez hasta `MaxLockout` (por defecto 24 h) |
+| `CheckLogin(identity, r) *Result` | Comprobación previa del intento: `token_locked` si la identidad está bloqueada, `credential_stuffing` si la IP ya falló contra `StuffingLimit` (por defecto 10) identidades distintas — ambos Critical |
+| `GuardLogin(next, identity) http.Handler` | Middleware para el endpoint de autenticación: 429 con `Retry-After` al dispararse; después del handler un 401 cuenta como fallo y un 2xx pone el contador a cero |
 | `IsLocked(token) (bool, time.Time)` | Si el token está bloqueado y hasta cuándo; un error del almacén se lee como no bloqueado |
 | `ClearFailures(token) error` | Pone a cero el contador de fallos tras un inicio de sesión correcto (el bloqueo corre con su propio temporizador) |
 
@@ -188,6 +193,7 @@ Valores de `Details["reason"]`:
 | `missing_token` | La petición no lleva token | High |
 | `unknown_token` | El token no fue emitido, ya se revocó con `Revoke` o ha caducado | High |
 | `token_locked` | Umbral de fallos alcanzado dentro de la ventana, token bloqueado | Critical |
+| `credential_stuffing` | Una IP falló contra `StuffingLimit` identidades distintas dentro de la ventana | Critical |
 | `client_hijack` | Cambia el UA o cambia la huella del dispositivo | Critical |
 | `remote_login` | `CountryOf` determina cambio de país (Critical) / IP en otra subred (High); lo comparten `Check` y `Observe` | Critical / High |
 | `store_error` | Falla la lectura del almacenamiento y `FailClosed = true` | High |

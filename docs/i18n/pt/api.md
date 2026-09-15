@@ -165,6 +165,9 @@ type Tracker struct {
     TokenSource       func(*http.Request) string // 默认 DefaultTokenSource
     TrustProxyHeaders bool                       // 默认 false
     FailClosed        bool                       // 默认 false
+    MaxLockout        time.Duration              // 每次锁定翻倍的上限，默认 24h
+    BackoffWindow     time.Duration              // 升级计数的保留时长，默认 24h
+    StuffingLimit     int                        // 同一 IP 允许失败的不同身份数上限，默认 10
 }
 ```
 
@@ -177,7 +180,9 @@ type Tracker struct {
 | `Guard(http.Handler) http.Handler` | Wrapper de middleware; se `Check` detectar, retorna 401 |
 | `Revoke(token) error` | Logout; a sessão é invalidada imediatamente |
 | `DefaultTokenSource(r) string` | Obtém `Authorization: Bearer <token>`, senão o Cookie `session` |
-| `RecordFailure(token) error` | Conta uma autenticação falha; ao atingir `Failures` (padrão 5 em 5 minutos) grava um bloqueio, `Lockout` padrão 15 minutos |
+| `RecordFailure(identity, r) error` | Conta um login falho (identity é a chave de autenticação, como o usuário; r fornece o IP do cliente). Ao atingir `Failures` (padrão 5 em 5 minutos) bloqueia a identidade, dobrando a cada vez até `MaxLockout` (padrão 24 h) |
+| `CheckLogin(identity, r) *Result` | Verificação prévia da tentativa: `token_locked` se a identidade está bloqueada, `credential_stuffing` se o IP já falhou contra `StuffingLimit` (padrão 10) identidades distintas — ambos Critical |
+| `GuardLogin(next, identity) http.Handler` | Middleware para o endpoint de autenticação: 429 com `Retry-After` ao disparar; depois do handler um 401 conta como falha e um 2xx zera o contador |
 | `IsLocked(token) (bool, time.Time)` | Se o token está bloqueado e até quando; um erro do armazenamento é lido como não bloqueado |
 | `ClearFailures(token) error` | Zera o contador de falhas após um login bem-sucedido (o bloqueio corre pelo próprio temporizador) |
 
@@ -188,6 +193,7 @@ Valores de `Details["reason"]`:
 | `missing_token` | A requisição não traz token | High |
 | `unknown_token` | token não emitido, já `Revoke`ado ou expirado | High |
 | `token_locked` | Limite de falhas atingido dentro da janela, token bloqueado | Critical |
+| `credential_stuffing` | Um IP falhou contra `StuffingLimit` identidades distintas dentro da janela | Critical |
 | `client_hijack` | Mudança de UA ou de impressão digital do dispositivo | Critical |
 | `remote_login` | `CountryOf` determina outro país (Critical) / outra sub-rede de IP (High); compartilhado por `Check` e `Observe` | Critical / High |
 | `store_error` | Falha de leitura do armazenamento com `FailClosed = true` | High |

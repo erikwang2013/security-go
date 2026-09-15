@@ -165,6 +165,9 @@ type Tracker struct {
     TokenSource       func(*http.Request) string // 默认 DefaultTokenSource
     TrustProxyHeaders bool                       // 默认 false
     FailClosed        bool                       // 默认 false
+    MaxLockout        time.Duration              // 每次锁定翻倍的上限，默认 24h
+    BackoffWindow     time.Duration              // 升级计数的保留时长，默认 24h
+    StuffingLimit     int                        // 同一 IP 允许失败的不同身份数上限，默认 10
 }
 ```
 
@@ -177,7 +180,9 @@ type Tracker struct {
 | `Guard(http.Handler) http.Handler` | Enveloppe middleware, renvoie 401 dès que `Check` correspond |
 | `Revoke(token) error` | Déconnexion, la session est immédiatement invalidée |
 | `DefaultTokenSource(r) string` | Récupère `Authorization: Bearer <token>`, sinon le Cookie `session` |
-| `RecordFailure(token) error` | Compte une authentification échouée ; à l'atteinte de `Failures` (par défaut 5 en 5 minutes) un verrou est écrit, `Lockout` par défaut 15 minutes |
+| `RecordFailure(identity, r) error` | Compte un échec de connexion (identity est la clé d'authentification, par ex. l'identifiant ; r fournit l'IP du client). À l'atteinte de `Failures` (par défaut 5 en 5 minutes) l'identité est verrouillée, chaque verrou doublant jusqu'à `MaxLockout` (par défaut 24 h) |
+| `CheckLogin(identity, r) *Result` | Contrôle préalable d'une tentative : `token_locked` si l'identité est verrouillée, `credential_stuffing` si l'IP a déjà échoué contre `StuffingLimit` (par défaut 10) identités distinctes — les deux en Critical |
+| `GuardLogin(next, identity) http.Handler` | Middleware pour un point d'authentification : 429 avec `Retry-After` en cas de déclenchement ; ensuite un 401 compte comme échec et un 2xx remet le compteur à zéro |
 | `IsLocked(token) (bool, time.Time)` | Indique si le jeton est verrouillé et jusqu'à quand ; une erreur de stockage est lue comme non verrouillé |
 | `ClearFailures(token) error` | Remet à zéro le compteur d'échecs après une connexion réussie (le verrou suit son propre minuteur) |
 
@@ -188,6 +193,7 @@ Valeurs de `Details["reason"]` :
 | `missing_token` | La requête ne porte pas de token | High |
 | `unknown_token` | token non émis, déjà `Revoke` ou expiré | High |
 | `token_locked` | Seuil d'échecs atteint dans la fenêtre, jeton verrouillé | Critical |
+| `credential_stuffing` | Une IP a échoué contre `StuffingLimit` identités distinctes dans la fenêtre | Critical |
 | `client_hijack` | Changement d'UA ou d'empreinte d'appareil | Critical |
 | `remote_login` | `CountryOf` détecte un changement de pays (Critical) / de sous-réseau IP (High), partagé par `Check` et `Observe` | Critical / High |
 | `store_error` | Échec de lecture du stockage et `FailClosed = true` | High |

@@ -165,6 +165,9 @@ type Tracker struct {
     TokenSource       func(*http.Request) string // 默认 DefaultTokenSource
     TrustProxyHeaders bool                       // 默认 false
     FailClosed        bool                       // 默认 false
+    MaxLockout        time.Duration              // 每次锁定翻倍的上限，默认 24h
+    BackoffWindow     time.Duration              // 升级计数的保留时长，默认 24h
+    StuffingLimit     int                        // 同一 IP 允许失败的不同身份数上限，默认 10
 }
 ```
 
@@ -177,7 +180,9 @@ type Tracker struct {
 | `Guard(http.Handler) http.Handler` | मिडलवेयर रैपर, `Check` मेल होते ही 401 लौटाता है |
 | `Revoke(token) error` | लॉगआउट, सत्र तुरंत अमान्य हो जाता है |
 | `DefaultTokenSource(r) string` | `Authorization: Bearer <token>` लेता है, अन्यथा `session` Cookie |
-| `RecordFailure(token) error` | एक विफल प्रमाणीकरण गिनता है; विंडो में `Failures` (डिफ़ॉल्ट 5, 5 मिनट में) तक पहुँचने पर लॉक लिखा जाता है, `Lockout` डिफ़ॉल्ट 15 मिनट |
+| `RecordFailure(identity, r) error` | एक विफल लॉगिन गिनता है (identity प्रमाणीकरण कुंजी है जैसे उपयोगकर्ता नाम, r क्लाइंट IP देता है)। विंडो में `Failures` (डिफ़ॉल्ट 5, 5 मिनट में) तक पहुँचने पर पहचान लॉक होती है, हर बार दोगुनी होकर `MaxLockout` (डिफ़ॉल्ट 24 घंटे) तक |
+| `CheckLogin(identity, r) *Result` | लॉगिन प्रयास की पूर्व-जाँच: पहचान लॉक हो तो `token_locked`, क्लाइंट IP पहले ही `StuffingLimit` (डिफ़ॉल्ट 10) भिन्न पहचानों पर विफल हो तो `credential_stuffing` — दोनों Critical |
+| `GuardLogin(next, identity) http.Handler` | प्रमाणीकरण एंडपॉइंट के लिए मिडलवेयर: मेल खाने पर `Retry-After` सहित 429; बाद में 401 विफलता गिना जाता है और 2xx गिनती शून्य करता है |
 | `IsLocked(token) (bool, time.Time)` | टोकन लॉक है या नहीं और कब तक; स्टोर त्रुटि अनलॉक्ड मानी जाती है |
 | `ClearFailures(token) error` | सफल लॉगिन पर विफलता गिनती शून्य करता है (लॉक अपने टाइमर पर चलता है) |
 
@@ -188,6 +193,7 @@ type Tracker struct {
 | `missing_token` | अनुरोध में token नहीं है | High |
 | `unknown_token` | token जारी नहीं हुआ, `Revoke` हो चुका या समाप्त | High |
 | `token_locked` | सीमा पार होते ही विफलता गिनती, टोकन लॉक | Critical |
+| `credential_stuffing` | एक IP विंडो में `StuffingLimit` भिन्न पहचानों पर विफल | Critical |
 | `client_hijack` | UA बदलाव, या डिवाइस फ़िंगरप्रिंट बदलाव | Critical |
 | `remote_login` | `CountryOf` से देश बदलाव (Critical) / IP सबनेट बदलाव (High), `Check` और `Observe` साझा | Critical / High |
 | `store_error` | स्टोरेज पढ़ने में विफलता और `FailClosed = true` | High |

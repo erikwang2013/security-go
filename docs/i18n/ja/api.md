@@ -165,6 +165,9 @@ type Tracker struct {
     TokenSource       func(*http.Request) string // 默认 DefaultTokenSource
     TrustProxyHeaders bool                       // 默认 false
     FailClosed        bool                       // 默认 false
+    MaxLockout        time.Duration              // 每次锁定翻倍的上限，默认 24h
+    BackoffWindow     time.Duration              // 升级计数的保留时长，默认 24h
+    StuffingLimit     int                        // 同一 IP 允许失败的不同身份数上限，默认 10
 }
 ```
 
@@ -177,7 +180,9 @@ type Tracker struct {
 | `Guard(http.Handler) http.Handler` | ミドルウェアラッパー、`Check` が検出すると 401 を返す |
 | `Revoke(token) error` | ログアウト、セッションを即座に無効化 |
 | `DefaultTokenSource(r) string` | `Authorization: Bearer <token>` を取得、次に `session` Cookie |
-| `RecordFailure(token) error` | 認証失敗を 1 回計上。ウィンドウ内で `Failures`（既定 5 回 / 5 分）に達するとロックを書き込み、`Lockout` は既定 15 分 |
+| `RecordFailure(identity, r) error` | ログイン失敗を 1 回計上（identity はユーザー名などの認証キー、r はクライアント IP を提供）。ウィンドウ内で `Failures`（既定 5 回 / 5 分）に達するとロックし、以降 1 回ごとに倍増、上限は `MaxLockout`（既定 24 時間） |
+| `CheckLogin(identity, r) *Result` | ログイン試行の事前チェック: 識別子がロック中なら `token_locked`、クライアント IP が既に `StuffingLimit`（既定 10）個の異なる識別子で失敗していれば `credential_stuffing` — いずれも Critical |
+| `GuardLogin(next, identity) http.Handler` | 認証エンドポイント用ミドルウェア: 該当時は `Retry-After` 付き 429。ハンドラ後は 401 を失敗として計上し、2xx でカウントを戻します |
 | `IsLocked(token) (bool, time.Time)` | トークンがロック中かどうかと解除時刻。ストア障害時は未ロック扱い |
 | `ClearFailures(token) error` | ログイン成功時に失敗カウントを戻します（ロックは独自のタイマーで動き、解除されません） |
 
@@ -188,6 +193,7 @@ type Tracker struct {
 | `missing_token` | リクエストに token が含まれない | High |
 | `unknown_token` | token が未発行、`Revoke` 済み、または期限切れ | High |
 | `token_locked` | ウィンドウ内で失敗回数がしきい値に到達、トークンをロック | Critical |
+| `credential_stuffing` | 1 つの IP がウィンドウ内で `StuffingLimit` 個の異なる識別子に失敗 | Critical |
 | `client_hijack` | UA の変化、またはデバイスフィンガープリントの変化 | Critical |
 | `remote_login` | `CountryOf` がクロスカントリーと判定（Critical）/ IP が別サブネット（High）。`Check` と `Observe` で共通 | Critical / High |
 | `store_error` | ストレージ読み取り失敗かつ `FailClosed = true` | High |
