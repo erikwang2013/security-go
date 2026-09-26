@@ -10,11 +10,11 @@ Estructura de resultado de detección, devuelta por cada detector:
 
 ```go
 type Result struct {
-    Name     string                 // 检测器名称
-    Detected bool                   // 是否检测到攻击
-    Message  string                 // 结果说明
-    Severity Severity               // 严重程度
-    Details  map[string]interface{} // 附加细节
+    Name     string                 // Nombre del detector
+    Detected bool                   // si se detectó un ataque
+    Message  string                 // Descripción del resultado
+    Severity Severity               // Gravedad
+    Details  map[string]interface{} // Detalles adicionales
 }
 ```
 
@@ -26,10 +26,10 @@ Niveles de severidad:
 type Severity int
 
 const (
-    SeverityLow      Severity = iota // 低风险
-    SeverityMedium                   // 中风险
-    SeverityHigh                     // 高风险
-    SeverityCritical                 // 严重
+    SeverityLow      Severity = iota // riesgo bajo
+    SeverityMedium                   // riesgo medio
+    SeverityHigh                     // riesgo alto
+    SeverityCritical                 // crítico
 )
 ```
 
@@ -39,8 +39,8 @@ Todos los detectores deben implementar esta interfaz:
 
 ```go
 type Detector interface {
-    Name() string                // 检测器唯一名称
-    Detect(input string) *Result // 对输入执行检测，返回结果
+    Name() string                // nombre único del detector
+    Detect(input string) *Result // ejecuta la detección sobre la entrada y devuelve el resultado
 }
 ```
 
@@ -51,11 +51,11 @@ type Detector interface {
 ```go
 type Engine struct { /* ... */ }
 
-func NewEngine() *Engine                          // 创建空 Engine
-func (e *Engine) Register(d Detector)             // 注册检测器
-func (e *Engine) Detect(name, input string) *Result // 按名称检测单个输入
-func (e *Engine) DetectAll(input string) []*Result  // 全量检测（仅返回 Detected=true）
-func (e *Engine) DetectRequest(r *http.Request) []*Result // 检测完整 HTTP 请求
+func NewEngine() *Engine                          // crea una Engine vacía
+func (e *Engine) Register(d Detector)             // registra un detector
+func (e *Engine) Detect(name, input string) *Result // detecta una sola entrada por nombre
+func (e *Engine) DetectAll(input string) []*Result  // detecta todo (solo devuelve Detected=true)
+func (e *Engine) DetectRequest(r *http.Request) []*Result // detecta una petición HTTP completa
 ```
 
 `DetectRequest` recopila automáticamente la URL, Query, Headers y Cookies de la petición como entrada. Cada entrada se vuelve a escanear tras decodificarla de URL, de modo que cargas codificadas como `%3Cscript%3E` no pueden eludir la detección.
@@ -63,9 +63,18 @@ func (e *Engine) DetectRequest(r *http.Request) []*Result // 检测完整 HTTP �
 ## Punto de registro
 
 ```go
-// all 包提供一键注册全部零配置检测器（27 个）
+// El paquete all registra con una sola llamada todos los detectores sin configuración (27)
 all.RegisterAll(engine)
 ```
+
+## Funciones auxiliares
+
+```go
+// FirstMatch devuelve el primer patrón que coincide con input; si no coincide ninguno ("", false)
+func FirstMatch(input string, patterns []*regexp.Regexp) (string, bool)
+```
+
+Permite que los detectores personalizados reutilicen los patrones precompilados integrados y eviten recompilar expresiones regulares.
 
 ## Interfaz del backend de almacenamiento
 
@@ -73,11 +82,11 @@ all.RegisterAll(engine)
 
 ```go
 type Backend interface {
-    Incr(key string, window time.Duration) (int, error)   // 窗口内计数 +1
-    Get(key string) (int, error)                          // 读取计数
-    Block(key string, duration time.Duration) error       // 封禁指定时长
-    IsBlocked(key string) (bool, error)                   // 是否已封禁
-    Close() error                                         // 关闭并释放资源
+    Incr(key string, window time.Duration) (int, error)   // contador dentro de la ventana +1
+    Get(key string) (int, error)                          // lee el contador
+    Block(key string, duration time.Duration) error       // bloquea durante la duración indicada
+    IsBlocked(key string) (bool, error)                   // si ya está bloqueado
+    Close() error                                         // cierra y libera recursos
 }
 ```
 
@@ -85,31 +94,31 @@ Implementaciones:
 
 | Backend | Descripción |
 |------|------|
-| `storage.NewMemory()` | Implementación en memoria, `sync.Mutex` + map, limpieza automática de entradas caducadas cada 30s |
-| `storage.NewFile(path)` | Persistencia en archivos JSON, guardado automático cada 30s + flush en Close |
-| `storage/redis` | Submódulo Redis, Pipeline Incr + TTL, requiere `go-redis/v9` |
+| `storage.NewMemory() *Memory` | Implementación en memoria, `sync.Mutex` + map, limpieza automática de entradas caducadas cada 30s |
+| `storage.NewFile(path) (*File, error)` | Persistencia en archivos JSON, guardado automático cada 30s + flush en Close |
+| `redis.New(addr, password string, db int) *Backend` | Submódulo Redis, Pipeline Incr + TTL, requiere `go-redis/v9` |
 
 ## Validadores HTTP
 
 ```go
-// HTTP 方法白名单校验
+// validación de la lista blanca de métodos HTTP
 e.Register(&httpval.Method{})
 
-// 请求体大小限制（默认 10MB）
+// límite del tamaño del cuerpo de la petición (10 MB por defecto)
 e.Register(httpval.NewBodySize(5 * 1024 * 1024)) // 5MB
 
-// Content-Type 白名单（空白名单 = 拒绝所有）
+// lista blanca de Content-Type (lista vacía = rechazar todo)
 e.Register(httpval.NewContentType([]string{
     "application/json", "application/x-www-form-urlencoded",
 }))
 
-// CSRF Origin 校验（跨域请求检查 Origin 与 Host 匹配）
+// validación de Origin para CSRF (en peticiones cross-origin se comprueba que Origin coincida con Host)
 e.Register(&httpval.CSRFOrigin{
     Host: "example.com", AllowList: []string{"api.example.com"},
 })
 
-// IP 黑名单（窗口内 N 次攻击自动封禁，默认 5次/60s → 封禁15分钟）
-bl := httpval.NewIPBlacklist(mem) // mem 为任意 storage.Backend 实现
+// lista negra de IP (bloqueo automático tras N ataques en la ventana; por defecto 5/60 s → 15 minutos de bloqueo)
+bl := httpval.NewIPBlacklist(mem) // mem es cualquier implementación de storage.Backend
 e.Register(bl)
 blocked, _ := bl.RecordAttack(clientIP)
 ```
@@ -132,42 +141,47 @@ La vinculación de sesión no puede expresarse con `storage.Backend` (solo cuent
 ```go
 type Store interface {
     Save(key string, value []byte, ttl time.Duration) error
-    Load(key string) ([]byte, error)   // 不存在或已过期返回 (nil, nil)
+    Load(key string) ([]byte, error)   // devuelve (nil, nil) si no existe o ha caducado
     Delete(key string) error
 }
 
-session.NewMemoryStore() *MemoryStore // 内存实现，30s 清理过期条目，Close 停止清理
+session.NewMemoryStore() *MemoryStore // implementación en memoria, limpia las entradas caducadas cada 30 s y Close detiene la limpieza
 ```
 
 ### Session
 
 ```go
 type Session struct {
-    IP          string    `json:"ip"`           // 建立会话时的客户端 IP
+    IP          string    `json:"ip"`           // IP del cliente al crear la sesión
     UserAgent   string    `json:"ua,omitempty"`
-    Fingerprint string    `json:"fp,omitempty"` // 设备指纹（X-Device-Fingerprint 头）
+    Fingerprint string    `json:"fp,omitempty"` // huella del dispositivo (cabecera X-Device-Fingerprint)
     Country     string    `json:"country,omitempty"`
     IssuedAt    time.Time `json:"issued_at"`
-    LastSeen    time.Time `json:"last_seen"`    // 每次 Check 滑动续期
+    LastSeen    time.Time `json:"last_seen"`    // renovación deslizante en cada Check
 }
 ```
 
 ### Tracker
 
+Nombre del detector `session_guard` (véase `Tracker.Name()`).
+
 ```go
 type Tracker struct {
     Store             Store
-    TTL               time.Duration              // 会话生命周期，默认 30m，每次 Check 滑动续期
-    SubnetBits        int                        // 同地判定前缀，默认 24（IPv6 自动 +24）
-    CountryOf         func(ip string) string     // 可选 GeoIP 钩子；为 nil 时跳过国家判定
-    KnownNets         int                        // Observe 每用户保留的登录网段数，默认 8
-    KnownNetTTL       time.Duration              // 登录网段保留时长，默认 90 天
-    TokenSource       func(*http.Request) string // 默认 DefaultTokenSource
-    TrustProxyHeaders bool                       // 默认 false
-    FailClosed        bool                       // 默认 false
-    MaxLockout        time.Duration              // 每次锁定翻倍的上限，默认 24h
-    BackoffWindow     time.Duration              // 升级计数的保留时长，默认 24h
-    StuffingLimit     int                        // 同一 IP 允许失败的不同身份数上限，默认 10
+    TTL               time.Duration              // duración de la sesión, 30m por defecto, renovación deslizante en cada Check
+    SubnetBits        int                        // prefijo para determinar la misma ubicación, 24 por defecto (IPv6 +24 automáticamente)
+    CountryOf         func(ip string) string     // hook GeoIP opcional; si es nil se omite la comprobación de país
+    KnownNets         int                        // número de redes de inicio de sesión que Observe conserva por usuario, 8 por defecto
+    KnownNetTTL       time.Duration              // tiempo de conservación de las redes de inicio de sesión, 90 días por defecto
+    TokenSource       func(*http.Request) string // DefaultTokenSource por defecto
+    TrustProxyHeaders bool                       // false por defecto
+    FailClosed        bool                       // false por defecto
+    Failures          int                        // umbral de fallos en la ventana para bloquear el token, 5 por defecto
+    FailureWindow     time.Duration              // tiempo de conservación del contador de fallos, lo que lo supera no cuenta, 5m por defecto
+    Lockout           time.Duration              // duración del bloqueo al alcanzar el umbral por primera vez, se duplica cada vez, 15m por defecto
+    MaxLockout        time.Duration              // límite superior de la duplicación en cada bloqueo, 24h por defecto
+    BackoffWindow     time.Duration              // tiempo de conservación del contador de escalado, 24h por defecto
+    StuffingLimit     int                        // número máximo de identidades distintas que una misma IP puede fallar, 10 por defecto
 }
 ```
 
@@ -203,21 +217,54 @@ Valores de `Details["reason"]`:
 
 ### Signer
 
+Nombre del detector `data_tamper` (véase `Signer.Name()`).
+
 ```go
 type Signer struct {
-    Secret  []byte           // 共享 HMAC 密钥，用 crypto/rand 生成
-    MaxSkew time.Duration    // 时间戳允许偏差，默认 5m
-    Nonces  storage.Backend  // 可选：非空时用窗口计数拦截签名重放（可跨实例，复用 Redis）
+    Secret  []byte           // clave HMAC compartida, generada con crypto/rand
+    MaxSkew time.Duration    // desviación permitida del timestamp, 5m por defecto
+    Nonces  storage.Backend  // opcional: si no está vacío, un contador de ventana bloquea la repetición de firmas (entre instancias, reutilizando Redis)
 }
 
 signer := session.NewSigner(secret, mem)
 sig, err := signer.Sign(map[string]string{"amount": "100", "to": "bob"}) // "<unix-ts>.<nonce>.<mac>"
-res := signer.Verify(params, sig)                                        // 参数被改动/密钥不符/超时/重放
+res := signer.Verify(params, sig)                                        // parámetros alterados/clave incorrecta/caducado/repetido
 ```
 
 Los parámetros se normalizan con `url.Values.Encode()` (ordenación + escapado), por lo que el orden del map no afecta al resultado. El orden de verificación es marca de tiempo → firma → contador de nonce, así que una firma falsificada no puede consumir un nonce legítimo; si `Nonces` es nil, solo se puede limitar la repetición mediante la ventana de marca de tiempo.
 
 Valores de `Details["reason"]`: `signer_not_configured` (Critical), `signature_mismatch` (Critical), `replay` (Critical), `signature_malformed`, `timestamp_invalid`, `signature_expired`, `timestamp_in_future` (High).
+
+## Funciones auxiliares para la subida de archivos
+
+Además de registrarse como detector, la detección de subidas exporta dos funciones auxiliares que se pueden llamar directamente:
+
+```go
+// HasMaliciousExt indica si la extensión del nombre no está en la lista blanca (15 extensiones); sin extensión devuelve true
+func HasMaliciousExt(filename string) bool
+
+// CheckExtension comparte el mismo origen, pero devuelve un *Result completo (con gravedad y descripción)
+func (d *MaliciousFileUpload) CheckExtension(filename string) *security.Result
+```
+
+Sirven para hacer una comprobación rápida antes de que el archivo llegue al disco, sin construir una `Engine`.
+
+## Mascota del proyecto
+
+El paquete `pet` embebe la SVG de la mascota del proyecto, Sentinel Gopher (哨兵鼠), en tiempo de compilación mediante `go:embed`, sin dependencias de terceros y sin leer archivos en tiempo de ejecución:
+
+```go
+func SVG() []byte         // bytes SVG sin procesar; el slice se comparte y el llamador no debe modificarlo
+func Handler() http.Handler // se sirve como image/svg+xml, Cache-Control de un día
+func Banner() string      // banner de texto plano apto para terminal, con salto de línea final
+```
+
+```go
+log.Println(pet.Banner())              // imprimir al arrancar
+http.Handle("/pet.svg", pet.Handler()) // montar en una ruta de depuración
+```
+
+`Handler` usa internamente `http.ServeContent`, por lo que incluye `Content-Length` y admite `Range` y `HEAD`; un `w.Write` directo supera el búfer de sondeo de 2 KiB de `net/http` y degrada a una respuesta chunked.
 
 ## Ejemplo de detector personalizado
 
@@ -229,7 +276,7 @@ func (d *MyDetector) Name() string { return "my_detector" }
 func (d *MyDetector) Detect(input string) *security.Result {
     return &security.Result{
         Name: "my_detector", Detected: strings.Contains(input, "evil"),
-        Severity: security.SeverityHigh, Message: "检测到恶意内容",
+        Severity: security.SeverityHigh, Message: "contenido malicioso detectado",
     }
 }
 

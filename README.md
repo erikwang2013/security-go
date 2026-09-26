@@ -4,6 +4,14 @@
 
 Go 语言编写的攻击检测包，覆盖 **36 个检测器**、**6 大攻击类别**、**3 种可插拔存储后端**。统一接口 + 注册表模式，纯检测库，适配任何 Go HTTP 框架。
 
+<p align="center">
+  <img src="pet/pet.svg" width="190" alt="哨兵鼠 — 项目宠物">
+  <br>
+  <sub>项目宠物 <b>哨兵鼠</b>（Sentinel Gopher）—— 一只持盾巡检的 Go 地鼠。<br>盾牌上的 <b>36</b> 是检测器数量，放大镜是逐请求扫描。</sub>
+</p>
+
+[设计架构](#设计架构) · [功能设计](#实现功能) · [生命周期](#生命周期) · [项目结构](#项目结构) · [项目宠物](#项目宠物)
+
 ## 设计思路
 
 ### 核心原则
@@ -15,72 +23,16 @@ Go 语言编写的攻击检测包，覆盖 **36 个检测器**、**6 大攻击�
 
 ### 设计架构
 
-```
-                         ┌───────────────────────────────┐
-                         │        security.Engine         │
-                         │  ┌─────────────────────────┐  │
-                         │  │    Detector Registry     │  │
-                         │  │   map[string]Detector    │  │
-                         │  └─────────────────────────┘  │
-                         │                               │
-                         │  Detect(name, input)          │
-                         │  DetectAll(input)             │
-                         │  DetectRequest(*http.Request) │
-                         └──────────────┬────────────────┘
-                                        │
-          ┌─────────────────┬───────────┴───────────┬─────────────────┐
-          │                 │                       │                 │
-   ┌──────▼──────┐   ┌──────▼──────┐   ┌────────────▼────────┐   ┌───▼───────────┐
-   │  injection  │   │  protocol   │   │        data         │   │     file      │
-   │   (10 个)   │   │   (9 个)    │   │       (5 个)        │   │    (3 个)     │
-   │             │   │             │   │                     │   │               │
-   │  xss, sql,  │   │  ssrf, xxe, │   │  deser, csv,        │   │  traversal,   │
-   │  command,   │   │  header,    │   │  mail, jwt,         │   │  upload,      │
-   │  nosql,     │   │  host,      │   │  proto_poll         │   │  data_leak    │
-   │  ldap,      │   │  smuggling, │   │                     │   │               │
-   │  xpath,     │   │  redirect,  │   │                     │   │               │
-   │  jndi, ssi, │   │  cors, ws,  │   │                     │   │               │
-   │  graphql,   │   │  dns_rebind │   │                     │   │               │
-   │  ssti       │   │             │   │                     │   │               │
-   └─────────────┘   └─────────────┘   └─────────────────────┘   └───────────────┘
-                                                                          │
-          ┌───────────────────────────────────────────────────────────────┤
-          │                                                               │
-   ┌──────▼──────────┐                                         ┌──────────▼──────────┐
-   │     httpval     │                                         │       storage       │
-   │     (7 个)      │                                         │  ┌──────────────┐   │
-   │                 │                                         │  │   Backend    │   │
-   │  method, size,  │                                         │  │   interface  │   │
-   │  type, csrf,    │                                         │  └──┬───┬───┬───┘   │
-   │  cookie,nested  │                                         │                    │
-   │  ip_blacklist   │◄────── 使用 storage.Backend ──────────►│  Memory File Redis │
-   │  (需配置参数)    │                                         │                    │
-   └─────────────────┘                                         └────────────────────┘
-
-   ┌─────────────────────────────────────────────────────────────────────┐
-   │  session (2)   outside the Engine registry                          │
-   │                                                                     │
-   │  Tracker (session_guard)  +  Signer (data_tamper)                   │
-   │  Issue / Check / Observe / Guard / Revoke    Sign / Verify          │
-   └─────────────────────────────────────────────────────────────────────┘
-```
+![架构设计](docs/images/architecture.svg)
 
 > `session` 包不经过 `Engine` 注册：会话校验必须读到完整的 `*http.Request`（token、客户端 IP、User-Agent），
 > 且需要应用提供存储与密钥，因此直接作为中间件调用，见下文「会话安全配置」。
 
-### 数据流
+### 生命周期
 
-```
-HTTP Request
-     │
-     ▼
-┌──────────────┐     ┌─────────────────┐     ┌──────────────┐
-│ collectInputs│────▶│  DetectAll()    │────▶│  []*Result   │
-│ URL, Query,  │     │  逐个检测器调用   │     │  聚合结果     │
-│ Headers,     │     │  Detect(input)  │     │              │
-│ Cookies      │     └─────────────────┘     └──────────────┘
-└──────────────┘
-```
+一次请求从进入检测到分级处置的完整闭环（含 IP 封禁回路与编码重扫），以及会话从建立、校验到吊销的全过程：
+
+![生命周期](docs/images/lifecycle.svg)
 
 ### 严重程度分级
 
@@ -92,6 +44,10 @@ HTTP Request
 | `SeverityCritical` | 严重 | 强特征命中：命令注入、JNDI、SSTI、XXE、数据泄露、反序列化（PHP 序列化对象 / pickle / Java / .NET） |
 
 ## 实现功能
+
+### 功能总览
+
+![功能设计](docs/images/features.svg)
 
 ### 注入类攻击 (10)
 
@@ -123,11 +79,11 @@ HTTP Request
 | **DNS 重绑定** | Host 头内网 IP、localhost、无 TLD 短主机名 |
 
 ### HTTP 协议层校验 (7)
-| **JSON 嵌套深度** | `json.Decoder` 流式扫描：嵌套层级或元素数超限即判 JSON 炸弹（默认深度 32）；非法或截断 JSON 不告警 |
-| **Cookie 属性校验** | `Set-Cookie` 缺 `Secure`/`HttpOnly`/`SameSite`、值超长或为空；缺失属性合并为一条结果 |
 
 | 检测器 | 说明 |
 |--------|------|
+| **JSON 嵌套深度** | `json.Decoder` 流式扫描：嵌套层级或元素数超限即判 JSON 炸弹（默认深度 32）；非法或截断 JSON 不告警 |
+| **Cookie 属性校验** | `Set-Cookie` 缺 `Secure`/`HttpOnly`/`SameSite`、值超长或为空；缺失属性合并为一条结果 |
 | **HTTP 方法** | 仅允许 GET/POST/PUT/DELETE/HEAD/OPTIONS/PATCH，其他返回告警 |
 | **请求体大小** | 超过上限（默认 10MB）触发告警 |
 | **Content-Type** | 仅允许配置的 MIME 类型白名单 |
@@ -164,8 +120,40 @@ HTTP Request
 | 后端 | 说明 |
 |------|------|
 | **Memory** | `sync.Mutex` + map，30s 自动清理过期条目 |
-| **File** | JSON 文件持久化，Close 时 flush |
+| **File** | JSON 文件持久化，每 30s 自动保存 + Close 时 flush |
 | **Redis** | 独立子模块，Pipeline Incr + TTL，需 `go-redis/v9` |
+
+## 项目结构
+
+```
+security-go/
+├── security.go            # 核心：Result / Severity / Detector 接口 / Engine 注册表
+├── injection/             # 注入类检测器 (10)：xss、sql、command、nosql、ldap、
+│                          #   xpath、jndi、ssi、graphql、ssti
+├── protocol/              # 协议与请求攻击检测器 (9)：ssrf、xxe、header、host、
+│                          #   smuggling、redirect、cors、websocket、dns_rebinding
+├── data/                  # 数据与序列化攻击检测器 (5)：deserialization、csv、
+│                          #   mail、jwt、prototype_pollution
+├── file/                  # 文件与敏感数据检测器 (3)：path_traversal、upload、data_leak
+├── httpval/               # HTTP 协议层校验器 (7)，注册时需应用提供参数
+├── session/               # 会话安全 (2)：session_guard、data_tamper
+│                          #   不经 Engine，直接作为中间件使用
+├── storage/               # 存储后端
+│   ├── storage.go         #   Backend 接口：Incr / Get / Block / IsBlocked / Close
+│   ├── memory.go          #   Memory：Mutex + map，30s 后台清理
+│   ├── file.go            #   File：JSON 持久化，Close 时落盘
+│   └── redis/             #   Redis：独立子模块，自带 go.mod
+├── all/                   # 一键注册 27 个零配置检测器
+├── pet/                   # 项目宠物：内嵌 SVG + 启动横幅
+├── docs/
+│   ├── api.md             # API 接口文档
+│   ├── images/            # 架构设计 / 功能设计 / 生命周期 SVG
+│   ├── i18n/              # 12 种语言的翻译文档
+│   └── superpowers/       # 设计规范、实施计划、代码审查报告
+└── tests/                 # 覆盖率报告
+```
+
+每个检测器包内为 `xxx.go` + `xxx_test.go` 一一对应；`all` 包额外含回归测试。
 
 ## 使用说明
 
@@ -312,12 +300,25 @@ func (d *MyDetector) Detect(input string) *security.Result {
 e.Register(&MyDetector{})
 ```
 
+### 项目宠物
+
+`pet` 包用 `go:embed` 在编译期内嵌哨兵鼠的 SVG，运行时无文件依赖、不引入任何第三方依赖：
+
+```go
+import "github.com/erikwang2013/security-go/pet"
+
+log.Println(pet.Banner())              // 启动横幅：终端友好的纯文本版本
+http.Handle("/pet.svg", pet.Handler()) // 调试路由：以 image/svg+xml 提供，缓存一天
+svg := pet.SVG()                       // 或直接取原始 SVG 字节
+```
+
 ### 相关文档
 
 - [API 接口文档](docs/api.md) — 核心类型、Detector/Engine 接口、存储后端接口、HTTP 校验器
 - [设计规范](docs/superpowers/specs/2026-07-29-attack-detection-design.md) — 包结构、检测器目录
 - [实施计划](docs/superpowers/plans/2026-07-29-attack-detection-plan.md) — 分步任务计划与实施偏差对照
 - [代码审查报告](docs/superpowers/reports/2026-07-29-code-review-report.md) — Bug 修复、测试覆盖、架构评估
+- [代码审查报告 v2](docs/superpowers/reports/2026-07-29-code-review-report-v2.md) — 二轮审查：4 个问题修复、新增 18 个测试文件
 
 ---
 

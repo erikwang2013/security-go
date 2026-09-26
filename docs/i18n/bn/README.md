@@ -1,8 +1,16 @@
 # Security Go — আক্রমণ সনাক্তকরণ লাইব্রেরি
 
-[简体中文](../../../README.md) · [English](../../../README-EN.md)
+[简体中文](../../../README.md) · [English](../../../README-EN.md) · [API ইন্টারফেস ডকুমেন্ট](api.md)
 
-Go ভাষায় লেখা আক্রমণ সনাক্তকরণ প্যাকেজ, যা কভার করে **৩৪টি ডিটেক্টর** (detector), **৬টি প্রধান আক্রমণ শ্রেণী**, **৩টি প্লাগেবল স্টোরেজ ব্যাকএন্ড** (backend)। ইউনিফাইড ইন্টারফেস + রেজিস্ট্রি (registry) প্যাটার্ন, বিশুদ্ধ ডিটেকশন লাইব্রেরি, যেকোনো Go HTTP ফ্রেমওয়ার্কের সাথে মানিয়ে নেওয়া যায়।
+Go ভাষায় লেখা আক্রমণ সনাক্তকরণ প্যাকেজ, যা কভার করে **৩৬টি ডিটেক্টর** (detector), **৬টি প্রধান আক্রমণ শ্রেণী**, **৩টি প্লাগেবল স্টোরেজ ব্যাকএন্ড** (backend)। ইউনিফাইড ইন্টারফেস + রেজিস্ট্রি (registry) প্যাটার্ন, বিশুদ্ধ ডিটেকশন লাইব্রেরি, যেকোনো Go HTTP ফ্রেমওয়ার্কের সাথে মানিয়ে নেওয়া যায়।
+
+<p align="center">
+  <img src="../../../pet/pet.svg" width="190" alt="Sentinel Gopher">
+  <br>
+  <sub>প্রজেক্টের মাসকট <b>Sentinel Gopher</b> (哨兵鼠) — ঢাল হাতে পাহারায় দাঁড়ানো একটি Go গোফার।<br>ঢালের <b>৩৬</b> সংখ্যাটি ডিটেক্টরের সংখ্যা; আর আতশকাচটি প্রতিটি রিকোয়েস্টের স্ক্যান।</sub>
+</p>
+
+[আর্কিটেকচার](#ডিজাইন-আর্কিটেকচার) · [বৈশিষ্ট্য](#বাস্তবায়িত-বৈশিষ্ট্য) · [জীবনচক্র](#জীবনচক্র) · [প্রকল্প কাঠামো](#প্রকল্প-কাঠামো) · [মাসকট](#মাসকট)
 
 ## ডিজাইনের ধারণা
 
@@ -15,72 +23,16 @@ Go ভাষায় লেখা আক্রমণ সনাক্তকর�
 
 ### ডিজাইন আর্কিটেকচার
 
-```
-                         ┌───────────────────────────────┐
-                         │        security.Engine         │
-                         │  ┌─────────────────────────┐  │
-                         │  │    Detector Registry     │  │
-                         │  │   map[string]Detector    │  │
-                         │  └─────────────────────────┘  │
-                         │                               │
-                         │  Detect(name, input)          │
-                         │  DetectAll(input)             │
-                         │  DetectRequest(*http.Request) │
-                         └──────────────┬────────────────┘
-                                        │
-          ┌─────────────────┬───────────┴───────────┬─────────────────┐
-          │                 │                       │                 │
-   ┌──────▼──────┐   ┌──────▼──────┐   ┌────────────▼────────┐   ┌───▼───────────┐
-   │  injection  │   │  protocol   │   │        data         │   │     file      │
-   │   (10 个)   │   │   (9 个)    │   │       (5 个)        │   │    (3 个)     │
-   │             │   │             │   │                     │   │               │
-   │  xss, sql,  │   │  ssrf, xxe, │   │  deser, csv,        │   │  traversal,   │
-   │  command,   │   │  header,    │   │  mail, jwt,         │   │  upload,      │
-   │  nosql,     │   │  host,      │   │  proto_poll         │   │  data_leak    │
-   │  ldap,      │   │  smuggling, │   │                     │   │               │
-   │  xpath,     │   │  redirect,  │   │                     │   │               │
-   │  jndi, ssi, │   │  cors, ws,  │   │                     │   │               │
-   │  graphql,   │   │  dns_rebind │   │                     │   │               │
-   │  ssti       │   │             │   │                     │   │               │
-   └─────────────┘   └─────────────┘   └─────────────────────┘   └───────────────┘
-                                                                          │
-          ┌───────────────────────────────────────────────────────────────┤
-          │                                                               │
-   ┌──────▼──────────┐                                         ┌──────────▼──────────┐
-   │     httpval     │                                         │       storage       │
-   │     (7 个)      │                                         │  ┌──────────────┐   │
-   │                 │                                         │  │   Backend    │   │
-   │  method, size,  │                                         │  │   interface  │   │
-   │  type, csrf,    │                                         │  └──┬───┬───┬───┘   │
-   │  cookie,nested  │                                         │                    │
-   │  ip_blacklist   │◄────── 使用 storage.Backend ──────────►│  Memory File Redis │
-   │  (需配置参数)    │                                         │                    │
-   └─────────────────┘                                         └────────────────────┘
-
-   ┌─────────────────────────────────────────────────────────────────────┐
-   │  session (2)   outside the Engine registry                          │
-   │                                                                     │
-   │  Tracker (session_guard)  +  Signer (data_tamper)                   │
-   │  Issue / Check / Observe / Guard / Revoke    Sign / Verify          │
-   └─────────────────────────────────────────────────────────────────────┘
-```
+![আর্কিটেকচার](../../../docs/images/architecture.svg)
 
 > `session` প্যাকেজ `Engine` রেজিস্ট্রির মধ্য দিয়ে যায় না: সেশন ভ্যালিডেশনের জন্য সম্পূর্ণ `*http.Request` পড়া প্রয়োজন (token, ক্লায়েন্ট IP, User-Agent),
 > এবং অ্যাপ্লিকেশনকে স্টোরেজ ও কী সরবরাহ করতে হয়, তাই এটি সরাসরি মিডলওয়্যার হিসেবে ব্যবহৃত হয়, নিচের "সেশন নিরাপত্তা কনফিগারেশন" অংশটি দেখুন।
 
-### ডেটা ফ্লো
+### জীবনচক্র
 
-```
-HTTP Request
-     │
-     ▼
-┌──────────────┐     ┌─────────────────┐     ┌──────────────┐
-│ collectInputs│────▶│  DetectAll()    │────▶│  []*Result   │
-│ URL, Query,  │     │  逐个检测器调用   │     │  聚合结果     │
-│ Headers,     │     │  Detect(input)  │     │              │
-│ Cookies      │     └─────────────────┘     └──────────────┘
-└──────────────┘
-```
+একটি রিকোয়েস্টের সম্পূর্ণ চক্র — প্রবেশ থেকে শুরু করে সনাক্তকরণ পেরিয়ে স্তরভিত্তিক ব্যবস্থাপনা পর্যন্ত (IP ব্লক চক্র ও URL-ডিকোডের পর পুনঃস্ক্যানসহ), আর একটি সেশনের বাইন্ডিং থেকে বাতিল পর্যন্ত যাত্রা:
+
+![জীবনচক্র](../../../docs/images/lifecycle.svg)
 
 ### তীব্রতার স্তর
 
@@ -92,6 +44,10 @@ HTTP Request
 | `SeverityCritical` | গুরুতর | শক্তিশালী সংকেত: কমান্ড ইনজেকশন, JNDI, SSTI, XXE, ডেটা লিক, ডিসিরিয়ালাইজেশন (PHP সিরিয়ালাইজড অবজেক্ট / pickle / Java / .NET) |
 
 ## বাস্তবায়িত বৈশিষ্ট্য
+
+### বৈশিষ্ট্যের সংক্ষিপ্ত বিবরণ
+
+![বৈশিষ্ট্যের ডিজাইন](../../../docs/images/features.svg)
 
 ### ইনজেকশন-ধরনের আক্রমণ (10)
 
@@ -167,6 +123,39 @@ HTTP Request
 | **File** | JSON ফাইল পার্সিস্টেন্স, Close করার সময় flush |
 | **Redis** | আলাদা সাবমডিউল, Pipeline Incr + TTL, `go-redis/v9` প্রয়োজন |
 
+## প্রকল্প কাঠামো
+
+```
+security-go/
+├── security.go            # কোর: Result / Severity / Detector ইন্টারফেস / Engine রেজিস্ট্রি
+├── injection/             # ইনজেকশন ডিটেক্টর (10): xss, sql, command, nosql, ldap,
+│                          #   xpath, jndi, ssi, graphql, ssti
+├── protocol/              # প্রোটোকল ও রিকোয়েস্ট ডিটেক্টর (9): ssrf, xxe, header, host,
+│                          #   smuggling, redirect, cors, websocket, dns_rebinding
+├── data/                  # ডেটা ও সিরিয়ালাইজেশন ডিটেক্টর (5): deserialization, csv,
+│                          #   mail, jwt, prototype_pollution
+├── file/                  # ফাইল ও সংবেদনশীল-ডেটা ডিটেক্টর (3): path_traversal,
+│                          #   upload, data_leak
+├── httpval/               # HTTP প্রোটোকল ভ্যালিডেটর (7), প্রতিটির জন্য অ্যাপ-প্রদত্ত সেটিংস দরকার
+├── session/               # সেশন নিরাপত্তা (2): session_guard, data_tamper
+│                          #   Engine বাইপাস করে সরাসরি মিডলওয়্যার হিসেবে ব্যবহৃত হয়
+├── storage/               # স্টোরেজ ব্যাকএন্ড
+│   ├── storage.go         #   ব্যাকএন্ড ইন্টারফেস: Incr / Get / Block / IsBlocked / Close
+│   ├── memory.go          #   Memory: Mutex + map, 30s পর ব্যাকগ্রাউন্ড পরিষ্কার
+│   ├── file.go            #   File: JSON পার্সিস্টেন্স, Close-এ flush
+│   └── redis/             #   Redis: নিজস্ব go.mod সহ আলাদা সাবমডিউল
+├── all/                   # এক কলে ২৭টি জিরো-কনফিগ ডিটেক্টর রেজিস্টার
+├── pet/                   # প্রজেক্ট মাসকট: এমবেডেড SVG + স্টার্টআপ ব্যানার
+├── docs/
+│   ├── api.md             # API রেফারেন্স
+│   ├── images/            # আর্কিটেকচার / বৈশিষ্ট্য / জীবনচক্রের SVG
+│   ├── i18n/              # অনূদিত ডকুমেন্টেশন (১২টি ভাষা)
+│   └── superpowers/       # ডিজাইন স্পেক, বাস্তবায়ন পরিকল্পনা, কোড রিভিউ রিপোর্ট
+└── tests/                 # কভারেজ রিপোর্ট
+```
+
+প্রতিটি ডিটেক্টর প্যাকেজ `xxx.go`-এর সাথে `xxx_test.go` জোড়া লাগায়; `all` অতিরিক্তভাবে রিগ্রেশন টেস্ট বহন করে।
+
 ## ব্যবহারবিধি
 
 ### ইনস্টলেশন
@@ -188,13 +177,13 @@ import (
 
 func main() {
     e := security.NewEngine()
-    all.RegisterAll(e) // 一键注册 27 个零配置检测器
+    all.RegisterAll(e) // এক কলে ২৭টি জিরো-কনফিগ ডিটেক্টর রেজিস্টার করে
 
-    // 单个检测
+    // একক সনাক্তকরণ
     r := e.Detect("xss", "<script>alert(1)</script>")
-    fmt.Printf("检测到: %v, 严重程度: %d\n", r.Detected, r.Severity)
+    fmt.Printf("শনাক্ত: %v, তীব্রতা: %d\n", r.Detected, r.Severity)
 
-    // 全量检测
+    // সম্পূর্ণ সনাক্তকরণ
     for _, r := range e.DetectAll("' OR '1'='1") {
         fmt.Printf("[%s] %s\n", r.Name, r.Message)
     }
@@ -210,7 +199,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 
     for _, result := range e.DetectRequest(r) {
         if result.Detected {
-            log.Printf("攻击检测: [%s] %s", result.Name, result.Message)
+            log.Printf("আক্রমণ শনাক্ত: [%s] %s", result.Name, result.Message)
         }
     }
 }
@@ -219,29 +208,29 @@ func handler(w http.ResponseWriter, r *http.Request) {
 ### HTTP ভ্যালিডেটর কনফিগারেশন
 
 ```go
-// 方法校验
+// মেথড ভ্যালিডেশন
 e.Register(&httpval.Method{})
 
-// 请求体大小限制
+// রিকোয়েস্ট বডি সাইজের সীমা
 e.Register(httpval.NewBodySize(5 * 1024 * 1024)) // 5MB
 
-// Content-Type 白名单
+// Content-Type হোয়াইটলিস্ট
 e.Register(httpval.NewContentType([]string{
     "application/json", "application/x-www-form-urlencoded",
 }))
 
-// CSRF Origin 检查
+// CSRF Origin পরীক্ষা
 e.Register(&httpval.CSRFOrigin{
     Host: "example.com", AllowList: []string{"api.example.com"},
 })
 
-// IP 黑名单（自动封禁：5次/60s → 封禁15分钟）
+// IP ব্ল্যাকলিস্ট (স্বয়ংক্রিয় ব্লক: ৫টি আক্রমণ/60s → ১৫ মিনিট ব্লক)
 mem := storage.NewMemory()
 defer mem.Close()
 bl := httpval.NewIPBlacklist(mem)
 e.Register(bl)
 
-// 攻击发生时记录
+// আক্রমণ রেকর্ড করুন
 blocked, _ := bl.RecordAttack(clientIP)
 ```
 
@@ -256,36 +245,36 @@ st := session.NewMemoryStore()
 defer st.Close()
 
 tr := session.NewTracker(st)
-tr.CountryOf = geo.Lookup // 可选：接入 GeoIP，用于识别跨国家登录
+tr.CountryOf = geo.Lookup // ঐচ্ছিক: দেশ-পারাপার লগইন ধরতে GeoIP যুক্ত করুন
 
-// 登录成功后绑定会话（token 由你的登录流程生成）
-// 异地登录检测：比对该用户历史登录网段，出现新网段即告警
+// সফল লগইনের পর সেশন বাইন্ড করুন (token আসে আপনার লগইন ফ্লো থেকে)
+// দূরবর্তী লগইন সনাক্তকরণ: ব্যবহারকারীর আগের সাবনেটের সাথে মিলিয়ে দেখুন, নতুন সাবনেট হলেই সতর্ক করুন
 if res := tr.Observe("user-1", r); res.Detected {
     log.Printf("[%s] %s (%v)", res.Name, res.Message, res.Details["reason"])
 }
-if err := tr.Issue(token, r); err != nil {      // 绑定 token → IP 网段 / UA / 设备指纹
+if err := tr.Issue(token, r); err != nil {      // token বাইন্ড → IP সাবনেট / UA / ডিভাইস ফিঙ্গারপ্রিন্ট
     http.Error(w, "session error", http.StatusInternalServerError)
     return
 }
 
-// 保护路由：命中劫持或异地登录直接返回 401
+// রুট সুরক্ষা: হাইজ্যাক বা দূরবর্তী লগইনে সরাসরি 401 ফেরান
 mux.Handle("/api/", tr.Guard(apiHandler))
 
-// 或只做检测、自行决定处置
+// অথবা শুধু সনাক্ত করে নিজেই সিদ্ধান্ত নিন
 if res := tr.Check(r); res.Detected {
     log.Printf("[%s] %s (%v)", res.Name, res.Message, res.Details["reason"])
 }
 
-// 登出
+// লগআউট
 tr.Revoke(token)
 ```
 
 ডেটা ট্যাম্পারিং সনাক্তকরণ: ক্লায়েন্ট ও সার্ভার একটি শেয়ারড কী ব্যবহার করে, ক্লায়েন্ট প্যারামিটারে সিগনেচার করে, সার্ভার পুনরায় হিসাব করে যাচাই করে:
 
 ```go
-signer := session.NewSigner(secret, storage.NewMemory()) // 第二个参数用于拦截签名重放，可为 nil
+signer := session.NewSigner(secret, storage.NewMemory()) // দ্বিতীয় আর্গুমেন্টটি সিগনেচার রিপ্লে আটকায়, nil হতে পারে
 
-sig, _ := signer.Sign(map[string]string{"amount": "100", "to": "bob"}) // 客户端：随参数一起提交
+sig, _ := signer.Sign(map[string]string{"amount": "100", "to": "bob"}) // ক্লায়েন্ট: প্যারামিটারের সাথে 함께 পাঠান
 
 if res := signer.Verify(map[string]string{"amount": "100", "to": "bob"}, sig); res.Detected {
     log.Printf("[%s] %s (%v)", res.Name, res.Message, res.Details["reason"])
@@ -305,11 +294,23 @@ func (d *MyDetector) Name() string { return "my_detector" }
 func (d *MyDetector) Detect(input string) *security.Result {
     return &security.Result{
         Name: "my_detector", Detected: strings.Contains(input, "evil"),
-        Severity: security.SeverityHigh, Message: "检测到恶意内容",
+        Severity: security.SeverityHigh, Message: "ক্ষতিকর কনটেন্ট শনাক্ত",
     }
 }
 
 e.Register(&MyDetector{})
+```
+
+### মাসকট
+
+`pet` প্যাকেজ `go:embed`-এর মাধ্যমে কম্পাইল-সময়ে Sentinel Gopher-কে SVG হিসেবে এমবেড করে — রানটাইমে কোনো ফাইল-নির্ভরতা নেই, কোনো তৃতীয়-পক্ষ নির্ভরতাও যোগ হয় না:
+
+```go
+import "github.com/erikwang2013/security-go/pet"
+
+log.Println(pet.Banner())              // স্টার্টআপ ব্যানার: টার্মিনাল-বান্ধব প্লেইন টেক্সট
+http.Handle("/pet.svg", pet.Handler()) // ডিবাগ রুট: image/svg+xml হিসেবে পরিবেশিত, একদিন ক্যাশ করা
+svg := pet.SVG()                       // অথবা কাঁচা SVG বাইট নিন
 ```
 
 ### সম্পর্কিত ডকুমেন্টেশন
@@ -318,6 +319,7 @@ e.Register(&MyDetector{})
 - [ডিজাইন স্পেক](specs/2026-07-29-attack-detection-design.md) — প্যাকেজ স্ট্রাকচার, ডিটেক্টর ডিরেক্টরি
 - [বাস্তবায়ন পরিকল্পনা](plans/2026-07-29-attack-detection-plan.md) — ধাপে ধাপে টাস্ক পরিকল্পনা ও বাস্তবায়ন বিচ্যুতির তুলনা
 - [কোড রিভিউ রিপোর্ট](reports/2026-07-29-code-review-report.md) — বাগ ফিক্স, টেস্ট কভারেজ, আর্কিটেকচার মূল্যায়ন
+- [কোড রিভিউ রিপোর্ট v2](reports/2026-07-29-code-review-report-v2.md) — দ্বিতীয় পাস: 4টি সমস্যা মেরামত করা হয়েছে, 18টি টেস্ট ফাইল যোগ করা হয়েছে
 
 ---
 

@@ -67,6 +67,15 @@ func (e *Engine) DetectRequest(r *http.Request) []*Result // Détecte une requê
 all.RegisterAll(engine)
 ```
 
+## Fonctions utilitaires
+
+```go
+// FirstMatch renvoie la première chaîne de motif qui correspond à input ; si aucune ne correspond, renvoie ("", false)
+func FirstMatch(input string, patterns []*regexp.Regexp) (string, bool)
+```
+
+Permet aux détecteurs personnalisés de réutiliser les motifs précompilés intégrés, sans recompiler les expressions régulières.
+
 ## Interface des backends de stockage
 
 `httpval.IPBlacklist` utilise le stockage enfichable via cette interface :
@@ -85,9 +94,9 @@ Implémentations :
 
 | Backend | Description |
 |------|------|
-| `storage.NewMemory()` | Implémentation en mémoire, `sync.Mutex` + map, nettoyage automatique des entrées expirées toutes les 30 s |
-| `storage.NewFile(path)` | Persistance dans un fichier JSON, sauvegarde automatique toutes les 30 s + flush à la fermeture |
-| `storage/redis` | Sous-module Redis, Pipeline Incr + TTL, nécessite `go-redis/v9` |
+| `storage.NewMemory() *Memory` | Implémentation en mémoire, `sync.Mutex` + map, nettoyage automatique des entrées expirées toutes les 30 s |
+| `storage.NewFile(path) (*File, error)` | Persistance dans un fichier JSON, sauvegarde automatique toutes les 30 s + flush à la fermeture |
+| `redis.New(addr, password string, db int) *Backend` | Sous-module Redis, Pipeline Incr + TTL, nécessite `go-redis/v9` |
 
 ## Validateurs HTTP
 
@@ -132,42 +141,47 @@ La liaison de session ne peut pas être exprimée avec `storage.Backend` (qui ne
 ```go
 type Store interface {
     Save(key string, value []byte, ttl time.Duration) error
-    Load(key string) ([]byte, error)   // 不存在或已过期返回 (nil, nil)
+    Load(key string) ([]byte, error)   // Renvoie (nil, nil) si absent ou expiré
     Delete(key string) error
 }
 
-session.NewMemoryStore() *MemoryStore // 内存实现，30s 清理过期条目，Close 停止清理
+session.NewMemoryStore() *MemoryStore // Implémentation en mémoire, purge des entrées expirées toutes les 30 s, Close arrête la purge
 ```
 
 ### Session
 
 ```go
 type Session struct {
-    IP          string    `json:"ip"`           // 建立会话时的客户端 IP
+    IP          string    `json:"ip"`           // IP du client à l'établissement de la session
     UserAgent   string    `json:"ua,omitempty"`
-    Fingerprint string    `json:"fp,omitempty"` // 设备指纹（X-Device-Fingerprint 头）
+    Fingerprint string    `json:"fp,omitempty"` // Empreinte de l'appareil (en-tête X-Device-Fingerprint)
     Country     string    `json:"country,omitempty"`
     IssuedAt    time.Time `json:"issued_at"`
-    LastSeen    time.Time `json:"last_seen"`    // 每次 Check 滑动续期
+    LastSeen    time.Time `json:"last_seen"`    // Renouvellement glissant à chaque Check
 }
 ```
 
 ### Tracker
 
+Nom du détecteur `session_guard` (voir `Tracker.Name()`).
+
 ```go
 type Tracker struct {
     Store             Store
-    TTL               time.Duration              // 会话生命周期，默认 30m，每次 Check 滑动续期
-    SubnetBits        int                        // 同地判定前缀，默认 24（IPv6 自动 +24）
-    CountryOf         func(ip string) string     // 可选 GeoIP 钩子；为 nil 时跳过国家判定
-    KnownNets         int                        // Observe 每用户保留的登录网段数，默认 8
-    KnownNetTTL       time.Duration              // 登录网段保留时长，默认 90 天
-    TokenSource       func(*http.Request) string // 默认 DefaultTokenSource
-    TrustProxyHeaders bool                       // 默认 false
-    FailClosed        bool                       // 默认 false
-    MaxLockout        time.Duration              // 每次锁定翻倍的上限，默认 24h
-    BackoffWindow     time.Duration              // 升级计数的保留时长，默认 24h
-    StuffingLimit     int                        // 同一 IP 允许失败的不同身份数上限，默认 10
+    TTL               time.Duration              // Durée de vie de la session, 30m par défaut, renouvelée par glissement à chaque Check
+    SubnetBits        int                        // Préfixe de détermination du même lieu, 24 par défaut (+24 automatique en IPv6)
+    CountryOf         func(ip string) string     // Hook GeoIP facultatif ; si nil, le contrôle du pays est ignoré
+    KnownNets         int                        // Nombre de sous-réseaux de connexion conservés par utilisateur par Observe, 8 par défaut
+    KnownNetTTL       time.Duration              // Durée de conservation des sous-réseaux de connexion, 90 jours par défaut
+    TokenSource       func(*http.Request) string // DefaultTokenSource par défaut
+    TrustProxyHeaders bool                       // false par défaut
+    FailClosed        bool                       // false par défaut
+    Failures          int                        // Seuil d'échecs verrouillant le token dans la fenêtre, 5 par défaut
+    FailureWindow     time.Duration              // Durée de conservation du compteur d'échecs, au-delà non compté, 5m par défaut
+    Lockout           time.Duration              // Durée du verrouillage au premier franchissement du seuil, doublée à chaque fois, 15m par défaut
+    MaxLockout        time.Duration              // Plafond du doublement à chaque verrouillage, 24h par défaut
+    BackoffWindow     time.Duration              // Durée de conservation du compteur d'escalade, 24h par défaut
+    StuffingLimit     int                        // Nombre maximal d'identités distinctes en échec pour une même IP, 10 par défaut
 }
 ```
 
@@ -203,21 +217,54 @@ Valeurs de `Details["reason"]` :
 
 ### Signer
 
+Nom du détecteur `data_tamper` (voir `Signer.Name()`).
+
 ```go
 type Signer struct {
-    Secret  []byte           // 共享 HMAC 密钥，用 crypto/rand 生成
-    MaxSkew time.Duration    // 时间戳允许偏差，默认 5m
-    Nonces  storage.Backend  // 可选：非空时用窗口计数拦截签名重放（可跨实例，复用 Redis）
+    Secret  []byte           // Clé HMAC partagée, à générer avec crypto/rand
+    MaxSkew time.Duration    // Écart d'horodatage autorisé, 5m par défaut
+    Nonces  storage.Backend  // Facultatif : si non nil, un compteur à fenêtre bloque la relecture des signatures (inter-instances possible, réutilise Redis)
 }
 
 signer := session.NewSigner(secret, mem)
 sig, err := signer.Sign(map[string]string{"amount": "100", "to": "bob"}) // "<unix-ts>.<nonce>.<mac>"
-res := signer.Verify(params, sig)                                        // 参数被改动/密钥不符/超时/重放
+res := signer.Verify(params, sig)                                        // Paramètres modifiés / clé incorrecte / délai dépassé / relecture
 ```
 
 Les paramètres sont normalisés avec `url.Values.Encode()` (tri + échappement), l'ordre du map n'affecte pas le résultat. L'ordre de vérification est horodatage → signature → compteur de nonce ; une signature falsifiée ne peut donc pas consommer un nonce légitime. Lorsque `Nonces` est nil, seule la fenêtre d'horodatage limite la relecture.
 
 Valeurs de `Details["reason"]` : `signer_not_configured` (Critical), `signature_mismatch` (Critical), `replay` (Critical), `signature_malformed`, `timestamp_invalid`, `signature_expired`, `timestamp_in_future` (High).
+
+## Fonctions utilitaires d'upload de fichiers
+
+Outre son enregistrement comme détecteur, la détection d'upload exporte deux fonctions utilitaires directement appelables :
+
+```go
+// HasMaliciousExt indique si l'extension du nom de fichier est hors de la liste blanche (15 extensions) ; true si aucune extension
+func HasMaliciousExt(filename string) bool
+
+// CheckExtension a la même origine que ci-dessus, mais renvoie un *Result complet (avec gravité et description)
+func (d *MaliciousFileUpload) CheckExtension(filename string) *security.Result
+```
+
+Pour une vérification préalable rapide avant l'écriture du fichier sur disque, sans construire d'`Engine`.
+
+## Mascotte du projet
+
+Le paquet `pet` intègre au moment de la compilation le SVG de la mascotte du projet, Sentinel Gopher, via `go:embed` : aucune dépendance tierce, aucune lecture de fichier à l'exécution :
+
+```go
+func SVG() []byte         // Octets SVG bruts ; le slice est partagé, l'appelant ne doit pas le modifier
+func Handler() http.Handler // Servi en image/svg+xml, Cache-Control d'un jour
+func Banner() string      // Bannière en texte brut adaptée au terminal, avec saut de ligne final
+```
+
+```go
+log.Println(pet.Banner())              // Imprimé au démarrage
+http.Handle("/pet.svg", pet.Handler()) // Monté sur une route de débogage
+```
+
+En interne, `Handler` passe par `http.ServeContent` : il porte donc `Content-Length` et prend en charge `Range` et `HEAD` ; un `w.Write` direct dépasserait le tampon d'analyse de 2 Kio de `net/http` et dégénérerait en réponse chunked.
 
 ## Exemple de détecteur personnalisé
 

@@ -67,6 +67,15 @@ func (e *Engine) DetectRequest(r *http.Request) []*Result // Detecta uma requisi
 all.RegisterAll(engine)
 ```
 
+## Função auxiliar
+
+```go
+// FirstMatch retorna a primeira string de padrão que casa com input; ("", false) quando nenhuma casa
+func FirstMatch(input string, patterns []*regexp.Regexp) (string, bool)
+```
+
+Detectores personalizados podem reutilizar os padrões pré-compilados internos, sem recompilar as expressões regulares.
+
 ## Interface de backend de armazenamento
 
 `httpval.IPBlacklist` usa armazenamento plugável por meio desta interface:
@@ -85,9 +94,9 @@ Implementações:
 
 | Backend | Descrição |
 |------|------|
-| `storage.NewMemory()` | Implementação em memória, `sync.Mutex` + map, limpeza automática de entradas expiradas a cada 30s |
-| `storage.NewFile(path)` | Persistência em arquivo JSON, salvamento automático a cada 30s + flush no Close |
-| `storage/redis` | Submódulo Redis, Pipeline Incr + TTL, requer `go-redis/v9` |
+| `storage.NewMemory() *Memory` | Implementação em memória, `sync.Mutex` + map, limpeza automática de entradas expiradas a cada 30s |
+| `storage.NewFile(path) (*File, error)` | Persistência em arquivo JSON, salvamento automático a cada 30s + flush no Close |
+| `redis.New(addr, password string, db int) *Backend` | Submódulo Redis, Pipeline Incr + TTL, requer `go-redis/v9` |
 
 ## Validadores HTTP
 
@@ -132,42 +141,47 @@ A vinculação de sessão não pode ser expressa com `storage.Backend` (apenas c
 ```go
 type Store interface {
     Save(key string, value []byte, ttl time.Duration) error
-    Load(key string) ([]byte, error)   // 不存在或已过期返回 (nil, nil)
+    Load(key string) ([]byte, error)   // retorna (nil, nil) quando ausente ou expirado
     Delete(key string) error
 }
 
-session.NewMemoryStore() *MemoryStore // 内存实现，30s 清理过期条目，Close 停止清理
+session.NewMemoryStore() *MemoryStore // implementação em memória; limpa entradas expiradas a cada 30s, Close interrompe a limpeza
 ```
 
 ### Session
 
 ```go
 type Session struct {
-    IP          string    `json:"ip"`           // 建立会话时的客户端 IP
+    IP          string    `json:"ip"`           // IP do cliente no momento da criação da sessão
     UserAgent   string    `json:"ua,omitempty"`
-    Fingerprint string    `json:"fp,omitempty"` // 设备指纹（X-Device-Fingerprint 头）
+    Fingerprint string    `json:"fp,omitempty"` // impressão digital do dispositivo (cabeçalho X-Device-Fingerprint)
     Country     string    `json:"country,omitempty"`
     IssuedAt    time.Time `json:"issued_at"`
-    LastSeen    time.Time `json:"last_seen"`    // 每次 Check 滑动续期
+    LastSeen    time.Time `json:"last_seen"`    // renovada por sliding a cada Check
 }
 ```
 
 ### Tracker
 
+Nome do detector `session_guard` (veja `Tracker.Name()`).
+
 ```go
 type Tracker struct {
     Store             Store
-    TTL               time.Duration              // 会话生命周期，默认 30m，每次 Check 滑动续期
-    SubnetBits        int                        // 同地判定前缀，默认 24（IPv6 自动 +24）
-    CountryOf         func(ip string) string     // 可选 GeoIP 钩子；为 nil 时跳过国家判定
-    KnownNets         int                        // Observe 每用户保留的登录网段数，默认 8
-    KnownNetTTL       time.Duration              // 登录网段保留时长，默认 90 天
-    TokenSource       func(*http.Request) string // 默认 DefaultTokenSource
-    TrustProxyHeaders bool                       // 默认 false
-    FailClosed        bool                       // 默认 false
-    MaxLockout        time.Duration              // 每次锁定翻倍的上限，默认 24h
-    BackoffWindow     time.Duration              // 升级计数的保留时长，默认 24h
-    StuffingLimit     int                        // 同一 IP 允许失败的不同身份数上限，默认 10
+    TTL               time.Duration              // tempo de vida da sessão, padrão 30m, renovado por sliding a cada Check
+    SubnetBits        int                        // prefixo de mesma localidade, padrão 24 (IPv6 automaticamente +24)
+    CountryOf         func(ip string) string     // gancho GeoIP opcional; quando nil, a verificação de país é ignorada
+    KnownNets         int                        // redes de login que o Observe mantém por usuário, padrão 8
+    KnownNetTTL       time.Duration              // por quanto tempo uma rede de login é mantida, padrão 90 dias
+    TokenSource       func(*http.Request) string // padrão DefaultTokenSource
+    TrustProxyHeaders bool                       // padrão false
+    FailClosed        bool                       // padrão false
+    Failures          int                        // limite de falhas que bloqueia o token dentro da janela, padrão 5
+    FailureWindow     time.Duration              // por quanto tempo as falhas são contadas; as mais antigas são ignoradas, padrão 5m
+    Lockout           time.Duration              // duração do bloqueio ao cruzar o limite pela primeira vez, dobra a cada novo cruzamento, padrão 15m
+    MaxLockout        time.Duration              // teto do bloqueio que dobra, padrão 24h
+    BackoffWindow     time.Duration              // por quanto tempo as contagens de escalonamento são mantidas, padrão 24h
+    StuffingLimit     int                        // máximo de identidades distintas que um IP pode falhar, padrão 10
 }
 ```
 
@@ -203,21 +217,54 @@ Valores de `Details["reason"]`:
 
 ### Signer
 
+Nome do detector `data_tamper` (veja `Signer.Name()`).
+
 ```go
 type Signer struct {
-    Secret  []byte           // 共享 HMAC 密钥，用 crypto/rand 生成
-    MaxSkew time.Duration    // 时间戳允许偏差，默认 5m
-    Nonces  storage.Backend  // 可选：非空时用窗口计数拦截签名重放（可跨实例，复用 Redis）
+    Secret  []byte           // chave HMAC compartilhada, gere com crypto/rand
+    MaxSkew time.Duration    // desvio de timestamp permitido, padrão 5m
+    Nonces  storage.Backend  // opcional: quando não-nil, um contador de janela bloqueia reenvio de assinatura (entre instâncias, reutilize o Redis)
 }
 
 signer := session.NewSigner(secret, mem)
 sig, err := signer.Sign(map[string]string{"amount": "100", "to": "bob"}) // "<unix-ts>.<nonce>.<mac>"
-res := signer.Verify(params, sig)                                        // 参数被改动/密钥不符/超时/重放
+res := signer.Verify(params, sig)                                        // parâmetros alterados / chave incorreta / expirado / reenvio
 ```
 
 Os parâmetros são normalizados com `url.Values.Encode()` (ordenação + escape), e a ordem do map não afeta o resultado. A ordem de validação é timestamp → assinatura → contagem de nonce, portanto uma assinatura forjada não consome um nonce legítimo; com `Nonces` nulo, apenas a janela de timestamp limita o reenvio.
 
 Valores de `Details["reason"]`: `signer_not_configured` (Critical), `signature_mismatch` (Critical), `replay` (Critical), `signature_malformed`, `timestamp_invalid`, `signature_expired`, `timestamp_in_future` (High).
+
+## Funções auxiliares de upload de arquivo
+
+Além de ser registrada como detector, a detecção de upload também exporta duas funções auxiliares que podem ser chamadas diretamente:
+
+```go
+// HasMaliciousExt informa se a extensão do arquivo está fora da lista de permissão (15 entradas); extensão ausente retorna true
+func HasMaliciousExt(filename string) bool
+
+// CheckExtension usa a mesma lógica, mas retorna um *Result completo (com severidade e mensagem)
+func (d *MaliciousFileUpload) CheckExtension(filename string) *security.Result
+```
+
+Use-a para uma verificação prévia rápida antes de o arquivo chegar ao disco, sem construir um `Engine`.
+
+## Mascote do projeto
+
+O pacote `pet` embute o mascote do projeto, o Sentinel Gopher, como SVG em tempo de compilação via `go:embed`. Não adiciona nenhuma dependência de terceiros nem lê arquivos em tempo de execução:
+
+```go
+func SVG() []byte         // bytes SVG brutos; a fatia é compartilhada, o chamador não deve modificá-la
+func Handler() http.Handler // servido como image/svg+xml, Cache-Control de um dia
+func Banner() string      // banner em texto simples amigável ao terminal, termina com nova linha
+```
+
+```go
+log.Println(pet.Banner())              // imprime na inicialização
+http.Handle("/pet.svg", pet.Handler()) // monta em uma rota de depuração
+```
+
+`Handler` usa `http.ServeContent` internamente, portanto carrega `Content-Length` e suporta `Range` e `HEAD`; um `w.Write` direto ultrapassaria o buffer de sniffing de 2 KiB do `net/http` e degradaria para uma resposta chunked.
 
 ## Exemplo de detector personalizado
 

@@ -4,6 +4,14 @@
 
 Paquete de detección de ataques escrito en Go que cubre **36 detectores**, **6 categorías principales de ataques** y **3 backends de almacenamiento conectables**. Interfaz unificada + patrón de registro (registry), biblioteca de detección pura, adaptable a cualquier framework HTTP de Go.
 
+<p align="center">
+  <img src="../../../pet/pet.svg" width="190" alt="Sentinel Gopher">
+  <br>
+  <sub>Mascota del proyecto <b>Sentinel Gopher</b> (哨兵鼠) — un gopher de Go montando guardia con un escudo.<br>El <b>36</b> del escudo es el número de detectores; la lupa representa el escaneo en cada petición.</sub>
+</p>
+
+[Arquitectura](#arquitectura-de-diseño) · [Funcionalidades](#funcionalidades-implementadas) · [Ciclo de vida](#ciclo-de-vida) · [Estructura del proyecto](#estructura-del-proyecto) · [La mascota](#la-mascota)
+
 ## Enfoque de diseño
 
 ### Principios principales
@@ -15,72 +23,16 @@ Paquete de detección de ataques escrito en Go que cubre **36 detectores**, **6 
 
 ### Arquitectura de diseño
 
-```
-                         ┌───────────────────────────────┐
-                         │        security.Engine         │
-                         │  ┌─────────────────────────┐  │
-                         │  │    Detector Registry     │  │
-                         │  │   map[string]Detector    │  │
-                         │  └─────────────────────────┘  │
-                         │                               │
-                         │  Detect(name, input)          │
-                         │  DetectAll(input)             │
-                         │  DetectRequest(*http.Request) │
-                         └──────────────┬────────────────┘
-                                        │
-          ┌─────────────────┬───────────┴───────────┬─────────────────┐
-          │                 │                       │                 │
-   ┌──────▼──────┐   ┌──────▼──────┐   ┌────────────▼────────┐   ┌───▼───────────┐
-   │  injection  │   │  protocol   │   │        data         │   │     file      │
-   │   (10 个)   │   │   (9 个)    │   │       (5 个)        │   │    (3 个)     │
-   │             │   │             │   │                     │   │               │
-   │  xss, sql,  │   │  ssrf, xxe, │   │  deser, csv,        │   │  traversal,   │
-   │  command,   │   │  header,    │   │  mail, jwt,         │   │  upload,      │
-   │  nosql,     │   │  host,      │   │  proto_poll         │   │  data_leak    │
-   │  ldap,      │   │  smuggling, │   │                     │   │               │
-   │  xpath,     │   │  redirect,  │   │                     │   │               │
-   │  jndi, ssi, │   │  cors, ws,  │   │                     │   │               │
-   │  graphql,   │   │  dns_rebind │   │                     │   │               │
-   │  ssti       │   │             │   │                     │   │               │
-   └─────────────┘   └─────────────┘   └─────────────────────┘   └───────────────┘
-                                                                          │
-          ┌───────────────────────────────────────────────────────────────┤
-          │                                                               │
-   ┌──────▼──────────┐                                         ┌──────────▼──────────┐
-   │     httpval     │                                         │       storage       │
-   │     (7 个)      │                                         │  ┌──────────────┐   │
-   │                 │                                         │  │   Backend    │   │
-   │  method, size,  │                                         │  │   interface  │   │
-   │  type, csrf,    │                                         │  └──┬───┬───┬───┘   │
-   │  cookie,nested  │                                         │                    │
-   │  ip_blacklist   │◄────── 使用 storage.Backend ──────────►│  Memory File Redis │
-   │  (需配置参数)    │                                         │                    │
-   └─────────────────┘                                         └────────────────────┘
-
-   ┌─────────────────────────────────────────────────────────────────────┐
-   │  session (2)   outside the Engine registry                          │
-   │                                                                     │
-   │  Tracker (session_guard)  +  Signer (data_tamper)                   │
-   │  Issue / Check / Observe / Guard / Revoke    Sign / Verify          │
-   └─────────────────────────────────────────────────────────────────────┘
-```
+![Arquitectura](../../../docs/images/architecture.svg)
 
 > El paquete `session` no se registra en la `Engine`: la validación de sesión necesita leer el `*http.Request` completo (token, IP del cliente, User-Agent)
 > y la aplicación debe aportar el almacenamiento y la clave, por lo que se invoca directamente como middleware; consulta más abajo «Configuración de seguridad de sesión».
 
-### Flujo de datos
+### Ciclo de vida
 
-```
-HTTP Request
-     │
-     ▼
-┌──────────────┐     ┌─────────────────┐     ┌──────────────┐
-│ collectInputs│────▶│  DetectAll()    │────▶│  []*Result   │
-│ URL, Query,  │     │  逐个检测器调用   │     │  聚合结果     │
-│ Headers,     │     │  Detect(input)  │     │              │
-│ Cookies      │     └─────────────────┘     └──────────────┘
-└──────────────┘
-```
+El ciclo completo de una petición, desde la entrada y pasando por la detección hasta el tratamiento graduado (incluido el ciclo de bloqueo de IP y el reescaneo tras decodificar la URL), además del recorrido de una sesión desde el enlace hasta la revocación:
+
+![Ciclo de vida](../../../docs/images/lifecycle.svg)
 
 ### Niveles de severidad
 
@@ -92,6 +44,10 @@ HTTP Request
 | `SeverityCritical` | Crítico | Señales fuertes: inyección de comandos, JNDI, SSTI, XXE, fuga de datos, deserialización (objetos serializados PHP / pickle / Java / .NET) |
 
 ## Funcionalidades implementadas
+
+### Resumen de funcionalidades
+
+![Diseño de funcionalidades](../../../docs/images/features.svg)
 
 ### Ataques de inyección (10)
 
@@ -167,6 +123,39 @@ HTTP Request
 | **File** | Persistencia en archivos JSON, flush al llamar a Close |
 | **Redis** | Submódulo independiente, Pipeline Incr + TTL, requiere `go-redis/v9` |
 
+## Estructura del proyecto
+
+```
+security-go/
+├── security.go            # Núcleo: Result / Severity / interfaz Detector / registro Engine
+├── injection/             # Detectores de inyección (10): xss, sql, command, nosql, ldap,
+│                          #   xpath, jndi, ssi, graphql, ssti
+├── protocol/              # Detectores de protocolo y de petición (9): ssrf, xxe, header, host,
+│                          #   smuggling, redirect, cors, websocket, dns_rebinding
+├── data/                  # Detectores de datos y serialización (5): deserialization, csv,
+│                          #   mail, jwt, prototype_pollution
+├── file/                  # Detectores de archivos y datos sensibles (3): path_traversal,
+│                          #   upload, data_leak
+├── httpval/               # Validadores de protocolo HTTP (7), cada uno necesita ajustes de la aplicación
+├── session/               # Seguridad de sesión (2): session_guard, data_tamper
+│                          #   Omite el Engine y se usa directamente como middleware
+├── storage/               # Backends de almacenamiento
+│   ├── storage.go         #   Interfaz del backend: Incr / Get / Block / IsBlocked / Close
+│   ├── memory.go          #   Memory: Mutex + map, limpieza en segundo plano cada 30 s
+│   ├── file.go            #   File: persistencia JSON, flush al llamar a Close
+│   └── redis/             #   Redis: submódulo aparte con su propio go.mod
+├── all/                   # Registro en una sola llamada de los 27 detectores sin configuración
+├── pet/                   # Mascota del proyecto: SVG embebido + banner de inicio
+├── docs/
+│   ├── api.md             # Referencia de la API
+│   ├── images/            # SVGs de arquitectura / funcionalidades / ciclo de vida
+│   ├── i18n/              # Documentación traducida (12 idiomas)
+│   └── superpowers/       # Especificación de diseño, plan de implementación, informes de revisión de código
+└── tests/                 # Informes de cobertura
+```
+
+Cada paquete de detector empareja `xxx.go` con `xxx_test.go`; `all` además incluye pruebas de regresión.
+
 ## Instrucciones de uso
 
 ### Instalación
@@ -188,13 +177,13 @@ import (
 
 func main() {
     e := security.NewEngine()
-    all.RegisterAll(e) // 一键注册 27 个零配置检测器
+    all.RegisterAll(e) // registra los 27 detectores sin configuración de una sola vez
 
-    // 单个检测
+    // Detección individual
     r := e.Detect("xss", "<script>alert(1)</script>")
-    fmt.Printf("检测到: %v, 严重程度: %d\n", r.Detected, r.Severity)
+    fmt.Printf("Detectado: %v, Severidad: %d\n", r.Detected, r.Severity)
 
-    // 全量检测
+    // Detección masiva
     for _, r := range e.DetectAll("' OR '1'='1") {
         fmt.Printf("[%s] %s\n", r.Name, r.Message)
     }
@@ -210,7 +199,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 
     for _, result := range e.DetectRequest(r) {
         if result.Detected {
-            log.Printf("攻击检测: [%s] %s", result.Name, result.Message)
+            log.Printf("Ataque detectado: [%s] %s", result.Name, result.Message)
         }
     }
 }
@@ -219,29 +208,29 @@ func handler(w http.ResponseWriter, r *http.Request) {
 ### Configuración de validadores HTTP
 
 ```go
-// 方法校验
+// Validación del método
 e.Register(&httpval.Method{})
 
-// 请求体大小限制
+// Límite del tamaño del cuerpo de la petición
 e.Register(httpval.NewBodySize(5 * 1024 * 1024)) // 5MB
 
-// Content-Type 白名单
+// Lista blanca de Content-Type
 e.Register(httpval.NewContentType([]string{
     "application/json", "application/x-www-form-urlencoded",
 }))
 
-// CSRF Origin 检查
+// Comprobación de CSRF Origin
 e.Register(&httpval.CSRFOrigin{
     Host: "example.com", AllowList: []string{"api.example.com"},
 })
 
-// IP 黑名单（自动封禁：5次/60s → 封禁15分钟）
+// Lista negra de IPs (bloqueo automático: 5 ataques/60s → bloqueo de 15 min)
 mem := storage.NewMemory()
 defer mem.Close()
 bl := httpval.NewIPBlacklist(mem)
 e.Register(bl)
 
-// 攻击发生时记录
+// Registrar el ataque
 blocked, _ := bl.RecordAttack(clientIP)
 ```
 
@@ -256,36 +245,36 @@ st := session.NewMemoryStore()
 defer st.Close()
 
 tr := session.NewTracker(st)
-tr.CountryOf = geo.Lookup // 可选：接入 GeoIP，用于识别跨国家登录
+tr.CountryOf = geo.Lookup // opcional: conectar GeoIP para detectar inicios de sesión entre países
 
-// 登录成功后绑定会话（token 由你的登录流程生成）
-// 异地登录检测：比对该用户历史登录网段，出现新网段即告警
+// Vincular la sesión tras un inicio de sesión correcto (el token lo genera tu flujo de login)
+// Detección de inicio de sesión remoto: compara con las subredes históricas del usuario y alerta si aparece una nueva
 if res := tr.Observe("user-1", r); res.Detected {
     log.Printf("[%s] %s (%v)", res.Name, res.Message, res.Details["reason"])
 }
-if err := tr.Issue(token, r); err != nil {      // 绑定 token → IP 网段 / UA / 设备指纹
+if err := tr.Issue(token, r); err != nil {      // vincula el token → subred IP / UA / huella del dispositivo
     http.Error(w, "session error", http.StatusInternalServerError)
     return
 }
 
-// 保护路由：命中劫持或异地登录直接返回 401
+// Proteger rutas: devuelve 401 ante secuestro o inicio de sesión remoto
 mux.Handle("/api/", tr.Guard(apiHandler))
 
-// 或只做检测、自行决定处置
+// o solo detecta y decide tú mismo la respuesta
 if res := tr.Check(r); res.Detected {
     log.Printf("[%s] %s (%v)", res.Name, res.Message, res.Details["reason"])
 }
 
-// 登出
+// Cerrar sesión
 tr.Revoke(token)
 ```
 
 Detección de manipulación de datos: el cliente y el servidor comparten una clave, el cliente firma los parámetros y el servidor recalcula la verificación:
 
 ```go
-signer := session.NewSigner(secret, storage.NewMemory()) // 第二个参数用于拦截签名重放，可为 nil
+signer := session.NewSigner(secret, storage.NewMemory()) // el segundo argumento bloquea la repetición de firmas, puede ser nil
 
-sig, _ := signer.Sign(map[string]string{"amount": "100", "to": "bob"}) // 客户端：随参数一起提交
+sig, _ := signer.Sign(map[string]string{"amount": "100", "to": "bob"}) // Cliente: envíalo junto con los parámetros
 
 if res := signer.Verify(map[string]string{"amount": "100", "to": "bob"}, sig); res.Detected {
     log.Printf("[%s] %s (%v)", res.Name, res.Message, res.Details["reason"])
@@ -305,11 +294,23 @@ func (d *MyDetector) Name() string { return "my_detector" }
 func (d *MyDetector) Detect(input string) *security.Result {
     return &security.Result{
         Name: "my_detector", Detected: strings.Contains(input, "evil"),
-        Severity: security.SeverityHigh, Message: "检测到恶意内容",
+        Severity: security.SeverityHigh, Message: "Contenido malicioso detectado",
     }
 }
 
 e.Register(&MyDetector{})
+```
+
+### La mascota
+
+El paquete `pet` embebe el Sentinel Gopher como SVG en tiempo de compilación mediante `go:embed` — sin dependencia de archivos en tiempo de ejecución y sin añadir dependencias de terceros:
+
+```go
+import "github.com/erikwang2013/security-go/pet"
+
+log.Println(pet.Banner())              // banner de inicio: texto plano apto para terminal
+http.Handle("/pet.svg", pet.Handler()) // ruta de depuración: se sirve como image/svg+xml, cacheada un día
+svg := pet.SVG()                       // o toma los bytes SVG sin procesar
 ```
 
 ### Documentación relacionada
@@ -318,6 +319,7 @@ e.Register(&MyDetector{})
 - [Especificación de diseño](specs/2026-07-29-attack-detection-design.md) — estructura de paquetes, catálogo de detectores
 - [Plan de implementación](plans/2026-07-29-attack-detection-plan.md) — plan de tareas paso a paso y desviaciones frente a la implementación
 - [Informe de revisión de código](reports/2026-07-29-code-review-report.md) — corrección de bugs, cobertura de pruebas, evaluación de la arquitectura
+- [Informe de revisión de código v2](reports/2026-07-29-code-review-report-v2.md) — Segunda pasada: 4 problemas corregidos, 18 archivos de prueba añadidos
 
 ---
 

@@ -10,11 +10,11 @@
 
 ```go
 type Result struct {
-    Name     string                 // 检测器名称
-    Detected bool                   // 是否检测到攻击
-    Message  string                 // 结果说明
-    Severity Severity               // 严重程度
-    Details  map[string]interface{} // 附加细节
+    Name     string                 // डिटेक्टर का नाम
+    Detected bool                   // क्या हमला पाया गया
+    Message  string                 // परिणाम विवरण
+    Severity Severity               // गंभीरता स्तर
+    Details  map[string]interface{} // अतिरिक्त विवरण
 }
 ```
 
@@ -26,10 +26,10 @@ type Result struct {
 type Severity int
 
 const (
-    SeverityLow      Severity = iota // 低风险
-    SeverityMedium                   // 中风险
-    SeverityHigh                     // 高风险
-    SeverityCritical                 // 严重
+    SeverityLow      Severity = iota // कम जोखिम
+    SeverityMedium                   // मध्यम जोखिम
+    SeverityHigh                     // उच्च जोखिम
+    SeverityCritical                 // गंभीर
 )
 ```
 
@@ -39,8 +39,8 @@ const (
 
 ```go
 type Detector interface {
-    Name() string                // 检测器唯一名称
-    Detect(input string) *Result // 对输入执行检测，返回结果
+    Name() string                // डिटेक्टर का अनूठा नाम
+    Detect(input string) *Result // इनपुट पर डिटेक्शन चलाएँ, परिणाम लौटाएँ
 }
 ```
 
@@ -51,11 +51,11 @@ type Detector interface {
 ```go
 type Engine struct { /* ... */ }
 
-func NewEngine() *Engine                          // 创建空 Engine
-func (e *Engine) Register(d Detector)             // 注册检测器
-func (e *Engine) Detect(name, input string) *Result // 按名称检测单个输入
-func (e *Engine) DetectAll(input string) []*Result  // 全量检测（仅返回 Detected=true）
-func (e *Engine) DetectRequest(r *http.Request) []*Result // 检测完整 HTTP 请求
+func NewEngine() *Engine                          // खाली Engine बनाता है
+func (e *Engine) Register(d Detector)             // डिटेक्टर पंजीकृत करता है
+func (e *Engine) Detect(name, input string) *Result // नाम से एक इनपुट की जाँच
+func (e *Engine) DetectAll(input string) []*Result  // पूर्ण जाँच (केवल Detected=true लौटाता है)
+func (e *Engine) DetectRequest(r *http.Request) []*Result // पूरा HTTP अनुरोध जाँचता है
 ```
 
 `DetectRequest` स्वतः अनुरोध के URL, Query, Headers, Cookies को इनपुट के रूप में एकत्रित करता है। प्रत्येक इनपुट को URL-डिकोड करने के बाद दोबारा स्कैन किया जाता है, इसलिए `%3Cscript%3E` जैसे एन्कोडेड पेलोड बच नहीं सकते।
@@ -63,9 +63,18 @@ func (e *Engine) DetectRequest(r *http.Request) []*Result // 检测完整 HTTP �
 ## पंजीकरण प्रवेश बिंदु
 
 ```go
-// all 包提供一键注册全部零配置检测器（27 个）
+// all पैकेज सभी शून्य-कॉन्फ़िग डिटेक्टरों को एक बार में पंजीकृत करता है (27)
 all.RegisterAll(engine)
 ```
+
+## सहायक फ़ंक्शन
+
+```go
+// FirstMatch input से मेल खाने वाला पहला पैटर्न स्ट्रिंग लौटाता है; कोई मेल न हो तो ("", false)
+func FirstMatch(input string, patterns []*regexp.Regexp) (string, bool)
+```
+
+कस्टम डिटेक्टरों के लिए अंतर्निहित पूर्व-संकलित पैटर्न का पुनः उपयोग करें, रेगुलर एक्सप्रेशन दोबारा संकलित करने से बचें।
 
 ## स्टोरेज बैकएंड इंटरफ़ेस
 
@@ -73,11 +82,11 @@ all.RegisterAll(engine)
 
 ```go
 type Backend interface {
-    Incr(key string, window time.Duration) (int, error)   // 窗口内计数 +1
-    Get(key string) (int, error)                          // 读取计数
-    Block(key string, duration time.Duration) error       // 封禁指定时长
-    IsBlocked(key string) (bool, error)                   // 是否已封禁
-    Close() error                                         // 关闭并释放资源
+    Incr(key string, window time.Duration) (int, error)   // विंडो में गिनती +1
+    Get(key string) (int, error)                          // गिनती पढ़ता है
+    Block(key string, duration time.Duration) error       // निर्दिष्ट अवधि के लिए ब्लॉक
+    IsBlocked(key string) (bool, error)                   // क्या पहले से ब्लॉक है
+    Close() error                                         // बंद करता है और संसाधन मुक्त करता है
 }
 ```
 
@@ -85,31 +94,31 @@ type Backend interface {
 
 | बैकएंड | विवरण |
 |---------|--------|
-| `storage.NewMemory()` | मेमोरी कार्यान्वयन, `sync.Mutex` + map, 30s में एक्सपायर्ड एंट्रीज़ की स्वतः सफाई |
-| `storage.NewFile(path)` | JSON फ़ाइल पर्सिस्टेंस, 30s में स्वतः सेव + Close होने पर flush |
-| `storage/redis` | Redis सबमॉड्यूल, Pipeline Incr + TTL, `go-redis/v9` आवश्यक |
+| `storage.NewMemory() *Memory` | मेमोरी कार्यान्वयन, `sync.Mutex` + map, 30s में एक्सपायर्ड एंट्रीज़ की स्वतः सफाई |
+| `storage.NewFile(path) (*File, error)` | JSON फ़ाइल पर्सिस्टेंस, 30s में स्वतः सेव + Close होने पर flush |
+| `redis.New(addr, password string, db int) *Backend` | Redis सबमॉड्यूल, Pipeline Incr + TTL, `go-redis/v9` आवश्यक |
 
 ## HTTP वैलिडेटर
 
 ```go
-// HTTP 方法白名单校验
+// HTTP विधि व्हाइटलिस्ट सत्यापन
 e.Register(&httpval.Method{})
 
-// 请求体大小限制（默认 10MB）
+// अनुरोध बॉडी आकार सीमा (डिफ़ॉल्ट 10MB)
 e.Register(httpval.NewBodySize(5 * 1024 * 1024)) // 5MB
 
-// Content-Type 白名单（空白名单 = 拒绝所有）
+// Content-Type व्हाइटलिस्ट (खाली सूची = सभी अस्वीकार)
 e.Register(httpval.NewContentType([]string{
     "application/json", "application/x-www-form-urlencoded",
 }))
 
-// CSRF Origin 校验（跨域请求检查 Origin 与 Host 匹配）
+// CSRF Origin सत्यापन (क्रॉस-ओरिजिन अनुरोध में Origin और Host का मिलान)
 e.Register(&httpval.CSRFOrigin{
     Host: "example.com", AllowList: []string{"api.example.com"},
 })
 
-// IP 黑名单（窗口内 N 次攻击自动封禁，默认 5次/60s → 封禁15分钟）
-bl := httpval.NewIPBlacklist(mem) // mem 为任意 storage.Backend 实现
+// IP ब्लैकलिस्ट (विंडो में N हमलों पर स्वतः ब्लॉक, डिफ़ॉल्ट 5/60s → 15 मिनट ब्लॉक)
+bl := httpval.NewIPBlacklist(mem) // mem कोई भी storage.Backend कार्यान्वयन है
 e.Register(bl)
 blocked, _ := bl.RecordAttack(clientIP)
 ```
@@ -132,42 +141,47 @@ blocked, _ := bl.RecordAttack(clientIP)
 ```go
 type Store interface {
     Save(key string, value []byte, ttl time.Duration) error
-    Load(key string) ([]byte, error)   // 不存在或已过期返回 (nil, nil)
+    Load(key string) ([]byte, error)   // अनुपस्थित या समाप्त होने पर (nil, nil) लौटाता है
     Delete(key string) error
 }
 
-session.NewMemoryStore() *MemoryStore // 内存实现，30s 清理过期条目，Close 停止清理
+session.NewMemoryStore() *MemoryStore // मेमोरी कार्यान्वयन, 30s में एक्सपायर्ड एंट्रीज़ की सफाई, Close पर सफाई बंद
 ```
 
 ### Session
 
 ```go
 type Session struct {
-    IP          string    `json:"ip"`           // 建立会话时的客户端 IP
+    IP          string    `json:"ip"`           // सत्र स्थापित करते समय क्लाइंट IP
     UserAgent   string    `json:"ua,omitempty"`
-    Fingerprint string    `json:"fp,omitempty"` // 设备指纹（X-Device-Fingerprint 头）
+    Fingerprint string    `json:"fp,omitempty"` // डिवाइस फ़िंगरप्रिंट (X-Device-Fingerprint हेडर)
     Country     string    `json:"country,omitempty"`
     IssuedAt    time.Time `json:"issued_at"`
-    LastSeen    time.Time `json:"last_seen"`    // 每次 Check 滑动续期
+    LastSeen    time.Time `json:"last_seen"`    // प्रत्येक Check पर स्लाइडिंग नवीनीकरण
 }
 ```
 
 ### Tracker
 
+डिटेक्टर का नाम `session_guard` (देखें `Tracker.Name()`)।
+
 ```go
 type Tracker struct {
     Store             Store
-    TTL               time.Duration              // 会话生命周期，默认 30m，每次 Check 滑动续期
-    SubnetBits        int                        // 同地判定前缀，默认 24（IPv6 自动 +24）
-    CountryOf         func(ip string) string     // 可选 GeoIP 钩子；为 nil 时跳过国家判定
-    KnownNets         int                        // Observe 每用户保留的登录网段数，默认 8
-    KnownNetTTL       time.Duration              // 登录网段保留时长，默认 90 天
-    TokenSource       func(*http.Request) string // 默认 DefaultTokenSource
-    TrustProxyHeaders bool                       // 默认 false
-    FailClosed        bool                       // 默认 false
-    MaxLockout        time.Duration              // 每次锁定翻倍的上限，默认 24h
-    BackoffWindow     time.Duration              // 升级计数的保留时长，默认 24h
-    StuffingLimit     int                        // 同一 IP 允许失败的不同身份数上限，默认 10
+    TTL               time.Duration              // सत्र जीवनकाल, डिफ़ॉल्ट 30m, प्रत्येक Check पर स्लाइडिंग नवीनीकरण
+    SubnetBits        int                        // समान-स्थान निर्धारण प्रीफ़िक्स, डिफ़ॉल्ट 24 (IPv6 में स्वतः +24)
+    CountryOf         func(ip string) string     // वैकल्पिक GeoIP हुक; nil होने पर देश जाँच छोड़ें
+    KnownNets         int                        // Observe प्रति उपयोगकर्ता रखे जाने वाले लॉगिन सबनेट, डिफ़ॉल्ट 8
+    KnownNetTTL       time.Duration              // लॉगिन सबनेट प्रतिधारण अवधि, डिफ़ॉल्ट 90 दिन
+    TokenSource       func(*http.Request) string // डिफ़ॉल्ट DefaultTokenSource
+    TrustProxyHeaders bool                       // डिफ़ॉल्ट false
+    FailClosed        bool                       // डिफ़ॉल्ट false
+    Failures          int                        // विंडो में token लॉक करने वाली विफलताओं की सीमा, डिफ़ॉल्ट 5
+    FailureWindow     time.Duration              // विफलता गिनती प्रतिधारण अवधि, अधिक होने पर नहीं गिना जाता, डिफ़ॉल्ट 5m
+    Lockout           time.Duration              // सीमा पर पहुँचने पर पहला लॉक, हर बार दोगुना, डिफ़ॉल्ट 15m
+    MaxLockout        time.Duration              // प्रत्येक लॉक दोगुना होने की ऊपरी सीमा, डिफ़ॉल्ट 24h
+    BackoffWindow     time.Duration              // एस्केलेशन गिनती की प्रतिधारण अवधि, डिफ़ॉल्ट 24h
+    StuffingLimit     int                        // एक ही IP पर विफल विभिन्न पहचानों की सीमा, डिफ़ॉल्ट 10
 }
 ```
 
@@ -203,21 +217,54 @@ type Tracker struct {
 
 ### Signer
 
+डिटेक्टर का नाम `data_tamper` (देखें `Signer.Name()`)।
+
 ```go
 type Signer struct {
-    Secret  []byte           // 共享 HMAC 密钥，用 crypto/rand 生成
-    MaxSkew time.Duration    // 时间戳允许偏差，默认 5m
-    Nonces  storage.Backend  // 可选：非空时用窗口计数拦截签名重放（可跨实例，复用 Redis）
+    Secret  []byte           // साझा HMAC कुंजी, crypto/rand से बनाएँ
+    MaxSkew time.Duration    // अनुमत टाइमस्टैम्प अंतर, डिफ़ॉल्ट 5m
+    Nonces  storage.Backend  // वैकल्पिक: गैर-nil होने पर विंडो गिनती से हस्ताक्षर रीप्ले रोकें (क्रॉस-इंस्टेंस संभव, Redis का पुनः उपयोग)
 }
 
 signer := session.NewSigner(secret, mem)
 sig, err := signer.Sign(map[string]string{"amount": "100", "to": "bob"}) // "<unix-ts>.<nonce>.<mac>"
-res := signer.Verify(params, sig)                                        // 参数被改动/密钥不符/超时/重放
+res := signer.Verify(params, sig)                                        // पैरामीटर बदले/कुंजी मेल नहीं/समय समाप्त/रीप्ले
 ```
 
 पैरामीटर `url.Values.Encode()` से सामान्यीकृत होते हैं (क्रमबद्ध + एस्केप), map का क्रम परिणाम को प्रभावित नहीं करता। सत्यापन क्रम टाइमस्टैम्प → सिग्नेचर → nonce काउंटर है, इसलिए नकली सिग्नेचर वैध nonce को खर्च नहीं कर सकता; `Nonces` nil होने पर रीप्ले को केवल टाइमस्टैम्प विंडो सीमित करती है।
 
 `Details["reason"]` के मान: `signer_not_configured` (Critical), `signature_mismatch` (Critical), `replay` (Critical), `signature_malformed`, `timestamp_invalid`, `signature_expired`, `timestamp_in_future` (High)।
+
+## फ़ाइल अपलोड सहायक फ़ंक्शन
+
+अपलोड डिटेक्शन डिटेक्टर के रूप में पंजीकरण के अलावा दो सीधे कॉल करने योग्य सहायक फ़ंक्शन भी निर्यात करता है:
+
+```go
+// HasMaliciousExt बताता है कि फ़ाइल नाम का एक्सटेंशन व्हाइटलिस्ट (15 प्रकार) में नहीं है; एक्सटेंशन न हो तो true
+func HasMaliciousExt(filename string) bool
+
+// CheckExtension ऊपर के समान स्रोत से है, पर पूरा *Result लौटाता है (गंभीरता और विवरण सहित)
+func (d *MaliciousFileUpload) CheckExtension(filename string) *security.Result
+```
+
+फ़ाइल डिस्क पर लिखे जाने से पहले त्वरित पूर्व-जाँच के लिए, `Engine` बनाने की आवश्यकता नहीं।
+
+## प्रोजेक्ट शुभंकर
+
+`pet` पैकेज कंपाइल समय पर `go:embed` के ज़रिए प्रोजेक्ट शुभंकर Sentinel Gopher का SVG एम्बेड करता है — कोई तीसरे पक्ष की निर्भरता नहीं, रनटाइम पर कोई फ़ाइल नहीं पढ़ी जाती:
+
+```go
+func SVG() []byte         // कच्चे SVG बाइट्स; स्लाइस साझा है, कॉलर को बदलना नहीं चाहिए
+func Handler() http.Handler // image/svg+xml के रूप में परोसा जाता है, Cache-Control एक दिन
+func Banner() string      // टर्मिनल के अनुकूल सादा टेक्स्ट बैनर, अंत में न्यूलाइन
+```
+
+```go
+log.Println(pet.Banner())              // स्टार्टअप पर प्रिंट करें
+http.Handle("/pet.svg", pet.Handler()) // डिबग रूट पर माउंट करें
+```
+
+`Handler` भीतर से `http.ServeContent` का उपयोग करता है, इसलिए `Content-Length` के साथ आता है और `Range` व `HEAD` का समर्थन करता है; सीधा `w.Write` `net/http` के 2 KiB स्निफ़ बफ़र से अधिक होकर chunked प्रतिक्रिया में बदल जाता है।
 
 ## कस्टम डिटेक्टर उदाहरण
 
@@ -229,7 +276,7 @@ func (d *MyDetector) Name() string { return "my_detector" }
 func (d *MyDetector) Detect(input string) *security.Result {
     return &security.Result{
         Name: "my_detector", Detected: strings.Contains(input, "evil"),
-        Severity: security.SeverityHigh, Message: "检测到恶意内容",
+        Severity: security.SeverityHigh, Message: "दुर्भावनापूर्ण सामग्री पाई गई",
     }
 }
 

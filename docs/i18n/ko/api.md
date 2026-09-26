@@ -10,11 +10,11 @@
 
 ```go
 type Result struct {
-    Name     string                 // 检测器名称
-    Detected bool                   // 是否检测到攻击
-    Message  string                 // 结果说明
-    Severity Severity               // 严重程度
-    Details  map[string]interface{} // 附加细节
+    Name     string                 // 감지기 이름
+    Detected bool                   // 공격 탐지 여부
+    Message  string                 // 결과 설명
+    Severity Severity               // 심각도
+    Details  map[string]interface{} // 추가 세부 정보
 }
 ```
 
@@ -26,10 +26,10 @@ type Result struct {
 type Severity int
 
 const (
-    SeverityLow      Severity = iota // 低风险
-    SeverityMedium                   // 中风险
-    SeverityHigh                     // 高风险
-    SeverityCritical                 // 严重
+    SeverityLow      Severity = iota // 낮은 위험
+    SeverityMedium                   // 중간 위험
+    SeverityHigh                     // 높은 위험
+    SeverityCritical                 // 심각
 )
 ```
 
@@ -39,8 +39,8 @@ const (
 
 ```go
 type Detector interface {
-    Name() string                // 检测器唯一名称
-    Detect(input string) *Result // 对输入执行检测，返回结果
+    Name() string                // 감지기 고유 이름
+    Detect(input string) *Result // 입력에 대해 탐지를 수행하고 결과를 반환
 }
 ```
 
@@ -51,11 +51,11 @@ type Detector interface {
 ```go
 type Engine struct { /* ... */ }
 
-func NewEngine() *Engine                          // 创建空 Engine
-func (e *Engine) Register(d Detector)             // 注册检测器
-func (e *Engine) Detect(name, input string) *Result // 按名称检测单个输入
-func (e *Engine) DetectAll(input string) []*Result  // 全量检测（仅返回 Detected=true）
-func (e *Engine) DetectRequest(r *http.Request) []*Result // 检测完整 HTTP 请求
+func NewEngine() *Engine                          // 빈 Engine 생성
+func (e *Engine) Register(d Detector)             // 감지기 등록
+func (e *Engine) Detect(name, input string) *Result // 이름으로 단일 입력 감지
+func (e *Engine) DetectAll(input string) []*Result  // 전체 감지(Detected=true만 반환)
+func (e *Engine) DetectRequest(r *http.Request) []*Result // 전체 HTTP 요청 감지
 ```
 
 `DetectRequest`는 요청의 URL, Query, Headers, Cookies를 자동으로 수집하여 입력으로 사용합니다. 각 입력은 URL 디코딩 후 다시 스캔되므로 `%3Cscript%3E` 같은 인코딩된 페이로드로 탐지를 우회할 수 없습니다.
@@ -63,9 +63,18 @@ func (e *Engine) DetectRequest(r *http.Request) []*Result // 检测完整 HTTP �
 ## 등록 진입점
 
 ```go
-// all 包提供一键注册全部零配置检测器（27 个）
+// all 패키지는 모든 무설정 감지기(27개)를 한 번에 등록합니다
 all.RegisterAll(engine)
 ```
+
+## 도우미 함수
+
+```go
+// FirstMatch는 input에 처음 일치하는 패턴 문자열을 반환하고, 모두 일치하지 않으면 ("", false)를 반환합니다
+func FirstMatch(input string, patterns []*regexp.Regexp) (string, bool)
+```
+
+사용자 정의 감지기는 내장된 사전 컴파일 패턴을 재사용할 수 있어 정규식을 다시 컴파일하지 않아도 됩니다.
 
 ## 저장 백엔드 인터페이스
 
@@ -73,11 +82,11 @@ all.RegisterAll(engine)
 
 ```go
 type Backend interface {
-    Incr(key string, window time.Duration) (int, error)   // 窗口内计数 +1
-    Get(key string) (int, error)                          // 读取计数
-    Block(key string, duration time.Duration) error       // 封禁指定时长
-    IsBlocked(key string) (bool, error)                   // 是否已封禁
-    Close() error                                         // 关闭并释放资源
+    Incr(key string, window time.Duration) (int, error)   // 윈도우 내 카운트 +1
+    Get(key string) (int, error)                          // 카운트 읽기
+    Block(key string, duration time.Duration) error       // 지정한 시간 동안 차단
+    IsBlocked(key string) (bool, error)                   // 차단 여부
+    Close() error                                         // 종료하고 리소스 해제
 }
 ```
 
@@ -85,31 +94,31 @@ type Backend interface {
 
 | 백엔드 | 설명 |
 |------|------|
-| `storage.NewMemory()` | 메모리 구현, `sync.Mutex` + map, 30초마다 만료 항목 자동 정리 |
-| `storage.NewFile(path)` | JSON 파일 영속화, 30초마다 자동 저장 + Close 시 flush |
-| `storage/redis` | Redis 서브모듈, Pipeline Incr + TTL, `go-redis/v9` 필요 |
+| `storage.NewMemory() *Memory` | 메모리 구현, `sync.Mutex` + map, 30초마다 만료 항목 자동 정리 |
+| `storage.NewFile(path) (*File, error)` | JSON 파일 영속화, 30초마다 자동 저장 + Close 시 flush |
+| `redis.New(addr, password string, db int) *Backend` | Redis 서브모듈, Pipeline Incr + TTL, `go-redis/v9` 필요 |
 
 ## HTTP 검증기
 
 ```go
-// HTTP 方法白名单校验
+// HTTP 메서드 화이트리스트 검증
 e.Register(&httpval.Method{})
 
-// 请求体大小限制（默认 10MB）
+// 요청 본문 크기 제한(기본 10MB)
 e.Register(httpval.NewBodySize(5 * 1024 * 1024)) // 5MB
 
-// Content-Type 白名单（空白名单 = 拒绝所有）
+// Content-Type 화이트리스트(빈 화이트리스트 = 모두 거부)
 e.Register(httpval.NewContentType([]string{
     "application/json", "application/x-www-form-urlencoded",
 }))
 
-// CSRF Origin 校验（跨域请求检查 Origin 与 Host 匹配）
+// CSRF Origin 검증(크로스 도메인 요청은 Origin과 Host 일치 확인)
 e.Register(&httpval.CSRFOrigin{
     Host: "example.com", AllowList: []string{"api.example.com"},
 })
 
-// IP 黑名单（窗口内 N 次攻击自动封禁，默认 5次/60s → 封禁15分钟）
-bl := httpval.NewIPBlacklist(mem) // mem 为任意 storage.Backend 实现
+// IP 블랙리스트(윈도우 내 N회 공격 시 자동 차단, 기본 5회/60초 → 15분 차단)
+bl := httpval.NewIPBlacklist(mem) // mem은 임의의 storage.Backend 구현체
 e.Register(bl)
 blocked, _ := bl.RecordAttack(clientIP)
 ```
@@ -132,42 +141,47 @@ blocked, _ := bl.RecordAttack(clientIP)
 ```go
 type Store interface {
     Save(key string, value []byte, ttl time.Duration) error
-    Load(key string) ([]byte, error)   // 不存在或已过期返回 (nil, nil)
+    Load(key string) ([]byte, error)   // 없거나 만료된 경우 (nil, nil) 반환
     Delete(key string) error
 }
 
-session.NewMemoryStore() *MemoryStore // 内存实现，30s 清理过期条目，Close 停止清理
+session.NewMemoryStore() *MemoryStore // 메모리 구현, 30초마다 만료 항목 정리, Close 시 정리 중단
 ```
 
 ### Session
 
 ```go
 type Session struct {
-    IP          string    `json:"ip"`           // 建立会话时的客户端 IP
+    IP          string    `json:"ip"`           // 세션 생성 시점의 클라이언트 IP
     UserAgent   string    `json:"ua,omitempty"`
-    Fingerprint string    `json:"fp,omitempty"` // 设备指纹（X-Device-Fingerprint 头）
+    Fingerprint string    `json:"fp,omitempty"` // 기기 지문(X-Device-Fingerprint 헤더)
     Country     string    `json:"country,omitempty"`
     IssuedAt    time.Time `json:"issued_at"`
-    LastSeen    time.Time `json:"last_seen"`    // 每次 Check 滑动续期
+    LastSeen    time.Time `json:"last_seen"`    // 매 Check마다 슬라이딩 갱신
 }
 ```
 
 ### Tracker
 
+감지기 이름 `session_guard`(`Tracker.Name()` 참조).
+
 ```go
 type Tracker struct {
     Store             Store
-    TTL               time.Duration              // 会话生命周期，默认 30m，每次 Check 滑动续期
-    SubnetBits        int                        // 同地判定前缀，默认 24（IPv6 自动 +24）
-    CountryOf         func(ip string) string     // 可选 GeoIP 钩子；为 nil 时跳过国家判定
-    KnownNets         int                        // Observe 每用户保留的登录网段数，默认 8
-    KnownNetTTL       time.Duration              // 登录网段保留时长，默认 90 天
-    TokenSource       func(*http.Request) string // 默认 DefaultTokenSource
-    TrustProxyHeaders bool                       // 默认 false
-    FailClosed        bool                       // 默认 false
-    MaxLockout        time.Duration              // 每次锁定翻倍的上限，默认 24h
-    BackoffWindow     time.Duration              // 升级计数的保留时长，默认 24h
-    StuffingLimit     int                        // 同一 IP 允许失败的不同身份数上限，默认 10
+    TTL               time.Duration              // 세션 수명, 기본 30m, 매 Check마다 슬라이딩 갱신
+    SubnetBits        int                        // 동일 지역 판정 접두사, 기본 24(IPv6는 자동 +24)
+    CountryOf         func(ip string) string     // 선택적 GeoIP 훅; nil이면 국가 판정 생략
+    KnownNets         int                        // Observe가 사용자별로 보관하는 로그인 네트워크 대역 수, 기본 8
+    KnownNetTTL       time.Duration              // 로그인 네트워크 대역 보관 기간, 기본 90일
+    TokenSource       func(*http.Request) string // 기본 DefaultTokenSource
+    TrustProxyHeaders bool                       // 기본 false
+    FailClosed        bool                       // 기본 false
+    Failures          int                        // 윈도우 내 token을 잠그는 실패 횟수 임계값, 기본 5
+    FailureWindow     time.Duration              // 실패 카운트 보관 기간, 초과분은 집계하지 않음, 기본 5m
+    Lockout           time.Duration              // 임계값 최초 도달 시 잠금 시간, 이후 매번 두 배, 기본 15m
+    MaxLockout        time.Duration              // 잠금 두 배 증가의 상한, 기본 24h
+    BackoffWindow     time.Duration              // 에스컬레이션 카운트 보관 기간, 기본 24h
+    StuffingLimit     int                        // 동일 IP가 실패할 수 있는 서로 다른 식별자 수 상한, 기본 10
 }
 ```
 
@@ -203,21 +217,54 @@ type Tracker struct {
 
 ### Signer
 
+감지기 이름 `data_tamper`(`Signer.Name()` 참조).
+
 ```go
 type Signer struct {
-    Secret  []byte           // 共享 HMAC 密钥，用 crypto/rand 生成
-    MaxSkew time.Duration    // 时间戳允许偏差，默认 5m
-    Nonces  storage.Backend  // 可选：非空时用窗口计数拦截签名重放（可跨实例，复用 Redis）
+    Secret  []byte           // 공유 HMAC 키, crypto/rand로 생성
+    MaxSkew time.Duration    // 타임스탬프 허용 편차, 기본 5m
+    Nonces  storage.Backend  // 선택 사항: 값이 있으면 윈도우 카운터로 서명 재전송을 차단(인스턴스 간 공유, Redis 재사용)
 }
 
 signer := session.NewSigner(secret, mem)
 sig, err := signer.Sign(map[string]string{"amount": "100", "to": "bob"}) // "<unix-ts>.<nonce>.<mac>"
-res := signer.Verify(params, sig)                                        // 参数被改动/密钥不符/超时/重放
+res := signer.Verify(params, sig)                                        // 파라미터 변경/키 불일치/시간 초과/재전송
 ```
 
 파라미터는 `url.Values.Encode()`로 정규화되며(정렬 + 이스케이프), map 순서는 결과에 영향을 주지 않습니다. 검증 순서는 타임스탬프 → 서명 → nonce 카운트이므로 위조 서명은 유효한 nonce를 소모할 수 없습니다; `Nonces`가 nil이면 타임스탬프 윈도우로만 재전송을 제한할 수 있습니다.
 
 `Details["reason"]` 값: `signer_not_configured`(Critical), `signature_mismatch`(Critical), `replay`(Critical), `signature_malformed`, `timestamp_invalid`, `signature_expired`, `timestamp_in_future`(High).
+
+## 파일 업로드 도우미 함수
+
+업로드 감지는 감지기로 등록하는 것 외에도 직접 호출할 수 있는 두 가지 도우미 함수를 제공합니다:
+
+```go
+// HasMaliciousExt는 파일 확장자가 화이트리스트(15종) 밖인지 판단하며, 확장자가 없으면 true를 반환합니다
+func HasMaliciousExt(filename string) bool
+
+// CheckExtension은 위와 같은 로직이지만 전체 *Result(심각도와 설명 포함)를 반환합니다
+func (d *MaliciousFileUpload) CheckExtension(filename string) *security.Result
+```
+
+파일이 디스크에 기록되기 전에 `Engine`을 구성하지 않고 빠르게 사전 검사할 때 사용합니다.
+
+## 프로젝트 마스코트
+
+`pet` 패키지는 `go:embed`로 컴파일 시점에 프로젝트 마스코트 Sentinel Gopher(哨兵鼠)의 SVG를 내장합니다. 서드파티 의존성을 추가하지 않고 런타임에 파일을 읽지도 않습니다:
+
+```go
+func SVG() []byte         // 원시 SVG 바이트; 슬라이스를 공유하므로 호출자가 수정해서는 안 됩니다
+func Handler() http.Handler // image/svg+xml로 제공, Cache-Control 1일
+func Banner() string      // 터미널 친화적 일반 텍스트 배너, 끝에 개행 포함
+```
+
+```go
+log.Println(pet.Banner())              // 시작 시 출력
+http.Handle("/pet.svg", pet.Handler()) // 디버그 라우트에 연결
+```
+
+`Handler`는 내부적으로 `http.ServeContent`를 사용하므로 `Content-Length`를 포함하고 `Range`와 `HEAD`를 지원합니다. 직접 `w.Write`를 호출하면 `net/http`의 2 KiB 스니핑 버퍼를 넘겨 chunked 응답으로 퇴화합니다.
 
 ## 사용자 정의 감지기 예시
 
@@ -229,7 +276,7 @@ func (d *MyDetector) Name() string { return "my_detector" }
 func (d *MyDetector) Detect(input string) *security.Result {
     return &security.Result{
         Name: "my_detector", Detected: strings.Contains(input, "evil"),
-        Severity: security.SeverityHigh, Message: "检测到恶意内容",
+        Severity: security.SeverityHigh, Message: "악성 콘텐츠 감지됨",
     }
 }
 

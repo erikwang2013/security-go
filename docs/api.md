@@ -67,6 +67,15 @@ func (e *Engine) DetectRequest(r *http.Request) []*Result // 检测完整 HTTP �
 all.RegisterAll(engine)
 ```
 
+## 辅助函数
+
+```go
+// FirstMatch 返回第一个命中 input 的模式串；全部未命中返回 ("", false)
+func FirstMatch(input string, patterns []*regexp.Regexp) (string, bool)
+```
+
+供自定义检测器复用内置的预编译模式，避免重复编译正则。
+
 ## 存储后端接口
 
 `httpval.IPBlacklist` 通过该接口使用可插拔存储：
@@ -85,9 +94,9 @@ type Backend interface {
 
 | 后端 | 说明 |
 |------|------|
-| `storage.NewMemory()` | 内存实现，`sync.Mutex` + map，30s 自动清理过期条目 |
-| `storage.NewFile(path)` | JSON 文件持久化，30s 自动保存 + Close 时 flush |
-| `storage/redis` | Redis 子模块，Pipeline Incr + TTL，需 `go-redis/v9` |
+| `storage.NewMemory() *Memory` | 内存实现，`sync.Mutex` + map，30s 自动清理过期条目 |
+| `storage.NewFile(path) (*File, error)` | JSON 文件持久化，30s 自动保存 + Close 时 flush |
+| `redis.New(addr, password string, db int) *Backend` | `storage/redis` 子模块，Pipeline Incr + TTL，需 `go-redis/v9` |
 
 ## HTTP 校验器
 
@@ -154,6 +163,8 @@ type Session struct {
 
 ### Tracker
 
+检测器名 `session_guard`（见 `Tracker.Name()`）。
+
 ```go
 type Tracker struct {
     Store             Store
@@ -165,6 +176,9 @@ type Tracker struct {
     TokenSource       func(*http.Request) string // 默认 DefaultTokenSource
     TrustProxyHeaders bool                       // 默认 false
     FailClosed        bool                       // 默认 false
+    Failures          int                        // 窗口内锁定 token 的失败次数阈值，默认 5
+    FailureWindow     time.Duration              // 失败计数保留时长，超出不计，默认 5m
+    Lockout           time.Duration              // 首次达阈值的锁定时长，每次翻倍，默认 15m
     MaxLockout        time.Duration              // 每次锁定翻倍的上限，默认 24h
     BackoffWindow     time.Duration              // 升级计数的保留时长，默认 24h
     StuffingLimit     int                        // 同一 IP 允许失败的不同身份数上限，默认 10
@@ -203,6 +217,8 @@ type Tracker struct {
 
 ### Signer
 
+检测器名 `data_tamper`（见 `Signer.Name()`）。
+
 ```go
 type Signer struct {
     Secret  []byte           // 共享 HMAC 密钥，用 crypto/rand 生成
@@ -218,6 +234,37 @@ res := signer.Verify(params, sig)                                        // 参�
 参数以 `url.Values.Encode()` 规范化（排序 + 转义），map 顺序不影响结果。校验顺序为时间戳 → 签名 → nonce 计数，因此伪造签名无法消耗合法 nonce；`Nonces` 为 nil 时只能靠时间戳窗口限制重放。
 
 `Details["reason"]` 取值：`signer_not_configured`（Critical）、`signature_mismatch`（Critical）、`replay`（Critical）、`signature_malformed`、`timestamp_invalid`、`signature_expired`、`timestamp_in_future`（High）。
+
+## 文件上传辅助函数
+
+上传检测除了作为检测器注册，还导出两个可直接调用的辅助函数：
+
+```go
+// HasMaliciousExt 判断文件名扩展名是否不在白名单内（15 种），无扩展名返回 true
+func HasMaliciousExt(filename string) bool
+
+// CheckExtension 与上面同源，但返回完整的 *Result（含严重程度与说明）
+func (d *MaliciousFileUpload) CheckExtension(filename string) *security.Result
+```
+
+用于在文件落盘前做一次快速前置校验，无需构造 `Engine`。
+
+## 项目宠物
+
+`pet` 包用 `go:embed` 在编译期内嵌项目宠物哨兵鼠的 SVG，不引入任何第三方依赖，运行时也不读文件：
+
+```go
+func SVG() []byte         // 原始 SVG 字节；切片共享，调用方不应修改
+func Handler() http.Handler // 以 image/svg+xml 提供，Cache-Control 一天
+func Banner() string      // 终端友好的纯文本横幅，含结尾换行
+```
+
+```go
+log.Println(pet.Banner())              // 启动时打印
+http.Handle("/pet.svg", pet.Handler()) // 挂到调试路由
+```
+
+`Handler` 内部走 `http.ServeContent`，因此带 `Content-Length` 并支持 `Range` 与 `HEAD`；直接 `w.Write` 会超出 `net/http` 的 2 KiB 嗅探缓冲从而退化为 chunked 响应。
 
 ## 自定义检测器示例
 

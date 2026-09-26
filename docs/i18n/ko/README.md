@@ -4,6 +4,14 @@
 
 Go 언어로 작성된 공격 탐지 패키지로, **36개의 감지기**, **6대 공격 카테고리**, **3가지 플러그형 저장 백엔드**를 지원합니다. 통합 인터페이스 + 등록소 패턴을 사용하는 순수 탐지 라이브러리로, 모든 Go HTTP 프레임워크에 적용할 수 있습니다.
 
+<p align="center">
+  <img src="../../../pet/pet.svg" width="190" alt="Sentinel Gopher">
+  <br>
+  <sub>프로젝트 마스코트 Sentinel Gopher(哨兵鼠) — 방패를 들고 파수를 서는 Go 고퍼. 방패의 36은 감지기 수이고, 돋보기는 요청별 스캔입니다.</sub>
+</p>
+
+[설계 아키텍처](#설계-아키텍처) · [구현 기능](#구현-기능) · [수명 주기](#수명-주기) · [프로젝트 구조](#프로젝트-구조) · [마스코트](#마스코트)
+
 ## 설계 철학
 
 ### 핵심 원칙
@@ -15,72 +23,16 @@ Go 언어로 작성된 공격 탐지 패키지로, **36개의 감지기**, **6�
 
 ### 설계 아키텍처
 
-```
-                         ┌───────────────────────────────┐
-                         │        security.Engine         │
-                         │  ┌─────────────────────────┐  │
-                         │  │    Detector Registry     │  │
-                         │  │   map[string]Detector    │  │
-                         │  └─────────────────────────┘  │
-                         │                               │
-                         │  Detect(name, input)          │
-                         │  DetectAll(input)             │
-                         │  DetectRequest(*http.Request) │
-                         └──────────────┬────────────────┘
-                                        │
-          ┌─────────────────┬───────────┴───────────┬─────────────────┐
-          │                 │                       │                 │
-   ┌──────▼──────┐   ┌──────▼──────┐   ┌────────────▼────────┐   ┌───▼───────────┐
-   │  injection  │   │  protocol   │   │        data         │   │     file      │
-   │   (10 个)   │   │   (9 个)    │   │       (5 个)        │   │    (3 个)     │
-   │             │   │             │   │                     │   │               │
-   │  xss, sql,  │   │  ssrf, xxe, │   │  deser, csv,        │   │  traversal,   │
-   │  command,   │   │  header,    │   │  mail, jwt,         │   │  upload,      │
-   │  nosql,     │   │  host,      │   │  proto_poll         │   │  data_leak    │
-   │  ldap,      │   │  smuggling, │   │                     │   │               │
-   │  xpath,     │   │  redirect,  │   │                     │   │               │
-   │  jndi, ssi, │   │  cors, ws,  │   │                     │   │               │
-   │  graphql,   │   │  dns_rebind │   │                     │   │               │
-   │  ssti       │   │             │   │                     │   │               │
-   └─────────────┘   └─────────────┘   └─────────────────────┘   └───────────────┘
-                                                                          │
-          ┌───────────────────────────────────────────────────────────────┤
-          │                                                               │
-   ┌──────▼──────────┐                                         ┌──────────▼──────────┐
-   │     httpval     │                                         │       storage       │
-   │     (7 个)      │                                         │  ┌──────────────┐   │
-   │                 │                                         │  │   Backend    │   │
-   │  method, size,  │                                         │  │   interface  │   │
-   │  type, csrf,    │                                         │  └──┬───┬───┬───┘   │
-   │  cookie,nested  │                                         │                    │
-   │  ip_blacklist   │◄────── 使用 storage.Backend ──────────►│  Memory File Redis │
-   │  (需配置参数)    │                                         │                    │
-   └─────────────────┘                                         └────────────────────┘
-
-   ┌─────────────────────────────────────────────────────────────────────┐
-   │  session (2)   outside the Engine registry                          │
-   │                                                                     │
-   │  Tracker (session_guard)  +  Signer (data_tamper)                   │
-   │  Issue / Check / Observe / Guard / Revoke    Sign / Verify          │
-   └─────────────────────────────────────────────────────────────────────┘
-```
+![설계 아키텍처](../../../docs/images/architecture.svg)
 
 > `session` 패키지는 `Engine` 등록을 거치지 않습니다: 세션 검증은 완전한 `*http.Request`(token, 클라이언트 IP, User-Agent)를 읽어야 하고,
 > 애플리케이션이 저장소와 키를 제공해야 하므로 미들웨어로 직접 호출합니다. 아래 「세션 보안 구성」을 참조하세요.
 
-### 데이터 흐름
+### 수명 주기
 
-```
-HTTP Request
-     │
-     ▼
-┌──────────────┐     ┌─────────────────┐     ┌──────────────┐
-│ collectInputs│────▶│  DetectAll()    │────▶│  []*Result   │
-│ URL, Query,  │     │  逐个检测器调用   │     │  聚合结果     │
-│ Headers,     │     │  Detect(input)  │     │              │
-│ Cookies      │     └─────────────────┘     └──────────────┘
-└──────────────┘
-```
+요청이 진입해 탐지를 거쳐 등급별 처리로 이어지는 전체 흐름(IP 차단 주기와 URL 디코딩 재검사 포함), 그리고 세션이 바인딩에서 폐기까지 가는 여정:
+
+![수명 주기](../../../docs/images/lifecycle.svg)
 
 ### 심각도 등급
 
@@ -93,11 +45,15 @@ HTTP Request
 
 ## 구현 기능
 
+### 기능 개요
+
+![기능 설계](../../../docs/images/features.svg)
+
 ### 주입형 공격 (10)
 
 | 감지기 | 감지 패턴 |
 |--------|---------|
-| **XSS** | `<script>`、`on[a-z]+=` 이벤트 핸들러, `javascript:` 가상 프로토콜, SVG/CSS 주입, `eval()`, `document.cookie` |
+| **XSS** | `<script>`, `on[a-z]+=` 이벤트 핸들러, `javascript:` 가상 프로토콜, SVG/CSS 주입, `eval()`, `document.cookie` |
 | **SQL 주입** | `UNION SELECT`(`/**/` 우회 포함), `sleep/benchmark/pg_sleep`, 부울 블라인드, `information_schema` 열거, `xp_cmdshell` |
 | **명령 주입** | 백틱, `$()`, 파이프 문자, `/dev/tcp`, PHP `system/exec/shell_exec`, 연쇄 실행 `&&` `;` `\|\|` |
 | **NoSQL 주입** | MongoDB `$ne` `$gt` `$regex` `$where` 연산자, `$func`, JSON 키 주입 |
@@ -167,6 +123,39 @@ HTTP Request
 | **File** | JSON 파일 영속화, Close 시 flush |
 | **Redis** | 독립 서브모듈, Pipeline Incr + TTL, `go-redis/v9` 필요 |
 
+## 프로젝트 구조
+
+```
+security-go/
+├── security.go            # 코어: Result / Severity / Detector 인터페이스 / Engine 등록소
+├── injection/             # 주입 감지기 (10): xss, sql, command, nosql, ldap,
+│                          #   xpath, jndi, ssi, graphql, ssti
+├── protocol/              # 프로토콜 및 요청 감지기 (9): ssrf, xxe, header, host,
+│                          #   smuggling, redirect, cors, websocket, dns_rebinding
+├── data/                  # 데이터 및 직렬화 감지기 (5): deserialization, csv,
+│                          #   mail, jwt, prototype_pollution
+├── file/                  # 파일 및 민감 데이터 감지기 (3): path_traversal,
+│                          #   upload, data_leak
+├── httpval/               # HTTP 프로토콜 검증기 (7), 각각 앱이 제공하는 설정 필요
+├── session/               # 세션 보안 (2): session_guard, data_tamper
+│                          #   Engine을 우회하여 미들웨어로 직접 사용
+├── storage/               # 저장 백엔드
+│   ├── storage.go         #   Backend 인터페이스: Incr / Get / Block / IsBlocked / Close
+│   ├── memory.go          #   Memory: Mutex + map, 30초 백그라운드 정리
+│   ├── file.go            #   File: JSON 영속화, Close 시 flush
+│   └── redis/             #   Redis: 자체 go.mod를 가진 별도 서브모듈
+├── all/                   # 27개 무설정 감지기를 한 번에 등록
+├── pet/                   # 프로젝트 마스코트: 내장 SVG + 시작 배너
+├── docs/
+│   ├── api.md             # API 레퍼런스
+│   ├── images/            # 아키텍처 / 기능 / 수명 주기 SVG
+│   ├── i18n/              # 번역 문서 (12개 언어)
+│   └── superpowers/       # 설계 규격, 구현 계획, 코드 리뷰 보고서
+└── tests/                 # 커버리지 보고서
+```
+
+각 감지기 패키지는 `xxx.go`와 `xxx_test.go`를 짝지으며, `all`은 추가로 회귀 테스트를 포함합니다.
+
 ## 사용 방법
 
 ### 설치
@@ -188,13 +177,13 @@ import (
 
 func main() {
     e := security.NewEngine()
-    all.RegisterAll(e) // 一键注册 27 个零配置检测器
+    all.RegisterAll(e) // 27개 무설정 감지기를 한 번에 등록
 
-    // 单个检测
+    // 단일 감지
     r := e.Detect("xss", "<script>alert(1)</script>")
-    fmt.Printf("检测到: %v, 严重程度: %d\n", r.Detected, r.Severity)
+    fmt.Printf("감지됨: %v, 심각도: %d\n", r.Detected, r.Severity)
 
-    // 全量检测
+    // 전체 감지
     for _, r := range e.DetectAll("' OR '1'='1") {
         fmt.Printf("[%s] %s\n", r.Name, r.Message)
     }
@@ -210,7 +199,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 
     for _, result := range e.DetectRequest(r) {
         if result.Detected {
-            log.Printf("攻击检测: [%s] %s", result.Name, result.Message)
+            log.Printf("공격 감지: [%s] %s", result.Name, result.Message)
         }
     }
 }
@@ -219,29 +208,29 @@ func handler(w http.ResponseWriter, r *http.Request) {
 ### HTTP 검증기 구성
 
 ```go
-// 方法校验
+// 메서드 검증
 e.Register(&httpval.Method{})
 
-// 请求体大小限制
+// 요청 본문 크기 제한
 e.Register(httpval.NewBodySize(5 * 1024 * 1024)) // 5MB
 
-// Content-Type 白名单
+// Content-Type 화이트리스트
 e.Register(httpval.NewContentType([]string{
     "application/json", "application/x-www-form-urlencoded",
 }))
 
-// CSRF Origin 检查
+// CSRF Origin 검사
 e.Register(&httpval.CSRFOrigin{
     Host: "example.com", AllowList: []string{"api.example.com"},
 })
 
-// IP 黑名单（自动封禁：5次/60s → 封禁15分钟）
+// IP 블랙리스트 (자동 차단: 5회/60초 → 15분 차단)
 mem := storage.NewMemory()
 defer mem.Close()
 bl := httpval.NewIPBlacklist(mem)
 e.Register(bl)
 
-// 攻击发生时记录
+// 공격 발생 시 기록
 blocked, _ := bl.RecordAttack(clientIP)
 ```
 
@@ -256,36 +245,36 @@ st := session.NewMemoryStore()
 defer st.Close()
 
 tr := session.NewTracker(st)
-tr.CountryOf = geo.Lookup // 可选：接入 GeoIP，用于识别跨国家登录
+tr.CountryOf = geo.Lookup // 선택 사항: GeoIP를 연동해 국가 간 로그인 식별
 
-// 登录成功后绑定会话（token 由你的登录流程生成）
-// 异地登录检测：比对该用户历史登录网段，出现新网段即告警
+// 로그인 성공 후 세션 바인딩 (token은 로그인 흐름에서 생성)
+// 원격 로그인 감지: 사용자의 과거 로그인 네트워크 대역과 비교해 새 대역이 나타나면 경고
 if res := tr.Observe("user-1", r); res.Detected {
     log.Printf("[%s] %s (%v)", res.Name, res.Message, res.Details["reason"])
 }
-if err := tr.Issue(token, r); err != nil {      // 绑定 token → IP 网段 / UA / 设备指纹
+if err := tr.Issue(token, r); err != nil {      // token → IP 대역 / UA / 기기 지문 바인딩
     http.Error(w, "session error", http.StatusInternalServerError)
     return
 }
 
-// 保护路由：命中劫持或异地登录直接返回 401
+// 보호 라우트: 하이재킹이나 원격 로그인 시 즉시 401 반환
 mux.Handle("/api/", tr.Guard(apiHandler))
 
-// 或只做检测、自行决定处置
+// 또는 감지만 하고 직접 대응 결정
 if res := tr.Check(r); res.Detected {
     log.Printf("[%s] %s (%v)", res.Name, res.Message, res.Details["reason"])
 }
 
-// 登出
+// 로그아웃
 tr.Revoke(token)
 ```
 
 데이터 변조 감지: 클라이언트와 서버가 공유 키를 사용하며, 클라이언트가 파라미터에 서명하고 서버가 재계산하여 검증합니다:
 
 ```go
-signer := session.NewSigner(secret, storage.NewMemory()) // 第二个参数用于拦截签名重放，可为 nil
+signer := session.NewSigner(secret, storage.NewMemory()) // 두 번째 인자는 서명 재전송 차단용, nil 가능
 
-sig, _ := signer.Sign(map[string]string{"amount": "100", "to": "bob"}) // 客户端：随参数一起提交
+sig, _ := signer.Sign(map[string]string{"amount": "100", "to": "bob"}) // 클라이언트: 파라미터와 함께 제출
 
 if res := signer.Verify(map[string]string{"amount": "100", "to": "bob"}, sig); res.Detected {
     log.Printf("[%s] %s (%v)", res.Name, res.Message, res.Details["reason"])
@@ -305,11 +294,23 @@ func (d *MyDetector) Name() string { return "my_detector" }
 func (d *MyDetector) Detect(input string) *security.Result {
     return &security.Result{
         Name: "my_detector", Detected: strings.Contains(input, "evil"),
-        Severity: security.SeverityHigh, Message: "检测到恶意内容",
+        Severity: security.SeverityHigh, Message: "악성 콘텐츠 감지됨",
     }
 }
 
 e.Register(&MyDetector{})
+```
+
+### 마스코트
+
+`pet` 패키지는 `go:embed`로 컴파일 시점에 Sentinel Gopher를 SVG로 임베드합니다 — 런타임 파일 의존성도, 추가 서드파티 의존성도 없습니다:
+
+```go
+import "github.com/erikwang2013/security-go/pet"
+
+log.Println(pet.Banner())              // 시작 배너: 터미널 친화적 일반 텍스트
+http.Handle("/pet.svg", pet.Handler()) // 디버그 라우트: image/svg+xml로 제공, 1일 캐시
+svg := pet.SVG()                       // 또는 원시 SVG 바이트를 그대로
 ```
 
 ### 관련 문서
@@ -318,6 +319,7 @@ e.Register(&MyDetector{})
 - [설계 규격](specs/2026-07-29-attack-detection-design.md) — 패키지 구조, 감지기 목록
 - [구현 계획](plans/2026-07-29-attack-detection-plan.md) — 단계별 작업 계획과 구현 이탈 대조
 - [코드 리뷰 보고서](reports/2026-07-29-code-review-report.md) — Bug 수정, 테스트 커버리지, 아키텍처 평가
+- [코드 리뷰 보고서 v2](reports/2026-07-29-code-review-report-v2.md) — 2차 검토: 문제 4건 수정, 테스트 파일 18개 추가
 
 ---
 

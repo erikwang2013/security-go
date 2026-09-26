@@ -1,8 +1,16 @@
 # Security Go — pustaka deteksi serangan
 
-[简体中文](../../../README.md) · [English](../../../README-EN.md)
+[简体中文](../../../README.md) · [English](../../../README-EN.md) · [Dokumentasi API](api.md)
 
 Pustaka deteksi serangan yang ditulis dalam bahasa Go, mencakup **36 detektor**, **6 kategori serangan utama**, dan **3 backend penyimpanan yang dapat dipasang**. Antarmuka terpadu + pola registry, murni pustaka deteksi, cocok untuk kerangka HTTP Go mana pun.
+
+<p align="center">
+  <img src="../../../pet/pet.svg" width="190" alt="Sentinel Gopher">
+  <br>
+  <sub>Maskot proyek Sentinel Gopher (哨兵鼠) — gopher Go yang berdiri berjaga dengan perisai. Angka 36 pada perisai adalah jumlah detektor; kaca pembesar melambangkan pemindaian pada setiap permintaan.</sub>
+</p>
+
+[Arsitektur](#arsitektur-desain) · [Fitur](#fitur-yang-diimplementasikan) · [Siklus Hidup](#siklus-hidup) · [Struktur Proyek](#struktur-proyek) · [Maskot](#maskot)
 
 ## Konsep Desain
 
@@ -15,72 +23,16 @@ Pustaka deteksi serangan yang ditulis dalam bahasa Go, mencakup **36 detektor**,
 
 ### Arsitektur Desain
 
-```
-                         ┌───────────────────────────────┐
-                         │        security.Engine         │
-                         │  ┌─────────────────────────┐  │
-                         │  │    Detector Registry     │  │
-                         │  │   map[string]Detector    │  │
-                         │  └─────────────────────────┘  │
-                         │                               │
-                         │  Detect(name, input)          │
-                         │  DetectAll(input)             │
-                         │  DetectRequest(*http.Request) │
-                         └──────────────┬────────────────┘
-                                        │
-          ┌─────────────────┬───────────┴───────────┬─────────────────┐
-          │                 │                       │                 │
-   ┌──────▼──────┐   ┌──────▼──────┐   ┌────────────▼────────┐   ┌───▼───────────┐
-   │  injection  │   │  protocol   │   │        data         │   │     file      │
-   │   (10 个)   │   │   (9 个)    │   │       (5 个)        │   │    (3 个)     │
-   │             │   │             │   │                     │   │               │
-   │  xss, sql,  │   │  ssrf, xxe, │   │  deser, csv,        │   │  traversal,   │
-   │  command,   │   │  header,    │   │  mail, jwt,         │   │  upload,      │
-   │  nosql,     │   │  host,      │   │  proto_poll         │   │  data_leak    │
-   │  ldap,      │   │  smuggling, │   │                     │   │               │
-   │  xpath,     │   │  redirect,  │   │                     │   │               │
-   │  jndi, ssi, │   │  cors, ws,  │   │                     │   │               │
-   │  graphql,   │   │  dns_rebind │   │                     │   │               │
-   │  ssti       │   │             │   │                     │   │               │
-   └─────────────┘   └─────────────┘   └─────────────────────┘   └───────────────┘
-                                                                          │
-          ┌───────────────────────────────────────────────────────────────┤
-          │                                                               │
-   ┌──────▼──────────┐                                         ┌──────────▼──────────┐
-   │     httpval     │                                         │       storage       │
-   │     (7 个)      │                                         │  ┌──────────────┐   │
-   │                 │                                         │  │   Backend    │   │
-   │  method, size,  │                                         │  │   interface  │   │
-   │  type, csrf,    │                                         │  └──┬───┬───┬───┘   │
-   │  cookie,nested  │                                         │                    │
-   │  ip_blacklist   │◄────── 使用 storage.Backend ──────────►│  Memory File Redis │
-   │  (需配置参数)    │                                         │                    │
-   └─────────────────┘                                         └────────────────────┘
-
-   ┌─────────────────────────────────────────────────────────────────────┐
-   │  session (2)   outside the Engine registry                          │
-   │                                                                     │
-   │  Tracker (session_guard)  +  Signer (data_tamper)                   │
-   │  Issue / Check / Observe / Guard / Revoke    Sign / Verify          │
-   └─────────────────────────────────────────────────────────────────────┘
-```
+![Arsitektur](../../../docs/images/architecture.svg)
 
 > Paket `session` tidak didaftarkan melalui `Engine`: validasi sesi harus membaca `*http.Request` secara lengkap (token, IP klien, User-Agent),
 > dan memerlukan penyimpanan serta kunci dari aplikasi, sehingga dipanggil langsung sebagai middleware, lihat bagian "Konfigurasi Keamanan Sesi" di bawah.
 
-### Alur Data
+### Siklus Hidup
 
-```
-HTTP Request
-     │
-     ▼
-┌──────────────┐     ┌─────────────────┐     ┌──────────────┐
-│ collectInputs│────▶│  DetectAll()    │────▶│  []*Result   │
-│ URL, Query,  │     │  逐个检测器调用   │     │  聚合结果     │
-│ Headers,     │     │  Detect(input)  │     │              │
-│ Cookies      │     └─────────────────┘     └──────────────┘
-└──────────────┘
-```
+Siklus lengkap sebuah permintaan, dari masuk hingga deteksi lalu penanganan bertingkat (termasuk siklus blokir IP dan pemindaian ulang setelah decode URL), serta perjalanan sesi dari pengikatan hingga pencabutan:
+
+![Siklus Hidup](../../../docs/images/lifecycle.svg)
 
 ### Tingkat Keparahan
 
@@ -92,6 +44,10 @@ HTTP Request
 | `SeverityCritical` | Kritis | Sinyal kuat: injeksi perintah, JNDI, SSTI, XXE, kebocoran data, deserialisasi (objek terserialisasi PHP / pickle / Java / .NET) |
 
 ## Fitur yang Diimplementasikan
+
+### Ringkasan Fitur
+
+![Desain fitur](../../../docs/images/features.svg)
 
 ### Serangan Injeksi (10)
 
@@ -167,6 +123,39 @@ HTTP Request
 | **File** | Persistensi file JSON, flush saat Close |
 | **Redis** | Submodul terpisah, Pipeline Incr + TTL, memerlukan `go-redis/v9` |
 
+## Struktur Proyek
+
+```
+security-go/
+├── security.go            # Inti: Result / Severity / antarmuka Detector / registry Engine
+├── injection/             # Detektor injeksi (10): xss, sql, command, nosql, ldap,
+│                          #   xpath, jndi, ssi, graphql, ssti
+├── protocol/              # Detektor protokol dan permintaan (9): ssrf, xxe, header, host,
+│                          #   smuggling, redirect, cors, websocket, dns_rebinding
+├── data/                  # Detektor data dan serialisasi (5): deserialization, csv,
+│                          #   mail, jwt, prototype_pollution
+├── file/                  # Detektor file dan data sensitif (3): path_traversal,
+│                          #   upload, data_leak
+├── httpval/               # Validator protokol HTTP (7), masing-masing butuh pengaturan dari aplikasi
+├── session/               # Keamanan sesi (2): session_guard, data_tamper
+│                          #   Melewati Engine dan dipakai langsung sebagai middleware
+├── storage/               # Backend penyimpanan
+│   ├── storage.go         #   Antarmuka Backend: Incr / Get / Block / IsBlocked / Close
+│   ├── memory.go          #   Memory: Mutex + map, pembersihan latar tiap 30 detik
+│   ├── file.go            #   File: persistensi JSON, flush saat Close
+│   └── redis/             #   Redis: submodul terpisah dengan go.mod sendiri
+├── all/                   # Registrasi sekali panggil untuk 27 detektor tanpa konfigurasi
+├── pet/                   # Maskot proyek: SVG tertanam + banner startup
+├── docs/
+│   ├── api.md             # Referensi API
+│   ├── images/            # SVG arsitektur / fitur / siklus hidup
+│   ├── i18n/              # Dokumentasi terjemahan (12 bahasa)
+│   └── superpowers/       # Spesifikasi desain, rencana implementasi, laporan code review
+└── tests/                 # Laporan cakupan
+```
+
+Setiap paket detektor memasangkan `xxx.go` dengan `xxx_test.go`; `all` juga membawa tes regresi.
+
 ## Petunjuk Penggunaan
 
 ### Instalasi
@@ -188,13 +177,13 @@ import (
 
 func main() {
     e := security.NewEngine()
-    all.RegisterAll(e) // 一键注册 27 个零配置检测器
+    all.RegisterAll(e) // daftarkan 27 detektor tanpa konfigurasi dalam satu panggilan
 
-    // 单个检测
+    // Deteksi tunggal
     r := e.Detect("xss", "<script>alert(1)</script>")
-    fmt.Printf("检测到: %v, 严重程度: %d\n", r.Detected, r.Severity)
+    fmt.Printf("Terdeteksi: %v, tingkat keparahan: %d\n", r.Detected, r.Severity)
 
-    // 全量检测
+    // Deteksi menyeluruh
     for _, r := range e.DetectAll("' OR '1'='1") {
         fmt.Printf("[%s] %s\n", r.Name, r.Message)
     }
@@ -210,7 +199,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 
     for _, result := range e.DetectRequest(r) {
         if result.Detected {
-            log.Printf("攻击检测: [%s] %s", result.Name, result.Message)
+            log.Printf("Deteksi serangan: [%s] %s", result.Name, result.Message)
         }
     }
 }
@@ -219,29 +208,29 @@ func handler(w http.ResponseWriter, r *http.Request) {
 ### Konfigurasi Validator HTTP
 
 ```go
-// 方法校验
+// Validasi metode
 e.Register(&httpval.Method{})
 
-// 请求体大小限制
+// Batas ukuran body permintaan
 e.Register(httpval.NewBodySize(5 * 1024 * 1024)) // 5MB
 
-// Content-Type 白名单
+// Daftar putih Content-Type
 e.Register(httpval.NewContentType([]string{
     "application/json", "application/x-www-form-urlencoded",
 }))
 
-// CSRF Origin 检查
+// Pemeriksaan CSRF Origin
 e.Register(&httpval.CSRFOrigin{
     Host: "example.com", AllowList: []string{"api.example.com"},
 })
 
-// IP 黑名单（自动封禁：5次/60s → 封禁15分钟）
+// Daftar hitam IP (blokir otomatis: 5 kali/60s → blokir 15 menit)
 mem := storage.NewMemory()
 defer mem.Close()
 bl := httpval.NewIPBlacklist(mem)
 e.Register(bl)
 
-// 攻击发生时记录
+// Catat saat serangan terjadi
 blocked, _ := bl.RecordAttack(clientIP)
 ```
 
@@ -256,36 +245,36 @@ st := session.NewMemoryStore()
 defer st.Close()
 
 tr := session.NewTracker(st)
-tr.CountryOf = geo.Lookup // 可选：接入 GeoIP，用于识别跨国家登录
+tr.CountryOf = geo.Lookup // Opsional: sambungkan GeoIP untuk mengenali login lintas negara
 
-// 登录成功后绑定会话（token 由你的登录流程生成）
-// 异地登录检测：比对该用户历史登录网段，出现新网段即告警
+// Setelah login berhasil, ikat sesi (token dibuat oleh alur login Anda)
+// Deteksi login dari lokasi lain: bandingkan subnet historis pengguna, beri peringatan saat subnet baru muncul
 if res := tr.Observe("user-1", r); res.Detected {
     log.Printf("[%s] %s (%v)", res.Name, res.Message, res.Details["reason"])
 }
-if err := tr.Issue(token, r); err != nil {      // 绑定 token → IP 网段 / UA / 设备指纹
+if err := tr.Issue(token, r); err != nil {      // ikat token → subnet IP / UA / sidik jari perangkat
     http.Error(w, "session error", http.StatusInternalServerError)
     return
 }
 
-// 保护路由：命中劫持或异地登录直接返回 401
+// Rute terlindungi: kembalikan langsung 401 bila terjadi pembajakan atau login dari lokasi lain
 mux.Handle("/api/", tr.Guard(apiHandler))
 
-// 或只做检测、自行决定处置
+// Atau hanya mendeteksi dan menentukan sendiri penanganannya
 if res := tr.Check(r); res.Detected {
     log.Printf("[%s] %s (%v)", res.Name, res.Message, res.Details["reason"])
 }
 
-// 登出
+// Logout
 tr.Revoke(token)
 ```
 
 Deteksi manipulasi data: klien dan server berbagi kunci rahasia, klien menandatangani parameter, server menghitung ulang untuk verifikasi:
 
 ```go
-signer := session.NewSigner(secret, storage.NewMemory()) // 第二个参数用于拦截签名重放，可为 nil
+signer := session.NewSigner(secret, storage.NewMemory()) // parameter kedua mencegat pemutaran ulang tanda tangan, boleh nil
 
-sig, _ := signer.Sign(map[string]string{"amount": "100", "to": "bob"}) // 客户端：随参数一起提交
+sig, _ := signer.Sign(map[string]string{"amount": "100", "to": "bob"}) // klien: dikirim bersama parameter
 
 if res := signer.Verify(map[string]string{"amount": "100", "to": "bob"}, sig); res.Detected {
     log.Printf("[%s] %s (%v)", res.Name, res.Message, res.Details["reason"])
@@ -305,11 +294,23 @@ func (d *MyDetector) Name() string { return "my_detector" }
 func (d *MyDetector) Detect(input string) *security.Result {
     return &security.Result{
         Name: "my_detector", Detected: strings.Contains(input, "evil"),
-        Severity: security.SeverityHigh, Message: "检测到恶意内容",
+        Severity: security.SeverityHigh, Message: "Konten berbahaya terdeteksi",
     }
 }
 
 e.Register(&MyDetector{})
+```
+
+### Maskot
+
+Paket `pet` menyematkan Sentinel Gopher sebagai SVG saat kompilasi melalui `go:embed` — tanpa ketergantungan berkas saat runtime, tanpa menambah dependensi pihak ketiga:
+
+```go
+import "github.com/erikwang2013/security-go/pet"
+
+log.Println(pet.Banner())              // banner startup: teks polos yang ramah terminal
+http.Handle("/pet.svg", pet.Handler()) // rute debug: disajikan sebagai image/svg+xml, di-cache sehari
+svg := pet.SVG()                       // atau ambil byte SVG mentah
 ```
 
 ### Dokumentasi Terkait
@@ -318,6 +319,7 @@ e.Register(&MyDetector{})
 - [Spesifikasi Desain](specs/2026-07-29-attack-detection-design.md) — struktur paket, katalog detektor
 - [Rencana Implementasi](plans/2026-07-29-attack-detection-plan.md) — rencana tugas bertahap dan perbandingan deviasi implementasi
 - [Laporan Code Review](reports/2026-07-29-code-review-report.md) — perbaikan Bug, cakupan pengujian, evaluasi arsitektur
+- [Laporan Code Review v2](reports/2026-07-29-code-review-report-v2.md) — putaran kedua: 4 masalah diperbaiki, 18 file pengujian ditambahkan
 
 ---
 
@@ -349,8 +351,8 @@ Jika proyek ini bermanfaat bagi Anda, silakan berikan dukungan:
 
 | Metode | Kode QR |
 |------|--------|
-| Alipay | ![支付宝](images/alipay.png) |
-| WeChat Pay | ![微信支付](images/weixinpay.png) |
+| Alipay | ![Alipay](images/alipay.png) |
+| WeChat Pay | ![WeChat Pay](images/weixinpay.png) |
 
 ### Donasi Transfer Global (Transfer Bank)
 
@@ -381,6 +383,12 @@ Jika proyek ini bermanfaat bagi Anda, silakan berikan dukungan:
   - Nama Bank: THE BANK OF NEW YORK MELLON
   - Kode SWIFT: `IRVTUS3NXXX`
   - Alamat Bank: THE BANK OF NEW YORK MELLON, 240 GREENWICH STREET, NEW YORK, United States
+
+---
+
+## English
+
+Dokumentasi lengkap dalam bahasa Inggris: [README-EN.md](../../../README-EN.md).
 
 ---
 
