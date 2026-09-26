@@ -5,6 +5,7 @@ package security
 import (
 	"net/http"
 	"net/http/httptest"
+	"regexp"
 	"strings"
 	"testing"
 )
@@ -54,6 +55,54 @@ func TestDetectUnknown(t *testing.T) {
 	e := NewEngine()
 	if r := e.Detect("nonexistent", "test"); r != nil {
 		t.Fatal("expected nil for unknown detector")
+	}
+}
+
+// DetectRequest rescans each input URL-decoded. Headers are the vector that
+// proves it: collectRequestInputs passes them through verbatim, so "%61ttack"
+// reaches the first pass still encoded and only the rescan can decode it.
+// (A query parameter cannot test this — URL.Query().Encode() round-trips it to
+// plaintext, so the first pass would already match and the test would pass
+// even with the rescan deleted.)
+func TestDetectRequestRescansURLDecoded(t *testing.T) {
+	e := NewEngine()
+	e.Register(&mockDetector{name: "mock"})
+
+	r := httptest.NewRequest("GET", "/", nil)
+	r.Header.Set("X-Probe", "%61ttack")
+
+	if strings.Contains(strings.ToLower(r.Header.Get("X-Probe")), "attack") {
+		t.Fatal("precondition: the raw header must not contain the plaintext")
+	}
+
+	results := e.DetectRequest(r)
+	if len(results) == 0 || !results[0].Detected {
+		t.Fatalf("expected the URL-decoded rescan to fire, got %+v", results)
+	}
+}
+
+// FirstMatch backs every regexp-based detector's happy path, so pin its
+// contract: first hit wins, and the returned string is the pattern source.
+func TestFirstMatch(t *testing.T) {
+	patterns := []*regexp.Regexp{
+		regexp.MustCompile(`alpha`),
+		regexp.MustCompile(`beta`),
+	}
+
+	got, ok := FirstMatch("xx beta yy alpha", patterns)
+	if !ok {
+		t.Fatal("expected a match")
+	}
+	if got != "alpha" {
+		t.Fatalf("expected the first matching pattern %q, got %q", "alpha", got)
+	}
+
+	if got, ok := FirstMatch("gamma", patterns); ok || got != "" {
+		t.Fatalf("expected no match, got (%q, %v)", got, ok)
+	}
+
+	if got, ok := FirstMatch("alpha", nil); ok || got != "" {
+		t.Fatalf("expected no match for nil patterns, got (%q, %v)", got, ok)
 	}
 }
 
