@@ -107,41 +107,43 @@
 				
 				<option value="file25">github.com/erikwang2013/security-go/injection/xss.go (100.0%)</option>
 				
-				<option value="file26">github.com/erikwang2013/security-go/pet/pet.go (100.0%)</option>
+				<option value="file26">github.com/erikwang2013/security-go/pet/mood.go (100.0%)</option>
 				
-				<option value="file27">github.com/erikwang2013/security-go/protocol/cors.go (100.0%)</option>
+				<option value="file27">github.com/erikwang2013/security-go/pet/pet.go (100.0%)</option>
 				
-				<option value="file28">github.com/erikwang2013/security-go/protocol/dns_rebinding.go (100.0%)</option>
+				<option value="file28">github.com/erikwang2013/security-go/protocol/cors.go (100.0%)</option>
 				
-				<option value="file29">github.com/erikwang2013/security-go/protocol/header_injection.go (100.0%)</option>
+				<option value="file29">github.com/erikwang2013/security-go/protocol/dns_rebinding.go (100.0%)</option>
 				
-				<option value="file30">github.com/erikwang2013/security-go/protocol/host_header.go (100.0%)</option>
+				<option value="file30">github.com/erikwang2013/security-go/protocol/header_injection.go (100.0%)</option>
 				
-				<option value="file31">github.com/erikwang2013/security-go/protocol/open_redirect.go (100.0%)</option>
+				<option value="file31">github.com/erikwang2013/security-go/protocol/host_header.go (100.0%)</option>
 				
-				<option value="file32">github.com/erikwang2013/security-go/protocol/request_smuggling.go (100.0%)</option>
+				<option value="file32">github.com/erikwang2013/security-go/protocol/open_redirect.go (100.0%)</option>
 				
-				<option value="file33">github.com/erikwang2013/security-go/protocol/ssrf.go (100.0%)</option>
+				<option value="file33">github.com/erikwang2013/security-go/protocol/request_smuggling.go (100.0%)</option>
 				
-				<option value="file34">github.com/erikwang2013/security-go/protocol/websocket.go (100.0%)</option>
+				<option value="file34">github.com/erikwang2013/security-go/protocol/ssrf.go (100.0%)</option>
 				
-				<option value="file35">github.com/erikwang2013/security-go/protocol/xxe.go (100.0%)</option>
+				<option value="file35">github.com/erikwang2013/security-go/protocol/websocket.go (100.0%)</option>
 				
-				<option value="file36">github.com/erikwang2013/security-go/security.go (100.0%)</option>
+				<option value="file36">github.com/erikwang2013/security-go/protocol/xxe.go (100.0%)</option>
 				
-				<option value="file37">github.com/erikwang2013/security-go/session/bruteforce.go (88.0%)</option>
+				<option value="file37">github.com/erikwang2013/security-go/security.go (100.0%)</option>
 				
-				<option value="file38">github.com/erikwang2013/security-go/session/lockout.go (97.0%)</option>
+				<option value="file38">github.com/erikwang2013/security-go/session/bruteforce.go (88.0%)</option>
 				
-				<option value="file39">github.com/erikwang2013/security-go/session/store.go (82.9%)</option>
+				<option value="file39">github.com/erikwang2013/security-go/session/lockout.go (97.0%)</option>
 				
-				<option value="file40">github.com/erikwang2013/security-go/session/tamper.go (97.8%)</option>
+				<option value="file40">github.com/erikwang2013/security-go/session/store.go (82.9%)</option>
 				
-				<option value="file41">github.com/erikwang2013/security-go/session/tracker.go (84.0%)</option>
+				<option value="file41">github.com/erikwang2013/security-go/session/tamper.go (97.8%)</option>
 				
-				<option value="file42">github.com/erikwang2013/security-go/storage/file.go (90.8%)</option>
+				<option value="file42">github.com/erikwang2013/security-go/session/tracker.go (84.0%)</option>
 				
-				<option value="file43">github.com/erikwang2013/security-go/storage/memory.go (76.9%)</option>
+				<option value="file43">github.com/erikwang2013/security-go/storage/file.go (90.8%)</option>
+				
+				<option value="file44">github.com/erikwang2013/security-go/storage/memory.go (76.9%)</option>
 				
 				</select>
 			</div>
@@ -1840,6 +1842,87 @@ func (d *XSS) Detect(input string) *security.Result <span class="cov9" title="34
 		
 		<pre class="file" id="file26" style="display: none">// Copyright (c) 2026 erik &lt;erik@erik.xyz&gt; — https://erik.xyz
 
+package pet
+
+import (
+        "bytes"
+        _ "embed"
+        "net/http"
+        "time"
+
+        "github.com/erikwang2013/security-go"
+)
+
+// Mood is the mascot's posture, derived from what a scan actually found.
+// It exists so the mascot can be driven by detection results instead of being
+// a static image: the shield and magnifier recolour to report threat level at
+// a glance.
+type Mood int
+
+const (
+        // Calm means the scan came back clean.
+        Calm Mood = iota
+        // Watchful means something fired, but nothing High or Critical.
+        Watchful
+        // Alarmed means at least one High or Critical result — act on it.
+        Alarmed
+)
+
+//go:embed mood-watchful.svg
+var watchfulSVG []byte
+
+//go:embed mood-alarmed.svg
+var alarmedSVG []byte
+
+// MoodOf classifies detection results into a mood. Only results with
+// Detected set are considered, so a detector that reports Severity critical
+// on a clean input cannot raise the alarm. The most severe hit wins.
+func MoodOf(results []*security.Result) Mood <span class="cov9" title="13">{
+        mood := Calm
+        for _, r := range results </span><span class="cov9" title="13">{
+                if r == nil || !r.Detected </span><span class="cov4" title="3">{
+                        continue</span>
+                }
+                <span class="cov8" title="10">switch r.Severity </span>{
+                case security.SeverityHigh, security.SeverityCritical:<span class="cov6" title="5">
+                        return Alarmed</span>
+                default:<span class="cov6" title="5">
+                        mood = Watchful</span>
+                }
+        }
+        <span class="cov8" title="8">return mood</span>
+}
+
+// SVGFor returns the mascot's artwork for the given mood. An unrecognised
+// mood falls back to Calm. Like SVG, the slice is shared and must not be
+// modified by the caller.
+func SVGFor(m Mood) []byte <span class="cov10" title="14">{
+        switch m </span>{
+        case Watchful:<span class="cov3" title="2">
+                return watchfulSVG</span>
+        case Alarmed:<span class="cov7" title="6">
+                return alarmedSVG</span>
+        default:<span class="cov7" title="6">
+                return svg</span>
+        }
+}
+
+// MoodHandler serves the mascot in whatever mood moodFor reports for the
+// request, so a status or debug route can render live threat state.
+//
+// The response is marked no-store: unlike Handler, this output changes with
+// the scan, so caching it for a day would serve a stale posture.
+func MoodHandler(moodFor func(*http.Request) Mood) http.Handler <span class="cov3" title="2">{
+        return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) </span><span class="cov5" title="4">{
+                w.Header().Set("Content-Type", "image/svg+xml; charset=utf-8")
+                w.Header().Set("Cache-Control", "no-store")
+                http.ServeContent(w, r, "pet.svg", time.Time{}, bytes.NewReader(SVGFor(moodFor(r))))
+        }</span>)
+}
+</pre>
+		
+		<pre class="file" id="file27" style="display: none">// Copyright (c) 2026 erik &lt;erik@erik.xyz&gt; — https://erik.xyz
+
 // Package pet carries the project mascot, 哨兵鼠 (Sentinel Gopher), as a
 // build-time asset: raw SVG for serving over HTTP, and a plain-text banner
 // for startup logs.
@@ -1894,7 +1977,7 @@ const banner = `        .--------.
 `
 </pre>
 		
-		<pre class="file" id="file27" style="display: none">// Copyright (c) 2026 erik &lt;erik@erik.xyz&gt; — https://erik.xyz
+		<pre class="file" id="file28" style="display: none">// Copyright (c) 2026 erik &lt;erik@erik.xyz&gt; — https://erik.xyz
 
 package protocol
 
@@ -1933,7 +2016,7 @@ func (d *CORS) Detect(input string) *security.Result <span class="cov10" title="
 }
 </pre>
 		
-		<pre class="file" id="file28" style="display: none">// Copyright (c) 2026 erik &lt;erik@erik.xyz&gt; — https://erik.xyz
+		<pre class="file" id="file29" style="display: none">// Copyright (c) 2026 erik &lt;erik@erik.xyz&gt; — https://erik.xyz
 
 package protocol
 
@@ -1974,7 +2057,7 @@ func (d *DNSRebinding) Detect(input string) *security.Result <span class="cov10"
 }
 </pre>
 		
-		<pre class="file" id="file29" style="display: none">// Copyright (c) 2026 erik &lt;erik@erik.xyz&gt; — https://erik.xyz
+		<pre class="file" id="file30" style="display: none">// Copyright (c) 2026 erik &lt;erik@erik.xyz&gt; — https://erik.xyz
 
 package protocol
 
@@ -2014,7 +2097,7 @@ func (d *HeaderInjection) Detect(input string) *security.Result <span class="cov
 }
 </pre>
 		
-		<pre class="file" id="file30" style="display: none">// Copyright (c) 2026 erik &lt;erik@erik.xyz&gt; — https://erik.xyz
+		<pre class="file" id="file31" style="display: none">// Copyright (c) 2026 erik &lt;erik@erik.xyz&gt; — https://erik.xyz
 
 package protocol
 
@@ -2053,7 +2136,7 @@ func (d *HostHeader) Detect(input string) *security.Result <span class="cov10" t
 }
 </pre>
 		
-		<pre class="file" id="file31" style="display: none">// Copyright (c) 2026 erik &lt;erik@erik.xyz&gt; — https://erik.xyz
+		<pre class="file" id="file32" style="display: none">// Copyright (c) 2026 erik &lt;erik@erik.xyz&gt; — https://erik.xyz
 
 package protocol
 
@@ -2094,7 +2177,7 @@ func (d *OpenRedirect) Detect(input string) *security.Result <span class="cov10"
 }
 </pre>
 		
-		<pre class="file" id="file32" style="display: none">// Copyright (c) 2026 erik &lt;erik@erik.xyz&gt; — https://erik.xyz
+		<pre class="file" id="file33" style="display: none">// Copyright (c) 2026 erik &lt;erik@erik.xyz&gt; — https://erik.xyz
 
 package protocol
 
@@ -2135,7 +2218,7 @@ func (d *RequestSmuggling) Detect(input string) *security.Result <span class="co
 }
 </pre>
 		
-		<pre class="file" id="file33" style="display: none">// Copyright (c) 2026 erik &lt;erik@erik.xyz&gt; — https://erik.xyz
+		<pre class="file" id="file34" style="display: none">// Copyright (c) 2026 erik &lt;erik@erik.xyz&gt; — https://erik.xyz
 
 package protocol
 
@@ -2179,7 +2262,7 @@ func (d *SSRF) Detect(input string) *security.Result <span class="cov10" title="
 }
 </pre>
 		
-		<pre class="file" id="file34" style="display: none">// Copyright (c) 2026 erik &lt;erik@erik.xyz&gt; — https://erik.xyz
+		<pre class="file" id="file35" style="display: none">// Copyright (c) 2026 erik &lt;erik@erik.xyz&gt; — https://erik.xyz
 
 package protocol
 
@@ -2221,7 +2304,7 @@ func (d *WebSocket) Detect(input string) *security.Result <span class="cov10" ti
 }
 </pre>
 		
-		<pre class="file" id="file35" style="display: none">// Copyright (c) 2026 erik &lt;erik@erik.xyz&gt; — https://erik.xyz
+		<pre class="file" id="file36" style="display: none">// Copyright (c) 2026 erik &lt;erik@erik.xyz&gt; — https://erik.xyz
 
 package protocol
 
@@ -2263,7 +2346,7 @@ func (d *XXE) Detect(input string) *security.Result <span class="cov10" title="1
 }
 </pre>
 		
-		<pre class="file" id="file36" style="display: none">// Copyright (c) 2026 erik &lt;erik@erik.xyz&gt; — https://erik.xyz
+		<pre class="file" id="file37" style="display: none">// Copyright (c) 2026 erik &lt;erik@erik.xyz&gt; — https://erik.xyz
 
 package security
 
@@ -2377,7 +2460,7 @@ func collectRequestInputs(r *http.Request) []string <span class="cov6" title="8"
 }
 </pre>
 		
-		<pre class="file" id="file37" style="display: none">// Copyright (c) 2026 erik &lt;erik@erik.xyz&gt; — https://erik.xyz
+		<pre class="file" id="file38" style="display: none">// Copyright (c) 2026 erik &lt;erik@erik.xyz&gt; — https://erik.xyz
 
 package session
 
@@ -2620,7 +2703,7 @@ func (t *Tracker) stuffingLimit() int <span class="cov8" title="35">{
 }
 </pre>
 		
-		<pre class="file" id="file38" style="display: none">// Copyright (c) 2026 erik &lt;erik@erik.xyz&gt; — https://erik.xyz
+		<pre class="file" id="file39" style="display: none">// Copyright (c) 2026 erik &lt;erik@erik.xyz&gt; — https://erik.xyz
 
 package session
 
@@ -2711,7 +2794,7 @@ func (t *Tracker) lockoutDuration() time.Duration <span class="cov6" title="19">
 }
 </pre>
 		
-		<pre class="file" id="file39" style="display: none">// Copyright (c) 2026 erik &lt;erik@erik.xyz&gt; — https://erik.xyz
+		<pre class="file" id="file40" style="display: none">// Copyright (c) 2026 erik &lt;erik@erik.xyz&gt; — https://erik.xyz
 
 // Package session detects token-session abuse: a stolen token replayed from
 // another client (客户端被劫持), a login from an unseen network (异地登录) and
@@ -2824,7 +2907,7 @@ func (m *MemoryStore) reap(interval time.Duration) <span class="cov7" title="53"
 }
 </pre>
 		
-		<pre class="file" id="file40" style="display: none">// Copyright (c) 2026 erik &lt;erik@erik.xyz&gt; — https://erik.xyz
+		<pre class="file" id="file41" style="display: none">// Copyright (c) 2026 erik &lt;erik@erik.xyz&gt; — https://erik.xyz
 
 package session
 
@@ -2965,7 +3048,7 @@ func canonical(params map[string]string) string <span class="cov9" title="28">{
 }
 </pre>
 		
-		<pre class="file" id="file41" style="display: none">// Copyright (c) 2026 erik &lt;erik@erik.xyz&gt; — https://erik.xyz
+		<pre class="file" id="file42" style="display: none">// Copyright (c) 2026 erik &lt;erik@erik.xyz&gt; — https://erik.xyz
 
 package session
 
@@ -3396,7 +3479,7 @@ func deny(name, reason, message string, severity security.Severity) *security.Re
 }</span>
 </pre>
 		
-		<pre class="file" id="file42" style="display: none">// Copyright (c) 2026 erik &lt;erik@erik.xyz&gt; — https://erik.xyz
+		<pre class="file" id="file43" style="display: none">// Copyright (c) 2026 erik &lt;erik@erik.xyz&gt; — https://erik.xyz
 
 package storage
 
@@ -3534,7 +3617,7 @@ func (f *File) autoSave(interval time.Duration) <span class="cov3" title="9">{
 }
 </pre>
 		
-		<pre class="file" id="file43" style="display: none">// Copyright (c) 2026 erik &lt;erik@erik.xyz&gt; — https://erik.xyz
+		<pre class="file" id="file44" style="display: none">// Copyright (c) 2026 erik &lt;erik@erik.xyz&gt; — https://erik.xyz
 
 package storage
 
@@ -3609,7 +3692,7 @@ func (m *Memory) IsBlocked(key string) (bool, error) <span class="cov7" title="3
 
 func (m *Memory) Close() error <span class="cov8" title="4">{ return nil }</span>
 
-func (m *Memory) reap(interval time.Duration) <span class="cov7" title="3">{
+func (m *Memory) reap(interval time.Duration) <span class="cov8" title="4">{
         ticker := time.NewTicker(interval)
         defer ticker.Stop()
         for range ticker.C </span><span class="cov0" title="0">{

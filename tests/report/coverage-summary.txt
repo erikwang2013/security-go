@@ -61,6 +61,9 @@ github.com/erikwang2013/security-go/injection/xpath.go:26:		Name			100.0%
 github.com/erikwang2013/security-go/injection/xpath.go:30:		Detect			100.0%
 github.com/erikwang2013/security-go/injection/xss.go:49:		Name			100.0%
 github.com/erikwang2013/security-go/injection/xss.go:53:		Detect			100.0%
+github.com/erikwang2013/security-go/pet/mood.go:38:			MoodOf			100.0%
+github.com/erikwang2013/security-go/pet/mood.go:57:			SVGFor			100.0%
+github.com/erikwang2013/security-go/pet/mood.go:73:			MoodHandler		100.0%
 github.com/erikwang2013/security-go/pet/pet.go:26:			SVG			100.0%
 github.com/erikwang2013/security-go/pet/pet.go:34:			Handler			100.0%
 github.com/erikwang2013/security-go/pet/pet.go:44:			Banner			100.0%
@@ -163,4 +166,4 @@ github.com/erikwang2013/security-go/storage/memory.go:58:		Block			100.0%
 github.com/erikwang2013/security-go/storage/memory.go:65:		IsBlocked		100.0%
 github.com/erikwang2013/security-go/storage/memory.go:74:		Close			100.0%
 github.com/erikwang2013/security-go/storage/memory.go:76:		reap			25.0%
-total:									(statements)		92.5%
+total:									(statements)		92.7%
