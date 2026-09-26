@@ -6,6 +6,9 @@ import (
 	"testing"
 
 	"github.com/erikwang2013/security-go"
+	"github.com/erikwang2013/security-go/httpval"
+	"github.com/erikwang2013/security-go/session"
+	"github.com/erikwang2013/security-go/storage"
 )
 
 var detectorNames = []string{
@@ -30,6 +33,50 @@ func TestRegisterAllRegistersAllDetectors(t *testing.T) {
 		if r := e.Detect(name, "x"); r == nil {
 			t.Errorf("detector %q not registered", name)
 		}
+	}
+}
+
+// The number 36 is written into the mascot's shield (pet/pet.svg), its banner,
+// both READMEs and every translated README. Nothing else ties those to the
+// code, so this test is the one place that has to fail when a detector is
+// added or removed.
+func TestTotalDetectorCountIs36(t *testing.T) {
+	const claimed = 36
+
+	store := session.NewMemoryStore()
+	defer store.Close()
+	mem := storage.NewMemory()
+	defer mem.Close()
+
+	// The detectors RegisterAll deliberately leaves out: httpval needs
+	// per-app settings and session works on *http.Request, so Tracker and
+	// Signer expose Name() but not Detect(string) — the reason they sit
+	// outside the Engine.
+	rest := []interface{ Name() string }{
+		&httpval.Method{},
+		httpval.NewBodySize(1024),
+		httpval.NewContentType([]string{"application/json"}),
+		&httpval.CSRFOrigin{},
+		httpval.NewCookieAttrs(true, true, true),
+		httpval.NewNestedDepth(0, 0),
+		httpval.NewIPBlacklist(mem),
+		session.NewTracker(store),
+		session.NewSigner([]byte("secret"), nil),
+	}
+
+	seen := map[string]bool{}
+	for _, name := range detectorNames {
+		seen[name] = true
+	}
+	for _, d := range rest {
+		if seen[d.Name()] {
+			t.Errorf("detector %q counted twice", d.Name())
+		}
+		seen[d.Name()] = true
+	}
+
+	if len(seen) != claimed {
+		t.Errorf("total detectors = %d, want %d: update pet/pet.svg, pet.Banner, and the READMEs", len(seen), claimed)
 	}
 }
 
