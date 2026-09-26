@@ -101,6 +101,14 @@ security-go/
 - **不注册进 `Engine`** — `Detector.Detect(input string)` 取不到 token / 客户端 IP / UA，故 `Tracker` 直接接收 `*http.Request`；`all.RegisterAll` 保持只注册零配置检测器。
 - **测试** — `session` 包 5 个测试文件（store / tracker / tamper / lockout / bruteforce），`go test ./... -race` 通过。
 
+## Addendum — pet 包与文档资产 (2026-09-26)
+
+- **`pet` 包** — 项目宠物哨兵鼠（Sentinel Gopher）作为构建期资产入库：`pet.SVG() []byte`、`pet.Handler() http.Handler`、`pet.Banner() string`。`go:embed` 内嵌 `pet/pet.svg`，运行时无文件依赖，也未新增任何第三方依赖，核心库零依赖性质不变。`Banner()` 为启动横幅纯文本（含尾部换行）；`SVG()` 返回共享切片，调用方不得修改。
+- **`Handler` 走 `http.ServeContent`，不用裸 `w.Write`** — `pet.svg` 约 6 KB，超过 net/http 的 2 KiB 响应嗅探缓冲，裸 `Write` 会退化为 chunked 且无 `Content-Length`；`ServeContent` 顺带获得 `Range` 与正确的 `HEAD`。响应头为 `image/svg+xml; charset=utf-8` + `Cache-Control: public, max-age=86400`，无副作用，适合挂在诊断 / 调试路由上。
+- **文档配图** — 三张手写 SVG（架构 / 功能 / 生命周期），由源码生成而非 Mermaid 绘制，各含中英两版：`docs/images/{architecture,features,lifecycle}[-en].svg`。英文版只替换文本节点，几何与中文原版逐字节一致（已核对非文本行完全相同）；两份英文 README 引用 `-en` 一套，其余语言 README 共用中文一套。
+- **36 与 34 是两个数，勿「统一」** — 36 是项目检测器总数（27 个零配置 + 7 个 httpval + 2 个 session），写在吉祥物盾牌、`pet.Banner`、两份 README 与 12 份译文里；34 是满足 `security.Detector`、可经 `Engine` 调度的那部分（`all.RegisterAll` 自动注册的 27 个 + 需应用自行注册的 7 个 httpval）。`session.Tracker` 与 `session.Signer` 只有 `Name()`、没有 `Detect(string)`，故不计入 34。两个数各自成立，且均已出现在图中（`architecture.svg`「34 个经 Engine 调度」、`lifecycle.svg`「遍历注册表 34 个检测器」）。
+- **计数由一处测试钉住** — `all/all_test.go:TestTotalDetectorCountIs36` 是唯一把 36 绑回代码的地方：增删检测器必须让它失败，其报错信息指向 `pet/pet.svg`、`pet.Banner` 与各 README。
+
 ---
 
 Copyright (c) 2026 erik <erik@erik.xyz> — https://erik.xyz

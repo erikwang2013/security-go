@@ -100,6 +100,14 @@ Session security was added as a 6th category, under the same design constraints:
 - **Not registered with the `Engine`** — `Detector.Detect(input string)` cannot see the token, client IP or User-Agent, so `Tracker` takes the `*http.Request` directly; `all.RegisterAll` still registers only zero-config detectors.
 - **Tests** — 5 test files in `session` (store / tracker / tamper / lockout / bruteforce); `go test ./... -race` passes.
 
+## Addendum — pet package and documentation assets (2026-09-26)
+
+- **The `pet` package** — the project mascot, 哨兵鼠 (Sentinel Gopher), ships as a build-time asset: `pet.SVG() []byte`, `pet.Handler() http.Handler`, `pet.Banner() string`. `go:embed` carries `pet/pet.svg`, so there is no runtime file dependency and no third-party dependency was added — the core library stays zero-dependency. `Banner()` is the startup banner as plain text (trailing newline included); `SVG()` returns a shared slice the caller must not modify.
+- **`Handler` serves through `http.ServeContent`, not a bare `w.Write`** — `pet.svg` is ~6 KB, past net/http's 2 KiB response-sniff buffer, so a plain `Write` would degrade the response to chunked with no `Content-Length`; `ServeContent` also buys `Range` and a correct `HEAD`. Headers are `image/svg+xml; charset=utf-8` plus `Cache-Control: public, max-age=86400`; the handler has no side effects and belongs on a diagnostics or debug route.
+- **Documentation assets** — three hand-written SVGs (architecture / feature / lifecycle), generated from the source rather than authored in Mermaid, each in a Chinese and an English variant: `docs/images/{architecture,features,lifecycle}[-en].svg`. The English variants were keyed over text nodes only, so their geometry is byte-identical to the Chinese originals (checked: the non-text lines match exactly). The two English READMEs reference the `-en` set; the other languages share the Chinese set.
+- **36 and 34 are two different numbers — do not "unify" them** — 36 is the project total (27 zero-config + 7 httpval + 2 session), written into the mascot's shield, `pet.Banner`, both READMEs and all 12 translations. 34 is the subset that satisfies `security.Detector` and can be dispatched through the `Engine` (the 27 `all.RegisterAll` registers, plus the 7 httpval validators the application registers itself). `session.Tracker` and `session.Signer` expose `Name()` but not `Detect(string)`, so they are not among the 34. Both numbers are correct in their own context, and both already appear in the diagrams (`architecture.svg` "34 dispatched via the Engine", `lifecycle.svg` "34 registered in the Engine").
+- **One test pins the count** — `all/all_test.go:TestTotalDetectorCountIs36` is the only place tying 36 back to the code: adding or removing a detector must fail it, and its message points at `pet/pet.svg`, `pet.Banner` and the READMEs.
+
 ---
 
 Copyright (c) 2026 erik <erik@erik.xyz> — https://erik.xyz
