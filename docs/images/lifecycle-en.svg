@@ -1,0 +1,262 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1160 920" width="1160" height="920" role="img" aria-label="security-go Lifecycle">
+  <title>security-go Lifecycle</title>
+  <desc>Top: one HTTP request's detection lifecycle and the IP ban loop. Bottom: a session from binding to revocation, with its exception branches.</desc>
+
+  <defs>
+    <pattern id="l-grid" width="24" height="24" patternUnits="userSpaceOnUse">
+      <path d="M24 0H0V24" fill="none" stroke="#152740" stroke-width="1"/>
+    </pattern>
+    <marker id="l-arrow" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse">
+      <path d="M0 0L10 5L0 10z" fill="#3a5c93"/>
+    </marker>
+    <marker id="l-arrow-c" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse">
+      <path d="M0 0L10 5L0 10z" fill="#00add8"/>
+    </marker>
+    <marker id="l-arrow-r" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse">
+      <path d="M0 0L10 5L0 10z" fill="#e5484d"/>
+    </marker>
+    <style>
+      .t  { font-family: system-ui, -apple-system, 'PingFang SC', 'Microsoft YaHei', 'Noto Sans CJK SC', sans-serif; }
+      .m  { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+      .ttl{ font-size: 23px; font-weight: 700; fill: #e6edf3; }
+      .sub{ font-size: 12.5px; fill: #93a3b8; }
+      .sec{ font-size: 12px; font-weight: 700; letter-spacing: 1.5px; fill: #00add8; }
+      .st { font-size: 12.5px; font-weight: 700; fill: #e6edf3; }
+      .sm { font-size: 9.5px; fill: #7fd8ee; }
+      .sd { font-size: 9.5px; fill: #93a3b8; }
+      .ct { font-size: 13.5px; font-weight: 700; }
+      .cb { font-size: 10px; fill: #b9c6d6; }
+      .cn { font-size: 9px; fill: #93a3b8; }
+    </style>
+  </defs>
+
+  <rect width="1160" height="920" fill="#0b1220"/>
+  <rect width="1160" height="920" fill="url(#l-grid)"/>
+
+  <text class="t ttl" x="40" y="52">security-go Lifecycle</text>
+  <text class="t sub" x="40" y="74">One request's detection loop, and one session's life from binding to revocation</text>
+  <text class="m" x="1120" y="52" text-anchor="end" font-size="11" fill="#00add8">request + session lifecycle</text>
+
+  <!-- ══════════ (1) request lifecycle ══════════ -->
+  <text class="t sec" x="40" y="112">① REQUEST LIFECYCLE</text>
+  <line x1="272" y1="108" x2="1120" y2="108" stroke="#1e3a5f"/>
+
+  <!-- 1 -->
+  <rect x="40" y="132" width="168" height="120" rx="12" fill="#131f38" stroke="#2f527f" stroke-width="1.5"/>
+  <circle cx="62" cy="156" r="12" fill="#00add8" fill-opacity="0.18" stroke="#00add8" stroke-opacity="0.6"/>
+  <text class="m" x="62" y="160" text-anchor="middle" font-size="11" font-weight="700" fill="#00add8">1</text>
+  <text class="t st" x="82" y="161">Request arrives</text>
+  <line x1="56" y1="178" x2="192" y2="178" stroke="#1e3a5f"/>
+  <text class="m sm" x="56" y="198">http.Request</text>
+  <text class="t sd" x="56" y="220">Middleware / handler</text>
+  <text class="t sd" x="56" y="238">Any Go HTTP framework</text>
+
+  <!-- 2 -->
+  <rect x="222" y="132" width="168" height="120" rx="12" fill="#131f38" stroke="#2f527f" stroke-width="1.5"/>
+  <circle cx="244" cy="156" r="12" fill="#00add8" fill-opacity="0.18" stroke="#00add8" stroke-opacity="0.6"/>
+  <text class="m" x="244" y="160" text-anchor="middle" font-size="11" font-weight="700" fill="#00add8">2</text>
+  <text class="t st" x="264" y="161">Collect inputs</text>
+  <line x1="238" y1="178" x2="374" y2="178" stroke="#1e3a5f"/>
+  <text class="m sm" x="238" y="198">collectRequestInputs</text>
+  <text class="t sd" x="238" y="220">URL · Query · Header</text>
+  <text class="t sd" x="238" y="238">Cookies</text>
+
+  <!-- 3 -->
+  <rect x="404" y="132" width="168" height="120" rx="12" fill="#131f38" stroke="#2f527f" stroke-width="1.5"/>
+  <circle cx="426" cy="156" r="12" fill="#00add8" fill-opacity="0.18" stroke="#00add8" stroke-opacity="0.6"/>
+  <text class="m" x="426" y="160" text-anchor="middle" font-size="11" font-weight="700" fill="#00add8">3</text>
+  <text class="t st" x="446" y="161">Run detectors</text>
+  <line x1="420" y1="178" x2="556" y2="178" stroke="#1e3a5f"/>
+  <text class="m sm" x="420" y="198">DetectAll(input)</text>
+  <text class="t sd" x="420" y="220">34 registered in the Engine</text>
+  <text class="t sd" x="420" y="238">Pre-compiled regex</text>
+
+  <!-- 4 -->
+  <rect x="586" y="132" width="168" height="120" rx="12" fill="#131f38" stroke="#2f527f" stroke-width="1.5"/>
+  <circle cx="608" cy="156" r="12" fill="#00add8" fill-opacity="0.18" stroke="#00add8" stroke-opacity="0.6"/>
+  <text class="m" x="608" y="160" text-anchor="middle" font-size="11" font-weight="700" fill="#00add8">4</text>
+  <text class="t st" x="628" y="161">Decode, rescan</text>
+  <line x1="602" y1="178" x2="738" y2="178" stroke="#1e3a5f"/>
+  <text class="m sm" x="602" y="198">QueryUnescape</text>
+  <text class="t sd" x="602" y="220">Rescan the URL-decoded form</text>
+  <text class="t sd" x="602" y="238">No encoded bypass</text>
+
+  <!-- 5 -->
+  <rect x="768" y="132" width="168" height="120" rx="12" fill="#131f38" stroke="#2f527f" stroke-width="1.5"/>
+  <circle cx="790" cy="156" r="12" fill="#00add8" fill-opacity="0.18" stroke="#00add8" stroke-opacity="0.6"/>
+  <text class="m" x="790" y="160" text-anchor="middle" font-size="11" font-weight="700" fill="#00add8">5</text>
+  <text class="t st" x="810" y="161">Aggregate results</text>
+  <line x1="784" y1="178" x2="920" y2="178" stroke="#1e3a5f"/>
+  <text class="m sm" x="784" y="198">[]*Result</text>
+  <text class="t sd" x="784" y="220">Name / Severity</text>
+  <text class="t sd" x="784" y="238">Message / Details</text>
+
+  <!-- 6 -->
+  <rect x="950" y="132" width="168" height="120" rx="12" fill="#131f38" stroke="#00add8" stroke-width="1.8"/>
+  <circle cx="972" cy="156" r="12" fill="#00add8" fill-opacity="0.28" stroke="#00add8" stroke-opacity="0.8"/>
+  <text class="m" x="972" y="160" text-anchor="middle" font-size="11" font-weight="700" fill="#00add8">6</text>
+  <text class="t st" x="992" y="161">Graded response</text>
+  <line x1="966" y1="178" x2="1102" y2="178" stroke="#1e3a5f"/>
+  <text class="m sm" x="966" y="198">Severity check</text>
+  <text class="t sd" x="966" y="220">Critical High → block</text>
+  <text class="t sd" x="966" y="238">Medium log  Low allow</text>
+
+  <!-- arrows between stages -->
+  <g stroke="#3a5c93" stroke-width="2" marker-end="url(#l-arrow)">
+    <line x1="208" y1="192" x2="218" y2="192"/>
+    <line x1="390" y1="192" x2="400" y2="192"/>
+    <line x1="572" y1="192" x2="582" y2="192"/>
+    <line x1="754" y1="192" x2="764" y2="192"/>
+    <line x1="936" y1="192" x2="946" y2="192"/>
+  </g>
+
+  <!-- ban cycle -->
+  <text class="t sec" x="300" y="306" style="fill:#e5484d;font-size:11px;">BAN CYCLE</text>
+  <line x1="470" y1="302" x2="1000" y2="302" stroke="#3d2029"/>
+  <line x1="1018" y1="252" x2="1018" y2="312" stroke="#e5484d" stroke-width="2" marker-end="url(#l-arrow-r)"/>
+
+  <g>
+    <rect x="921" y="316" width="195" height="60" rx="10" fill="#e5484d" fill-opacity="0.09" stroke="#e5484d" stroke-opacity="0.45"/>
+    <text class="t st" x="941" y="342" style="font-size:11.5px;">Attack counter</text>
+    <text class="m cn" x="941" y="360">Incr(ip, window)</text>
+
+    <rect x="714" y="316" width="195" height="60" rx="10" fill="#e5484d" fill-opacity="0.09" stroke="#e5484d" stroke-opacity="0.45"/>
+    <text class="t st" x="734" y="342" style="font-size:11.5px;">Threshold check</text>
+    <text class="m cn" x="734" y="360">5 per 60s</text>
+
+    <rect x="507" y="316" width="195" height="60" rx="10" fill="#e5484d" fill-opacity="0.09" stroke="#e5484d" stroke-opacity="0.45"/>
+    <text class="t st" x="527" y="342" style="font-size:11.5px;">Auto-ban</text>
+    <text class="m cn" x="527" y="360">Block(ip, 15min)</text>
+
+    <rect x="300" y="316" width="195" height="60" rx="10" fill="#e5484d" fill-opacity="0.09" stroke="#e5484d" stroke-opacity="0.45"/>
+    <text class="t st" x="320" y="342" style="font-size:11.5px;">Later requests blocked</text>
+    <text class="m cn" x="320" y="360">IsBlocked → High</text>
+  </g>
+
+  <g stroke="#e5484d" stroke-width="2" marker-end="url(#l-arrow-r)" stroke-opacity="0.8">
+    <line x1="921" y1="346" x2="913" y2="346"/>
+    <line x1="714" y1="346" x2="706" y2="346"/>
+    <line x1="507" y1="346" x2="499" y2="346"/>
+  </g>
+
+  <!-- loop back to the entry point -->
+  <path d="M300 346H124V258" fill="none" stroke="#e5484d" stroke-width="2" stroke-dasharray="7 5" stroke-opacity="0.75" marker-end="url(#l-arrow-r)"/>
+  <text class="t cn" x="140" y="338" style="fill:#e5484d;">Back to the entry point</text>
+
+  <!-- ══════════ (2) session lifecycle ══════════ -->
+  <text class="t sec" x="40" y="436">② SESSION LIFECYCLE</text>
+  <line x1="272" y1="432" x2="1120" y2="432" stroke="#1e3a5f"/>
+
+  <!-- main flow -->
+  <rect x="40" y="460" width="168" height="112" rx="12" fill="#00add8" fill-opacity="0.07" stroke="#00add8" stroke-opacity="0.4" stroke-width="1.5"/>
+  <text class="t st" x="58" y="486">Login request</text>
+  <line x1="56" y1="498" x2="192" y2="498" stroke="#1e3a5f"/>
+  <text class="m sm" x="56" y="518">credentials</text>
+  <text class="t sd" x="56" y="540">Once credentials pass,</text>
+  <text class="t sd" x="56" y="558">the session is bound</text>
+
+  <rect x="222" y="460" width="168" height="112" rx="12" fill="#00add8" fill-opacity="0.07" stroke="#00add8" stroke-opacity="0.4" stroke-width="1.5"/>
+  <text class="t st" x="240" y="486">History check</text>
+  <line x1="238" y1="498" x2="374" y2="498" stroke="#1e3a5f"/>
+  <text class="m sm" x="238" y="518">Observe(user, r)</text>
+  <text class="t sd" x="238" y="540">Compare past networks,</text>
+  <text class="t sd" x="238" y="558">alert on a new one</text>
+
+  <rect x="404" y="460" width="168" height="112" rx="12" fill="#00add8" fill-opacity="0.07" stroke="#00add8" stroke-opacity="0.4" stroke-width="1.5"/>
+  <text class="t st" x="422" y="486">Bind session</text>
+  <line x1="420" y1="498" x2="556" y2="498" stroke="#1e3a5f"/>
+  <text class="m sm" x="420" y="518">Issue(token, r)</text>
+  <text class="t sd" x="420" y="540">Bind IP subnet / UA</text>
+  <text class="t sd" x="420" y="558">device fingerprint</text>
+
+  <rect x="586" y="460" width="168" height="112" rx="12" fill="#00add8" fill-opacity="0.07" stroke="#00add8" stroke-opacity="0.4" stroke-width="1.5"/>
+  <text class="t st" x="604" y="486">Check each request</text>
+  <line x1="602" y1="498" x2="738" y2="498" stroke="#1e3a5f"/>
+  <text class="m sm" x="602" y="518">Check(r) / Guard</text>
+  <text class="t sd" x="602" y="540">Compare bindings,</text>
+  <text class="t sd" x="602" y="558">401 on a mismatch</text>
+
+  <rect x="768" y="460" width="168" height="112" rx="12" fill="#00add8" fill-opacity="0.07" stroke="#00add8" stroke-opacity="0.4" stroke-width="1.5"/>
+  <text class="t st" x="786" y="486">Sliding renewal</text>
+  <line x1="784" y1="498" x2="920" y2="498" stroke="#1e3a5f"/>
+  <text class="m sm" x="784" y="518">TTL renewed</text>
+  <text class="t sd" x="784" y="540">Active requests renew,</text>
+  <text class="t sd" x="784" y="558">idle sessions expire</text>
+
+  <rect x="950" y="460" width="168" height="112" rx="12" fill="#00add8" fill-opacity="0.07" stroke="#00add8" stroke-opacity="0.4" stroke-width="1.5"/>
+  <text class="t st" x="968" y="486">Revoke</text>
+  <line x1="966" y1="498" x2="1102" y2="498" stroke="#1e3a5f"/>
+  <text class="m sm" x="966" y="518">Revoke(token)</text>
+  <text class="t sd" x="966" y="540">Logout kills it at once,</text>
+  <text class="t sd" x="966" y="558">the entry is deleted</text>
+
+  <g stroke="#00add8" stroke-width="2" marker-end="url(#l-arrow-c)">
+    <line x1="208" y1="516" x2="218" y2="516"/>
+    <line x1="390" y1="516" x2="400" y2="516"/>
+    <line x1="572" y1="516" x2="582" y2="516"/>
+    <line x1="754" y1="516" x2="764" y2="516"/>
+    <line x1="936" y1="516" x2="946" y2="516"/>
+  </g>
+
+  <!-- exception and side branches -->
+  <text class="t cn" x="40" y="602" style="fill:#7a8ba3;">Exception and side branches</text>
+
+  <!-- card 1 -->
+  <rect x="40" y="614" width="350" height="236" rx="12" fill="#e5484d" fill-opacity="0.06" stroke="#e5484d" stroke-opacity="0.4" stroke-width="1.5"/>
+  <text class="t ct" x="62" y="646" fill="#ff8b8f">Session anomalies</text>
+  <text class="t cn" x="62" y="664">Guard returns 401 on its own — no app code needed</text>
+  <line x1="62" y1="676" x2="368" y2="676" stroke="#e5484d" stroke-opacity="0.28"/>
+  <g>
+    <circle cx="68" cy="702" r="3" fill="#e5484d"/>
+    <text class="t cb" x="82" y="706">UA or device fingerprint changes</text>
+    <text class="t cn" x="82" y="722">→ judged a client hijack, Critical</text>
+
+    <circle cx="68" cy="754" r="3" fill="#e5484d"/>
+    <text class="t cb" x="82" y="758">IP crosses subnet or country</text>
+    <text class="t cn" x="82" y="774">→ remote login, High and up; Critical cross-country</text>
+
+    <circle cx="68" cy="806" r="3" fill="#e5484d"/>
+    <text class="t cb" x="82" y="810">Observe() compares past networks</text>
+    <text class="t cn" x="82" y="826">→ spots an odd source at login time</text>
+  </g>
+
+  <!-- card 2 -->
+  <rect x="405" y="614" width="350" height="236" rx="12" fill="#f76b15" fill-opacity="0.06" stroke="#f76b15" stroke-opacity="0.4" stroke-width="1.5"/>
+  <text class="t ct" x="427" y="646" fill="#fca36b">Lockout and stuffing</text>
+  <text class="t cn" x="427" y="664">Progressive backoff: each lockout doubles</text>
+  <line x1="427" y1="676" x2="733" y2="676" stroke="#f76b15" stroke-opacity="0.28"/>
+  <g>
+    <circle cx="433" cy="702" r="3" fill="#f76b15"/>
+    <text class="t cb" x="447" y="706">RecordFailure counts failures</text>
+    <text class="t cn" x="447" y="722">→ over threshold locks the token; Check reports it</text>
+
+    <circle cx="433" cy="754" r="3" fill="#f76b15"/>
+    <text class="t cb" x="447" y="758">Each lockout doubles, capped at 24h</text>
+    <text class="t cn" x="447" y="774">→ ClearFailures resets on a successful login</text>
+
+    <circle cx="433" cy="806" r="3" fill="#f76b15"/>
+    <text class="t cb" x="447" y="810">CheckLogin detects stuffing</text>
+    <text class="t cn" x="447" y="826">→ many identities from one IP → credential_stuffing</text>
+  </g>
+
+  <!-- card 3 -->
+  <rect x="770" y="614" width="350" height="236" rx="12" fill="#a78bfa" fill-opacity="0.06" stroke="#a78bfa" stroke-opacity="0.4" stroke-width="1.5"/>
+  <text class="t ct" x="792" y="646" fill="#c4b0ff">Data tampering</text>
+  <text class="t cn" x="792" y="664">Client and server share a secret; params are tamper-proof</text>
+  <line x1="792" y1="676" x2="1098" y2="676" stroke="#a78bfa" stroke-opacity="0.28"/>
+  <g>
+    <circle cx="798" cy="702" r="3" fill="#a78bfa"/>
+    <text class="t cb" x="812" y="706">Sign outputs timestamp.nonce.HMAC</text>
+    <text class="t cn" x="812" y="722">→ submitted with the parameters</text>
+
+    <circle cx="798" cy="754" r="3" fill="#a78bfa"/>
+    <text class="t cb" x="812" y="758">Verify recomputes server-side</text>
+    <text class="t cn" x="812" y="774">→ param or key mismatch means tampering</text>
+
+    <circle cx="798" cy="806" r="3" fill="#a78bfa"/>
+    <text class="t cb" x="812" y="810">Timestamp skew and nonce counting</text>
+    <text class="t cn" x="812" y="826">→ blocks expired signatures and replays</text>
+  </g>
+
+  <text class="t" x="1120" y="898" text-anchor="end" font-size="10.5" fill="#7a8ba3">Sentinel Gopher · security-go</text>
+</svg>

@@ -1,0 +1,262 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1160 920" width="1160" height="920" role="img" aria-label="security-go 生命周期图">
+  <title>security-go 生命周期</title>
+  <desc>上半部分为一次 HTTP 请求的检测生命周期与 IP 封禁闭环，下半部分为会话从建立到吊销的生命周期及异常分支。</desc>
+
+  <defs>
+    <pattern id="l-grid" width="24" height="24" patternUnits="userSpaceOnUse">
+      <path d="M24 0H0V24" fill="none" stroke="#152740" stroke-width="1"/>
+    </pattern>
+    <marker id="l-arrow" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse">
+      <path d="M0 0L10 5L0 10z" fill="#3a5c93"/>
+    </marker>
+    <marker id="l-arrow-c" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse">
+      <path d="M0 0L10 5L0 10z" fill="#00add8"/>
+    </marker>
+    <marker id="l-arrow-r" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse">
+      <path d="M0 0L10 5L0 10z" fill="#e5484d"/>
+    </marker>
+    <style>
+      .t  { font-family: system-ui, -apple-system, 'PingFang SC', 'Microsoft YaHei', 'Noto Sans CJK SC', sans-serif; }
+      .m  { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+      .ttl{ font-size: 23px; font-weight: 700; fill: #e6edf3; }
+      .sub{ font-size: 12.5px; fill: #93a3b8; }
+      .sec{ font-size: 12px; font-weight: 700; letter-spacing: 1.5px; fill: #00add8; }
+      .st { font-size: 12.5px; font-weight: 700; fill: #e6edf3; }
+      .sm { font-size: 9.5px; fill: #7fd8ee; }
+      .sd { font-size: 9.5px; fill: #93a3b8; }
+      .ct { font-size: 13.5px; font-weight: 700; }
+      .cb { font-size: 10px; fill: #b9c6d6; }
+      .cn { font-size: 9px; fill: #93a3b8; }
+    </style>
+  </defs>
+
+  <rect width="1160" height="920" fill="#0b1220"/>
+  <rect width="1160" height="920" fill="url(#l-grid)"/>
+
+  <text class="t ttl" x="40" y="52">security-go 生命周期</text>
+  <text class="t sub" x="40" y="74">一次请求的检测闭环，与一个会话的建立、校验、失效全过程</text>
+  <text class="m" x="1120" y="52" text-anchor="end" font-size="11" fill="#00add8">request + session lifecycle</text>
+
+  <!-- ══════════ ① 请求检测生命周期 ══════════ -->
+  <text class="t sec" x="40" y="112">① 请求检测生命周期 · REQUEST</text>
+  <line x1="272" y1="108" x2="1120" y2="108" stroke="#1e3a5f"/>
+
+  <!-- 阶段 1 -->
+  <rect x="40" y="132" width="168" height="120" rx="12" fill="#131f38" stroke="#2f527f" stroke-width="1.5"/>
+  <circle cx="62" cy="156" r="12" fill="#00add8" fill-opacity="0.18" stroke="#00add8" stroke-opacity="0.6"/>
+  <text class="m" x="62" y="160" text-anchor="middle" font-size="11" font-weight="700" fill="#00add8">1</text>
+  <text class="t st" x="82" y="161">请求到达</text>
+  <line x1="56" y1="178" x2="192" y2="178" stroke="#1e3a5f"/>
+  <text class="m sm" x="56" y="198">http.Request</text>
+  <text class="t sd" x="56" y="220">中间件 / 处理器入口</text>
+  <text class="t sd" x="56" y="238">任意 Go HTTP 框架</text>
+
+  <!-- 阶段 2 -->
+  <rect x="222" y="132" width="168" height="120" rx="12" fill="#131f38" stroke="#2f527f" stroke-width="1.5"/>
+  <circle cx="244" cy="156" r="12" fill="#00add8" fill-opacity="0.18" stroke="#00add8" stroke-opacity="0.6"/>
+  <text class="m" x="244" y="160" text-anchor="middle" font-size="11" font-weight="700" fill="#00add8">2</text>
+  <text class="t st" x="264" y="161">采集输入</text>
+  <line x1="238" y1="178" x2="374" y2="178" stroke="#1e3a5f"/>
+  <text class="m sm" x="238" y="198">collectRequestInputs</text>
+  <text class="t sd" x="238" y="220">URL · Query · Header</text>
+  <text class="t sd" x="238" y="238">Cookie 逐项提取</text>
+
+  <!-- 阶段 3 -->
+  <rect x="404" y="132" width="168" height="120" rx="12" fill="#131f38" stroke="#2f527f" stroke-width="1.5"/>
+  <circle cx="426" cy="156" r="12" fill="#00add8" fill-opacity="0.18" stroke="#00add8" stroke-opacity="0.6"/>
+  <text class="m" x="426" y="160" text-anchor="middle" font-size="11" font-weight="700" fill="#00add8">3</text>
+  <text class="t st" x="446" y="161">逐检测器扫描</text>
+  <line x1="420" y1="178" x2="556" y2="178" stroke="#1e3a5f"/>
+  <text class="m sm" x="420" y="198">DetectAll(input)</text>
+  <text class="t sd" x="420" y="220">遍历注册表 34 个检测器</text>
+  <text class="t sd" x="420" y="238">预编译正则，零开销</text>
+
+  <!-- 阶段 4 -->
+  <rect x="586" y="132" width="168" height="120" rx="12" fill="#131f38" stroke="#2f527f" stroke-width="1.5"/>
+  <circle cx="608" cy="156" r="12" fill="#00add8" fill-opacity="0.18" stroke="#00add8" stroke-opacity="0.6"/>
+  <text class="m" x="608" y="160" text-anchor="middle" font-size="11" font-weight="700" fill="#00add8">4</text>
+  <text class="t st" x="628" y="161">解码重扫</text>
+  <line x1="602" y1="178" x2="738" y2="178" stroke="#1e3a5f"/>
+  <text class="m sm" x="602" y="198">QueryUnescape</text>
+  <text class="t sd" x="602" y="220">解码后再扫一遍</text>
+  <text class="t sd" x="602" y="238">编码载荷不可绕过</text>
+
+  <!-- 阶段 5 -->
+  <rect x="768" y="132" width="168" height="120" rx="12" fill="#131f38" stroke="#2f527f" stroke-width="1.5"/>
+  <circle cx="790" cy="156" r="12" fill="#00add8" fill-opacity="0.18" stroke="#00add8" stroke-opacity="0.6"/>
+  <text class="m" x="790" y="160" text-anchor="middle" font-size="11" font-weight="700" fill="#00add8">5</text>
+  <text class="t st" x="810" y="161">结果聚合</text>
+  <line x1="784" y1="178" x2="920" y2="178" stroke="#1e3a5f"/>
+  <text class="m sm" x="784" y="198">[]*Result</text>
+  <text class="t sd" x="784" y="220">Name / Severity</text>
+  <text class="t sd" x="784" y="238">Message / Details</text>
+
+  <!-- 阶段 6 -->
+  <rect x="950" y="132" width="168" height="120" rx="12" fill="#131f38" stroke="#00add8" stroke-width="1.8"/>
+  <circle cx="972" cy="156" r="12" fill="#00add8" fill-opacity="0.28" stroke="#00add8" stroke-opacity="0.8"/>
+  <text class="m" x="972" y="160" text-anchor="middle" font-size="11" font-weight="700" fill="#00add8">6</text>
+  <text class="t st" x="992" y="161">分级处置</text>
+  <line x1="966" y1="178" x2="1102" y2="178" stroke="#1e3a5f"/>
+  <text class="m sm" x="966" y="198">Severity 判定</text>
+  <text class="t sd" x="966" y="220">Critical High → 拦截</text>
+  <text class="t sd" x="966" y="238">Medium 告警 Low 放行</text>
+
+  <!-- 阶段间箭头 -->
+  <g stroke="#3a5c93" stroke-width="2" marker-end="url(#l-arrow)">
+    <line x1="208" y1="192" x2="218" y2="192"/>
+    <line x1="390" y1="192" x2="400" y2="192"/>
+    <line x1="572" y1="192" x2="582" y2="192"/>
+    <line x1="754" y1="192" x2="764" y2="192"/>
+    <line x1="936" y1="192" x2="946" y2="192"/>
+  </g>
+
+  <!-- 封禁闭环 -->
+  <text class="t sec" x="300" y="306" style="fill:#e5484d;font-size:11px;">IP 封禁闭环 · BAN CYCLE</text>
+  <line x1="470" y1="302" x2="1000" y2="302" stroke="#3d2029"/>
+  <line x1="1018" y1="252" x2="1018" y2="312" stroke="#e5484d" stroke-width="2" marker-end="url(#l-arrow-r)"/>
+
+  <g>
+    <rect x="921" y="316" width="195" height="60" rx="10" fill="#e5484d" fill-opacity="0.09" stroke="#e5484d" stroke-opacity="0.45"/>
+    <text class="t st" x="941" y="342" style="font-size:11.5px;">攻击计数</text>
+    <text class="m cn" x="941" y="360">Incr(ip, window)</text>
+
+    <rect x="714" y="316" width="195" height="60" rx="10" fill="#e5484d" fill-opacity="0.09" stroke="#e5484d" stroke-opacity="0.45"/>
+    <text class="t st" x="734" y="342" style="font-size:11.5px;">阈值判定</text>
+    <text class="m cn" x="734" y="360">5 次 / 60 秒</text>
+
+    <rect x="507" y="316" width="195" height="60" rx="10" fill="#e5484d" fill-opacity="0.09" stroke="#e5484d" stroke-opacity="0.45"/>
+    <text class="t st" x="527" y="342" style="font-size:11.5px;">自动封禁</text>
+    <text class="m cn" x="527" y="360">Block(ip, 15min)</text>
+
+    <rect x="300" y="316" width="195" height="60" rx="10" fill="#e5484d" fill-opacity="0.09" stroke="#e5484d" stroke-opacity="0.45"/>
+    <text class="t st" x="320" y="342" style="font-size:11.5px;">后续请求直接拦截</text>
+    <text class="m cn" x="320" y="360">IsBlocked → High</text>
+  </g>
+
+  <g stroke="#e5484d" stroke-width="2" marker-end="url(#l-arrow-r)" stroke-opacity="0.8">
+    <line x1="921" y1="346" x2="913" y2="346"/>
+    <line x1="714" y1="346" x2="706" y2="346"/>
+    <line x1="507" y1="346" x2="499" y2="346"/>
+  </g>
+
+  <!-- 闭环回路 -->
+  <path d="M300 346H124V258" fill="none" stroke="#e5484d" stroke-width="2" stroke-dasharray="7 5" stroke-opacity="0.75" marker-end="url(#l-arrow-r)"/>
+  <text class="t cn" x="140" y="338" style="fill:#e5484d;">命中封禁后回到入口</text>
+
+  <!-- ══════════ ② 会话生命周期 ══════════ -->
+  <text class="t sec" x="40" y="436">② 会话生命周期 · SESSION</text>
+  <line x1="272" y1="432" x2="1120" y2="432" stroke="#1e3a5f"/>
+
+  <!-- 主流程 -->
+  <rect x="40" y="460" width="168" height="112" rx="12" fill="#00add8" fill-opacity="0.07" stroke="#00add8" stroke-opacity="0.4" stroke-width="1.5"/>
+  <text class="t st" x="58" y="486">登录请求</text>
+  <line x1="56" y1="498" x2="192" y2="498" stroke="#1e3a5f"/>
+  <text class="m sm" x="56" y="518">credentials</text>
+  <text class="t sd" x="56" y="540">凭据校验通过后</text>
+  <text class="t sd" x="56" y="558">进入会话绑定流程</text>
+
+  <rect x="222" y="460" width="168" height="112" rx="12" fill="#00add8" fill-opacity="0.07" stroke="#00add8" stroke-opacity="0.4" stroke-width="1.5"/>
+  <text class="t st" x="240" y="486">历史比对</text>
+  <line x1="238" y1="498" x2="374" y2="498" stroke="#1e3a5f"/>
+  <text class="m sm" x="238" y="518">Observe(user, r)</text>
+  <text class="t sd" x="238" y="540">比对历史登录网段</text>
+  <text class="t sd" x="238" y="558">出现新网段即告警</text>
+
+  <rect x="404" y="460" width="168" height="112" rx="12" fill="#00add8" fill-opacity="0.07" stroke="#00add8" stroke-opacity="0.4" stroke-width="1.5"/>
+  <text class="t st" x="422" y="486">建立绑定</text>
+  <line x1="420" y1="498" x2="556" y2="498" stroke="#1e3a5f"/>
+  <text class="m sm" x="420" y="518">Issue(token, r)</text>
+  <text class="t sd" x="420" y="540">绑定 IP 网段 / UA</text>
+  <text class="t sd" x="420" y="558">设备指纹</text>
+
+  <rect x="586" y="460" width="168" height="112" rx="12" fill="#00add8" fill-opacity="0.07" stroke="#00add8" stroke-opacity="0.4" stroke-width="1.5"/>
+  <text class="t st" x="604" y="486">逐请求校验</text>
+  <line x1="602" y1="498" x2="738" y2="498" stroke="#1e3a5f"/>
+  <text class="m sm" x="602" y="518">Check(r) / Guard</text>
+  <text class="t sd" x="602" y="540">比对绑定信息</text>
+  <text class="t sd" x="602" y="558">命中异常返回 401</text>
+
+  <rect x="768" y="460" width="168" height="112" rx="12" fill="#00add8" fill-opacity="0.07" stroke="#00add8" stroke-opacity="0.4" stroke-width="1.5"/>
+  <text class="t st" x="786" y="486">滑动续期</text>
+  <line x1="784" y1="498" x2="920" y2="498" stroke="#1e3a5f"/>
+  <text class="m sm" x="784" y="518">TTL 续期</text>
+  <text class="t sd" x="784" y="540">活跃请求持续续期</text>
+  <text class="t sd" x="784" y="558">静默到期自动失效</text>
+
+  <rect x="950" y="460" width="168" height="112" rx="12" fill="#00add8" fill-opacity="0.07" stroke="#00add8" stroke-opacity="0.4" stroke-width="1.5"/>
+  <text class="t st" x="968" y="486">吊销</text>
+  <line x1="966" y1="498" x2="1102" y2="498" stroke="#1e3a5f"/>
+  <text class="m sm" x="966" y="518">Revoke(token)</text>
+  <text class="t sd" x="966" y="540">登出即刻失效</text>
+  <text class="t sd" x="966" y="558">存储条目直接删除</text>
+
+  <g stroke="#00add8" stroke-width="2" marker-end="url(#l-arrow-c)">
+    <line x1="208" y1="516" x2="218" y2="516"/>
+    <line x1="390" y1="516" x2="400" y2="516"/>
+    <line x1="572" y1="516" x2="582" y2="516"/>
+    <line x1="754" y1="516" x2="764" y2="516"/>
+    <line x1="936" y1="516" x2="946" y2="516"/>
+  </g>
+
+  <!-- 异常与旁路 -->
+  <text class="t cn" x="40" y="602" style="fill:#7a8ba3;">异常与旁路分支</text>
+
+  <!-- 卡 1 -->
+  <rect x="40" y="614" width="350" height="236" rx="12" fill="#e5484d" fill-opacity="0.06" stroke="#e5484d" stroke-opacity="0.4" stroke-width="1.5"/>
+  <text class="t ct" x="62" y="646" fill="#ff8b8f">会话异常</text>
+  <text class="t cn" x="62" y="664">Guard 直接返回 401，无需业务代码介入</text>
+  <line x1="62" y1="676" x2="368" y2="676" stroke="#e5484d" stroke-opacity="0.28"/>
+  <g>
+    <circle cx="68" cy="702" r="3" fill="#e5484d"/>
+    <text class="t cb" x="82" y="706">UA 或设备指纹变化</text>
+    <text class="t cn" x="82" y="722">→ 判定客户端被劫持，Critical</text>
+
+    <circle cx="68" cy="754" r="3" fill="#e5484d"/>
+    <text class="t cb" x="82" y="758">IP 跨网段或跨国家</text>
+    <text class="t cn" x="82" y="774">→ 判定异地登录，High 起，跨国家 Critical</text>
+
+    <circle cx="68" cy="806" r="3" fill="#e5484d"/>
+    <text class="t cb" x="82" y="810">Observe() 历史网段比对</text>
+    <text class="t cn" x="82" y="826">→ 登录瞬间发现异常来源</text>
+  </g>
+
+  <!-- 卡 2 -->
+  <rect x="405" y="614" width="350" height="236" rx="12" fill="#f76b15" fill-opacity="0.06" stroke="#f76b15" stroke-opacity="0.4" stroke-width="1.5"/>
+  <text class="t ct" x="427" y="646" fill="#fca36b">失败锁定与撞库</text>
+  <text class="t cn" x="427" y="664">渐进退避：锁定时长随失败次数翻倍</text>
+  <line x1="427" y1="676" x2="733" y2="676" stroke="#f76b15" stroke-opacity="0.28"/>
+  <g>
+    <circle cx="433" cy="702" r="3" fill="#f76b15"/>
+    <text class="t cb" x="447" y="706">RecordFailure 累计失败次数</text>
+    <text class="t cn" x="447" y="722">→ 窗口内超阈值即锁定 token，Check 报 token_locked</text>
+
+    <circle cx="433" cy="754" r="3" fill="#f76b15"/>
+    <text class="t cb" x="447" y="758">锁定时长逐次翻倍，上限 24h</text>
+    <text class="t cn" x="447" y="774">→ 登录成功调用 ClearFailures 计数器清零</text>
+
+    <circle cx="433" cy="806" r="3" fill="#f76b15"/>
+    <text class="t cb" x="447" y="810">CheckLogin 撞库检测</text>
+    <text class="t cn" x="447" y="826">→ 同 IP 失败过的不同身份数达上限报 credential_stuffing</text>
+  </g>
+
+  <!-- 卡 3 -->
+  <rect x="770" y="614" width="350" height="236" rx="12" fill="#a78bfa" fill-opacity="0.06" stroke="#a78bfa" stroke-opacity="0.4" stroke-width="1.5"/>
+  <text class="t ct" x="792" y="646" fill="#c4b0ff">数据篡改</text>
+  <text class="t cn" x="792" y="664">客户端与服务端共享密钥，参数不可改动</text>
+  <line x1="792" y1="676" x2="1098" y2="676" stroke="#a78bfa" stroke-opacity="0.28"/>
+  <g>
+    <circle cx="798" cy="702" r="3" fill="#a78bfa"/>
+    <text class="t cb" x="812" y="706">Sign 产出 时间戳.nonce.HMAC</text>
+    <text class="t cn" x="812" y="722">→ 随参数一并提交</text>
+
+    <circle cx="798" cy="754" r="3" fill="#a78bfa"/>
+    <text class="t cb" x="812" y="758">Verify 服务端重算比对</text>
+    <text class="t cn" x="812" y="774">→ 参数改动或密钥不符即判定篡改</text>
+
+    <circle cx="798" cy="806" r="3" fill="#a78bfa"/>
+    <text class="t cb" x="812" y="810">时间戳超差 与 nonce 计数</text>
+    <text class="t cn" x="812" y="826">→ 拦截过期签名与重放请求</text>
+  </g>
+
+  <text class="t" x="1120" y="898" text-anchor="end" font-size="10.5" fill="#7a8ba3">哨兵鼠 · security-go</text>
+</svg>

@@ -1,0 +1,221 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1160 1000" width="1160" height="1000" role="img" aria-label="security-go Features">
+  <title>security-go Features</title>
+  <desc>The 36 detectors grouped into 6 categories, with the four-level severity model.</desc>
+
+  <defs>
+    <pattern id="f-grid" width="24" height="24" patternUnits="userSpaceOnUse">
+      <path d="M24 0H0V24" fill="none" stroke="#152740" stroke-width="1"/>
+    </pattern>
+    <style>
+      .t  { font-family: system-ui, -apple-system, 'PingFang SC', 'Microsoft YaHei', 'Noto Sans CJK SC', sans-serif; }
+      .m  { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+      .ttl{ font-size: 23px; font-weight: 700; fill: #e6edf3; }
+      .sub{ font-size: 12.5px; fill: #93a3b8; }
+      .ct { font-size: 16px; font-weight: 700; }
+      .cs { font-size: 11px; fill: #93a3b8; }
+      .nm { font-size: 10.5px; fill: #7fd8ee; }
+      .ds { font-size: 10px; fill: #93a3b8; }
+      .pt { font-size: 12.5px; font-weight: 700; fill: #e6edf3; }
+      .pd { font-size: 10px; fill: #93a3b8; }
+    </style>
+  </defs>
+
+  <rect width="1160" height="1000" fill="#0b1220"/>
+  <rect width="1160" height="1000" fill="url(#f-grid)"/>
+
+  <text class="t ttl" x="40" y="52">security-go Features</text>
+  <text class="t sub" x="40" y="74">36 detectors · 6 categories · 4 severity levels</text>
+  <text class="m" x="1120" y="52" text-anchor="end" font-size="11" fill="#00add8">36 detectors / 6 categories</text>
+
+  <!-- ══════ design principles ══════ -->
+  <g>
+    <rect x="40" y="94" width="258" height="52" rx="10" fill="#131f38" stroke="#2f527f"/>
+    <text class="t pt" x="58" y="118">Zero dependencies</text>
+    <text class="t pd" x="58" y="136">Only the Go stdlib regexp; no third party</text>
+
+    <rect x="314" y="94" width="258" height="52" rx="10" fill="#131f38" stroke="#2f527f"/>
+    <text class="t pt" x="332" y="118">Unified interface</text>
+    <text class="t pd" x="332" y="136">Every detector implements Name() + Detect()</text>
+
+    <rect x="588" y="94" width="258" height="52" rx="10" fill="#131f38" stroke="#2f527f"/>
+    <text class="t pt" x="606" y="118">Pre-compiled regex</text>
+    <text class="t pd" x="606" y="136">Compiled at var init; zero runtime cost</text>
+
+    <rect x="862" y="94" width="258" height="52" rx="10" fill="#131f38" stroke="#2f527f"/>
+    <text class="t pt" x="880" y="118">Pluggable storage</text>
+    <text class="t pd" x="880" y="136">Memory / File / Redis backends</text>
+  </g>
+
+  <!-- ══════ injection ══════ -->
+  <rect x="40" y="166" width="344" height="356" rx="14" fill="#e5484d" fill-opacity="0.06" stroke="#e5484d" stroke-opacity="0.4" stroke-width="1.5"/>
+  <text class="m ct" x="62" y="200" fill="#ff8b8f">injection</text>
+  <text class="t cs" x="62" y="220">Injection attacks · code and query semantics</text>
+  <rect x="320" y="182" width="44" height="26" rx="13" fill="#e5484d" fill-opacity="0.16" stroke="#e5484d" stroke-opacity="0.5"/>
+  <text class="m" x="342" y="200" text-anchor="middle" font-size="13" font-weight="700" fill="#e5484d">10</text>
+  <line x1="62" y1="232" x2="362" y2="232" stroke="#e5484d" stroke-opacity="0.28"/>
+  <g>
+    <text class="m nm" x="62" y="258">xss</text>
+    <text class="t ds" x="192" y="258">Script tags / handlers / URIs</text>
+    <text class="m nm" x="62" y="284">sql_injection</text>
+    <text class="t ds" x="192" y="284">UNION / blind / time-based</text>
+    <text class="m nm" x="62" y="310">command_injection</text>
+    <text class="t ds" x="192" y="310">Backticks / pipes / chaining</text>
+    <text class="m nm" x="62" y="336">nosql_injection</text>
+    <text class="t ds" x="192" y="336">$ne / $where operators</text>
+    <text class="m nm" x="62" y="362">ldap_injection</text>
+    <text class="t ds" x="192" y="362">Filter ops / wildcard inject</text>
+    <text class="m nm" x="62" y="388">xpath_injection</text>
+    <text class="t ds" x="192" y="388">Boolean bypass / functions</text>
+    <text class="m nm" x="62" y="414">jndi_injection</text>
+    <text class="t ds" x="192" y="414">JNDI lookups / obfuscation</text>
+    <text class="m nm" x="62" y="440">ssi_injection</text>
+    <text class="t ds" x="192" y="440">exec / include directives</text>
+    <text class="m nm" x="62" y="466">graphql_injection</text>
+    <text class="t ds" x="192" y="466">Introspection / nesting DoS</text>
+    <text class="m nm" x="62" y="492">ssti</text>
+    <text class="t ds" x="192" y="492">Template expressions / MRO</text>
+  </g>
+
+  <!-- ══════ protocol ══════ -->
+  <rect x="408" y="166" width="344" height="356" rx="14" fill="#f76b15" fill-opacity="0.06" stroke="#f76b15" stroke-opacity="0.4" stroke-width="1.5"/>
+  <text class="m ct" x="430" y="200" fill="#fca36b">protocol</text>
+  <text class="t cs" x="430" y="220">Protocol and request attacks · HTTP semantics</text>
+  <rect x="688" y="182" width="44" height="26" rx="13" fill="#f76b15" fill-opacity="0.16" stroke="#f76b15" stroke-opacity="0.5"/>
+  <text class="m" x="710" y="200" text-anchor="middle" font-size="13" font-weight="700" fill="#f76b15">9</text>
+  <line x1="430" y1="232" x2="730" y2="232" stroke="#f76b15" stroke-opacity="0.28"/>
+  <g>
+    <text class="m nm" x="430" y="258">ssrf</text>
+    <text class="t ds" x="560" y="258">Internal IPs / cloud metadata</text>
+    <text class="m nm" x="430" y="284">xxe</text>
+    <text class="t ds" x="560" y="284">External entities / DOCTYPE</text>
+    <text class="m nm" x="430" y="310">header_injection</text>
+    <text class="t ds" x="560" y="310">CRLF injection / header abuse</text>
+    <text class="m nm" x="430" y="336">host_header</text>
+    <text class="t ds" x="560" y="336">Host poisoning / proxy headers</text>
+    <text class="m nm" x="430" y="362">request_smuggling</text>
+    <text class="t ds" x="560" y="362">TE vs CL mismatch / dual TE</text>
+    <text class="m nm" x="430" y="388">open_redirect</text>
+    <text class="t ds" x="560" y="388">Protocol-relative URLs / JS</text>
+    <text class="m nm" x="430" y="414">cors</text>
+    <text class="t ds" x="560" y="414">null origin / ACAO injection</text>
+    <text class="m nm" x="430" y="440">websocket</text>
+    <text class="t ds" x="560" y="440">Upgrade inject / null origin</text>
+    <text class="m nm" x="430" y="466">dns_rebinding</text>
+    <text class="t ds" x="560" y="466">Internal Host / no-TLD names</text>
+  </g>
+
+  <!-- ══════ data ══════ -->
+  <rect x="776" y="166" width="344" height="356" rx="14" fill="#a78bfa" fill-opacity="0.06" stroke="#a78bfa" stroke-opacity="0.4" stroke-width="1.5"/>
+  <text class="m ct" x="798" y="200" fill="#c4b0ff">data</text>
+  <text class="t cs" x="798" y="220">Data and serialization · payloads and envelopes</text>
+  <rect x="1056" y="182" width="44" height="26" rx="13" fill="#a78bfa" fill-opacity="0.16" stroke="#a78bfa" stroke-opacity="0.5"/>
+  <text class="m" x="1078" y="200" text-anchor="middle" font-size="13" font-weight="700" fill="#a78bfa">5</text>
+  <line x1="798" y1="232" x2="1098" y2="232" stroke="#a78bfa" stroke-opacity="0.28"/>
+  <g>
+    <text class="m nm" x="798" y="258">deserialization</text>
+    <text class="t ds" x="936" y="258">PHP / pickle / Java / .NET</text>
+    <text class="m nm" x="798" y="284">csv_injection</text>
+    <text class="t ds" x="936" y="284">Formula prefixes / DDE</text>
+    <text class="m nm" x="798" y="310">mail_header</text>
+    <text class="t ds" x="936" y="310">Bcc / Cc / From injection</text>
+    <text class="m nm" x="798" y="336">jwt_attack</text>
+    <text class="t ds" x="936" y="336">alg:none / kid traversal</text>
+    <text class="m nm" x="798" y="362">prototype_pollution</text>
+    <text class="t ds" x="936" y="362">__proto__ / constructor keys</text>
+  </g>
+  <text class="t ds" x="798" y="400" style="fill:#7a8ba3;">JWT and deserialization decode the payload</text>
+  <text class="t ds" x="798" y="418" style="fill:#7a8ba3;">structure first; the other data detectors match</text>
+  <text class="t ds" x="798" y="436" style="fill:#7a8ba3;">signatures and report without parsing it.</text>
+
+  <!-- ══════ file ══════ -->
+  <rect x="40" y="544" width="344" height="290" rx="14" fill="#f5a623" fill-opacity="0.06" stroke="#f5a623" stroke-opacity="0.4" stroke-width="1.5"/>
+  <text class="m ct" x="62" y="578" fill="#f7c063">file</text>
+  <text class="t cs" x="62" y="598">Files and sensitive data · access and leaks</text>
+  <rect x="320" y="560" width="44" height="26" rx="13" fill="#f5a623" fill-opacity="0.16" stroke="#f5a623" stroke-opacity="0.5"/>
+  <text class="m" x="342" y="578" text-anchor="middle" font-size="13" font-weight="700" fill="#f5a623">3</text>
+  <line x1="62" y1="610" x2="362" y2="610" stroke="#f5a623" stroke-opacity="0.28"/>
+  <g>
+    <text class="m nm" x="62" y="636">path_traversal</text>
+    <text class="t ds" x="192" y="636">../ escape / php://filter</text>
+    <text class="m nm" x="62" y="662">upload</text>
+    <text class="t ds" x="192" y="662">Extension whitelist / tag scan</text>
+    <text class="m nm" x="62" y="688">data_leak</text>
+    <text class="t ds" x="192" y="688">Cards / keys / private keys</text>
+  </g>
+  <text class="t ds" x="62" y="726" style="fill:#7a8ba3;">Upload checks both the extension and the file</text>
+  <text class="t ds" x="62" y="744" style="fill:#7a8ba3;">contents for executable tags, so renaming cannot bypass it.</text>
+  <text class="t ds" x="62" y="778" style="fill:#7a8ba3;">Data leak covers 12 credential types: card numbers,</text>
+  <text class="t ds" x="62" y="796" style="fill:#7a8ba3;">AWS keys, private keys, connection strings, tokens.</text>
+
+  <!-- ══════ HTTP validation ══════ -->
+  <rect x="408" y="544" width="344" height="290" rx="14" fill="#30a46c" fill-opacity="0.06" stroke="#30a46c" stroke-opacity="0.4" stroke-width="1.5"/>
+  <text class="m ct" x="430" y="578" fill="#6ecf9a">httpval</text>
+  <text class="t cs" x="430" y="598">HTTP protocol validation · needs config</text>
+  <rect x="688" y="560" width="44" height="26" rx="13" fill="#30a46c" fill-opacity="0.16" stroke="#30a46c" stroke-opacity="0.5"/>
+  <text class="m" x="710" y="578" text-anchor="middle" font-size="13" font-weight="700" fill="#30a46c">7</text>
+  <line x1="430" y1="610" x2="730" y2="610" stroke="#30a46c" stroke-opacity="0.28"/>
+  <g>
+    <text class="m nm" x="430" y="636">http_method</text>
+    <text class="t ds" x="560" y="636">Only 7 standard methods</text>
+    <text class="m nm" x="430" y="662">body_size</text>
+    <text class="t ds" x="560" y="662">Body limit, default 10MB</text>
+    <text class="m nm" x="430" y="688">content_type</text>
+    <text class="t ds" x="560" y="688">MIME type whitelist</text>
+    <text class="m nm" x="430" y="714">csrf_origin</text>
+    <text class="t ds" x="560" y="714">Origin vs Host consistency</text>
+    <text class="m nm" x="430" y="740">cookie_attrs</text>
+    <text class="t ds" x="560" y="740">Secure / HttpOnly / SameSite</text>
+    <text class="m nm" x="430" y="766">nested_depth</text>
+    <text class="t ds" x="560" y="766">JSON nesting depth, default 32</text>
+    <text class="m nm" x="430" y="792">ip_blacklist</text>
+    <text class="t ds" x="560" y="792">Auto-ban above threshold</text>
+  </g>
+
+  <!-- ══════ session ══════ -->
+  <rect x="776" y="544" width="344" height="290" rx="14" fill="#00add8" fill-opacity="0.06" stroke="#00add8" stroke-opacity="0.45" stroke-width="1.5" stroke-dasharray="8 6"/>
+  <text class="m ct" x="798" y="578" fill="#7fd8ee">session</text>
+  <text class="t cs" x="798" y="598">Session security · bypasses the Engine</text>
+  <rect x="1056" y="560" width="44" height="26" rx="13" fill="#00add8" fill-opacity="0.16" stroke="#00add8" stroke-opacity="0.5"/>
+  <text class="m" x="1078" y="578" text-anchor="middle" font-size="13" font-weight="700" fill="#00add8">2</text>
+  <line x1="798" y1="610" x2="1098" y2="610" stroke="#00add8" stroke-opacity="0.28"/>
+  <g>
+    <text class="m nm" x="798" y="636">session_guard</text>
+    <text class="t ds" x="936" y="636">token bound to IP / UA / fingerprint</text>
+    <text class="m nm" x="798" y="668">data_tamper</text>
+    <text class="t ds" x="936" y="668">HMAC param signing + replay guard</text>
+  </g>
+  <text class="t ds" x="798" y="706" style="fill:#7a8ba3;">session_guard compares bindings per request: UA or</text>
+  <text class="t ds" x="798" y="724" style="fill:#7a8ba3;">fingerprint change means hijack; a new subnet means a</text>
+  <text class="t ds" x="798" y="742" style="fill:#7a8ba3;">remote login. Failures accumulate into a lockout that</text>
+  <text class="t ds" x="798" y="772" style="fill:#7a8ba3;">doubles each time. Too many identities failing from one</text>
+  <text class="t ds" x="798" y="790" style="fill:#7a8ba3;">IP reports credential stuffing; success clears it.</text>
+
+  <!-- ══════ severity levels ══════ -->
+  <text class="t" x="40" y="874" font-size="11.5" font-weight="700" letter-spacing="2" fill="#7a8ba3">SEVERITY LEVELS</text>
+
+  <rect x="40" y="886" width="258" height="76" rx="12" fill="#e5484d" fill-opacity="0.08" stroke="#e5484d" stroke-opacity="0.45"/>
+  <circle cx="62" cy="906" r="6" fill="#e5484d"/>
+  <text class="t pt" x="78" y="911" style="fill:#ff8b8f;">Critical</text>
+  <text class="t pd" x="58" y="932">Command injection / JNDI / SSTI / SQLi</text>
+  <text class="t pd" x="58" y="949">Smuggling / deserialize / leak / hijack</text>
+
+  <rect x="314" y="886" width="258" height="76" rx="12" fill="#f76b15" fill-opacity="0.08" stroke="#f76b15" stroke-opacity="0.45"/>
+  <circle cx="336" cy="906" r="6" fill="#f76b15"/>
+  <text class="t pt" x="352" y="911" style="fill:#fca36b;">High</text>
+  <text class="t pd" x="332" y="932">XSS / SSRF / XXE / path traversal</text>
+  <text class="t pd" x="332" y="949">Remote login (Critical across countries)</text>
+
+  <rect x="588" y="886" width="258" height="76" rx="12" fill="#ffb224" fill-opacity="0.08" stroke="#ffb224" stroke-opacity="0.45"/>
+  <circle cx="610" cy="906" r="6" fill="#ffb224"/>
+  <text class="t pt" x="626" y="911" style="fill:#ffd27a;">Medium</text>
+  <text class="t pd" x="606" y="932">Weak-signal hits / context-free patterns</text>
+  <text class="t pd" x="606" y="949">Common in tutorials and real content</text>
+
+  <rect x="862" y="886" width="258" height="76" rx="12" fill="#30a46c" fill-opacity="0.08" stroke="#30a46c" stroke-opacity="0.45"/>
+  <circle cx="884" cy="906" r="6" fill="#30a46c"/>
+  <text class="t pt" x="900" y="911" style="fill:#6ecf9a;">Low</text>
+  <text class="t pd" x="880" y="932">Invalid HTTP method</text>
+  <text class="t pd" x="880" y="949">Content-Type mismatch</text>
+
+  <text class="t" x="1120" y="986" text-anchor="end" font-size="10.5" fill="#7a8ba3">Sentinel Gopher · security-go</text>
+</svg>

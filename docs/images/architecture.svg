@@ -1,0 +1,237 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1160 900" width="1160" height="900" role="img" aria-label="security-go 架构设计图">
+  <title>security-go 架构设计</title>
+  <desc>接入层 → security.Engine 注册表 → 6 个检测器包（36 个检测器）→ 可插拔存储后端；session 包独立于 Engine 之外。</desc>
+
+  <defs>
+    <pattern id="a-grid" width="24" height="24" patternUnits="userSpaceOnUse">
+      <path d="M24 0H0V24" fill="none" stroke="#152740" stroke-width="1"/>
+    </pattern>
+    <linearGradient id="a-engine" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#00add8" stop-opacity="0.16"/>
+      <stop offset="1" stop-color="#00add8" stop-opacity="0.04"/>
+    </linearGradient>
+    <marker id="a-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0 0L10 5L0 10z" fill="#3a5c93"/>
+    </marker>
+    <marker id="a-arrow-c" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0 0L10 5L0 10z" fill="#00add8"/>
+    </marker>
+    <style>
+      .t  { font-family: system-ui, -apple-system, 'PingFang SC', 'Microsoft YaHei', 'Noto Sans CJK SC', sans-serif; }
+      .m  { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+      .ttl{ font-size: 23px; font-weight: 700; fill: #e6edf3; }
+      .sub{ font-size: 12.5px; fill: #93a3b8; }
+      .lay{ font-size: 11.5px; font-weight: 700; letter-spacing: 2px; fill: #7a8ba3; }
+      .bt { font-size: 15px; font-weight: 700; fill: #e6edf3; }
+      .bd { font-size: 10.5px; fill: #93a3b8; }
+      .ch { font-size: 9.5px; fill: #cfdceb; }
+      .lg { font-size: 11px; fill: #93a3b8; }
+    </style>
+  </defs>
+
+  <rect width="1160" height="900" fill="#0b1220"/>
+  <rect width="1160" height="900" fill="url(#a-grid)"/>
+
+  <!-- 标题 -->
+  <text class="t ttl" x="40" y="52">security-go 架构设计</text>
+  <text class="t sub" x="40" y="74">统一接口 + 注册表模式：36 个检测器 / 6 个攻击类别 / 3 种存储后端</text>
+  <text class="m" x="1120" y="52" text-anchor="end" font-size="11" fill="#00add8">github.com/erikwang2013/security-go</text>
+
+  <!-- ══════ 接入层 ══════ -->
+  <rect x="40" y="88" width="1080" height="64" rx="12" fill="#131f38" stroke="#3a5c93" stroke-width="1.5"/>
+  <text class="t lay" x="56" y="112">接入层 · APPLICATION</text>
+  <text class="t bd" x="56" y="134">任何 Go HTTP 框架均可集成——中间件调用 DetectRequest(r)，业务代码调用 Detect / DetectAll</text>
+  <g>
+    <rect x="800" y="104" width="92" height="24" rx="6" fill="#1c2c4a" stroke="#3a5c93"/>
+    <text class="m ch" x="846" y="120" text-anchor="middle">net/http</text>
+    <rect x="900" y="104" width="58" height="24" rx="6" fill="#1c2c4a" stroke="#3a5c93"/>
+    <text class="m ch" x="929" y="120" text-anchor="middle">Gin</text>
+    <rect x="966" y="104" width="62" height="24" rx="6" fill="#1c2c4a" stroke="#3a5c93"/>
+    <text class="m ch" x="997" y="120" text-anchor="middle">Echo</text>
+    <rect x="1036" y="104" width="68" height="24" rx="6" fill="#1c2c4a" stroke="#3a5c93"/>
+    <text class="m ch" x="1070" y="120" text-anchor="middle">Chi</text>
+  </g>
+
+  <!-- 接入层 → Engine / session -->
+  <line x1="430" y1="152" x2="430" y2="184" stroke="#3a5c93" stroke-width="2" marker-end="url(#a-arrow)"/>
+  <line x1="990" y1="152" x2="990" y2="184" stroke="#00add8" stroke-width="2" stroke-dasharray="6 5" marker-end="url(#a-arrow-c)"/>
+
+  <!-- ══════ 核心层 Engine ══════ -->
+  <rect x="40" y="190" width="780" height="158" rx="14" fill="url(#a-engine)" stroke="#00add8" stroke-width="2"/>
+  <text class="t lay" x="60" y="216" style="fill:#00add8;">核心层 · CORE</text>
+  <text class="t bt" x="60" y="242">security.Engine</text>
+  <text class="t bd" x="60" y="262">检测器注册表与调度中枢，自身不含任何检测规则</text>
+
+  <rect x="60" y="276" width="330" height="54" rx="9" fill="#0b1220" stroke="#24618a" stroke-width="1.5"/>
+  <text class="m" x="74" y="296" font-size="11.5" fill="#7fd8ee">detectors map[string]Detector</text>
+  <text class="t" x="74" y="316" font-size="10.5" fill="#93a3b8">每项实现 Name() string + Detect(string) *Result</text>
+
+  <g class="m" font-size="11">
+    <rect x="406" y="276" width="184" height="24" rx="6" fill="#12283d" stroke="#24618a"/>
+    <text x="420" y="292" fill="#cfdceb">Register(d Detector)</text>
+    <rect x="406" y="306" width="184" height="24" rx="6" fill="#12283d" stroke="#24618a"/>
+    <text x="420" y="322" fill="#cfdceb">Detect(name, input)</text>
+    <rect x="600" y="276" width="200" height="24" rx="6" fill="#12283d" stroke="#24618a"/>
+    <text x="614" y="292" fill="#cfdceb">DetectAll(input)</text>
+    <rect x="600" y="306" width="200" height="24" rx="6" fill="#12283d" stroke="#24618a"/>
+    <text x="614" y="322" fill="#cfdceb">DetectRequest(r)</text>
+  </g>
+  <text class="t" x="600" y="271" font-size="9.5" fill="#7a8ba3">URL 解码重扫，编码载荷不可绕过</text>
+
+  <!-- ══════ session 独立面板 ══════ -->
+  <rect x="860" y="190" width="260" height="462" rx="14" fill="#0e2333" stroke="#00add8" stroke-width="2" stroke-dasharray="8 6"/>
+  <text class="t lay" x="880" y="216" style="fill:#00add8;">独立 · OUT OF ENGINE</text>
+  <text class="t bt" x="880" y="244">session 包</text>
+  <text class="t bd" x="880" y="264">不经注册表——需完整</text>
+  <text class="t bd" x="880" y="280">*http.Request 与密钥，</text>
+  <text class="t bd" x="880" y="296">直接作为中间件调用</text>
+
+  <rect x="880" y="314" width="220" height="92" rx="9" fill="#0b1220" stroke="#24618a"/>
+  <text class="m" x="894" y="336" font-size="11.5" fill="#7fd8ee">Tracker</text>
+  <text class="m" x="894" y="354" font-size="10.5" fill="#e5484d">session_guard</text>
+  <text class="t bd" x="894" y="374">Issue / Check / Observe</text>
+  <text class="t bd" x="894" y="390">Guard / Revoke / RecordFailure</text>
+
+  <rect x="880" y="418" width="220" height="92" rx="9" fill="#0b1220" stroke="#24618a"/>
+  <text class="m" x="894" y="440" font-size="11.5" fill="#7fd8ee">Signer</text>
+  <text class="m" x="894" y="458" font-size="10.5" fill="#e5484d">data_tamper</text>
+  <text class="t bd" x="894" y="478">HMAC-SHA256 参数签名</text>
+  <text class="t bd" x="894" y="494">Sign / Verify</text>
+
+  <text class="t bd" x="880" y="536">存储与密钥由应用注入</text>
+  <text class="t bd" x="880" y="552">（默认内存实现，可替换）</text>
+  <rect x="880" y="568" width="220" height="52" rx="9" fill="#0b1220" stroke="#24618a"/>
+  <text class="t bd" x="894" y="588">GeoIP 可选接入：</text>
+  <text class="m" x="894" y="606" font-size="10.5" fill="#7fd8ee">tr.CountryOf = geo.Lookup</text>
+
+  <!-- Engine → 检测器 总线 -->
+  <line x1="430" y1="348" x2="430" y2="372" stroke="#3a5c93" stroke-width="2"/>
+  <line x1="112" y1="372" x2="744" y2="372" stroke="#3a5c93" stroke-width="2"/>
+  <g stroke="#3a5c93" stroke-width="2" marker-end="url(#a-arrow)">
+    <line x1="112" y1="372" x2="112" y2="390"/>
+    <line x1="270" y1="372" x2="270" y2="390"/>
+    <line x1="428" y1="372" x2="428" y2="390"/>
+    <line x1="586" y1="372" x2="586" y2="390"/>
+    <line x1="744" y1="372" x2="744" y2="390"/>
+  </g>
+
+  <!-- ══════ 检测器层 ══════ -->
+  <text class="t lay" x="40" y="366">检测器层 · DETECTORS</text>
+  <text class="t bd" x="228" y="366" style="font-size:10.5px;">34 个经 Engine 调度</text>
+
+  <!-- injection -->
+  <rect x="40" y="396" width="144" height="256" rx="12" fill="#e5484d" fill-opacity="0.07" stroke="#e5484d" stroke-opacity="0.45" stroke-width="1.5"/>
+  <text class="m" x="56" y="424" font-size="12.5" fill="#ff8b8f">injection</text>
+  <text class="t bd" x="56" y="442">注入类</text>
+  <line x1="56" y1="452" x2="168" y2="452" stroke="#e5484d" stroke-opacity="0.3"/>
+  <text x="168" y="424" text-anchor="end" class="m" font-size="13" font-weight="700" fill="#e5484d">10</text>
+  <g class="m ch">
+    <text x="56" y="474">xss</text>
+    <text x="56" y="495">sql_injection</text>
+    <text x="56" y="516">command_injection</text>
+    <text x="56" y="537">nosql_injection</text>
+    <text x="56" y="558">ldap_injection</text>
+    <text x="56" y="579">xpath_injection</text>
+    <text x="56" y="600">jndi_injection</text>
+    <text x="56" y="621">ssi_injection</text>
+  </g>
+  <text class="t bd" x="56" y="642" style="font-size:9.5px;">+ graphql · ssti</text>
+
+  <!-- protocol -->
+  <rect x="198" y="396" width="144" height="256" rx="12" fill="#f76b15" fill-opacity="0.07" stroke="#f76b15" stroke-opacity="0.45" stroke-width="1.5"/>
+  <text class="m" x="214" y="424" font-size="12.5" fill="#fca36b">protocol</text>
+  <text class="t bd" x="214" y="442">协议与请求</text>
+  <line x1="214" y1="452" x2="326" y2="452" stroke="#f76b15" stroke-opacity="0.3"/>
+  <text x="326" y="424" text-anchor="end" class="m" font-size="13" font-weight="700" fill="#f76b15">9</text>
+  <g class="m ch">
+    <text x="214" y="474">ssrf</text>
+    <text x="214" y="495">xxe</text>
+    <text x="214" y="516">header_injection</text>
+    <text x="214" y="537">host_header</text>
+    <text x="214" y="558">request_smuggling</text>
+    <text x="214" y="579">open_redirect</text>
+    <text x="214" y="600">cors</text>
+    <text x="214" y="621">websocket</text>
+  </g>
+  <text class="t bd" x="214" y="642" style="font-size:9.5px;">+ dns_rebinding</text>
+
+  <!-- data -->
+  <rect x="356" y="396" width="144" height="256" rx="12" fill="#a78bfa" fill-opacity="0.07" stroke="#a78bfa" stroke-opacity="0.45" stroke-width="1.5"/>
+  <text class="m" x="372" y="424" font-size="12.5" fill="#c4b0ff">data</text>
+  <text class="t bd" x="372" y="442">数据与序列化</text>
+  <line x1="372" y1="452" x2="484" y2="452" stroke="#a78bfa" stroke-opacity="0.3"/>
+  <text x="484" y="424" text-anchor="end" class="m" font-size="13" font-weight="700" fill="#a78bfa">5</text>
+  <g class="m ch">
+    <text x="372" y="474">deserialization</text>
+    <text x="372" y="495">csv_injection</text>
+    <text x="372" y="516">mail_header</text>
+    <text x="372" y="537">jwt_attack</text>
+    <text x="372" y="558">prototype_pollution</text>
+  </g>
+
+  <!-- file -->
+  <rect x="514" y="396" width="144" height="256" rx="12" fill="#f5a623" fill-opacity="0.07" stroke="#f5a623" stroke-opacity="0.45" stroke-width="1.5"/>
+  <text class="m" x="530" y="424" font-size="12.5" fill="#f7c063">file</text>
+  <text class="t bd" x="530" y="442">文件与敏感数据</text>
+  <line x1="530" y1="452" x2="642" y2="452" stroke="#f5a623" stroke-opacity="0.3"/>
+  <text x="642" y="424" text-anchor="end" class="m" font-size="13" font-weight="700" fill="#f5a623">3</text>
+  <g class="m ch">
+    <text x="530" y="474">path_traversal</text>
+    <text x="530" y="495">upload</text>
+    <text x="530" y="516">data_leak</text>
+  </g>
+
+  <!-- httpval -->
+  <rect x="672" y="396" width="144" height="256" rx="12" fill="#30a46c" fill-opacity="0.07" stroke="#30a46c" stroke-opacity="0.45" stroke-width="1.5"/>
+  <text class="m" x="688" y="424" font-size="12.5" fill="#6ecf9a">httpval</text>
+  <text class="t bd" x="688" y="442">HTTP 校验</text>
+  <line x1="688" y1="452" x2="800" y2="452" stroke="#30a46c" stroke-opacity="0.3"/>
+  <text x="800" y="424" text-anchor="end" class="m" font-size="13" font-weight="700" fill="#30a46c">7</text>
+  <g class="m ch">
+    <text x="688" y="474">http_method</text>
+    <text x="688" y="495">body_size</text>
+    <text x="688" y="516">content_type</text>
+    <text x="688" y="537">csrf_origin</text>
+    <text x="688" y="558">cookie_attrs</text>
+    <text x="688" y="579">nested_depth</text>
+    <text x="688" y="600">ip_blacklist</text>
+  </g>
+  <text class="t bd" x="688" y="642" style="font-size:9.5px;">注册时需应用提供参数</text>
+
+  <!-- ══════ 存储层 ══════ -->
+  <line x1="744" y1="652" x2="744" y2="674" stroke="#3a5c93" stroke-width="2" marker-end="url(#a-arrow)"/>
+  <line x1="990" y1="640" x2="990" y2="674" stroke="#00add8" stroke-width="2" stroke-dasharray="6 5" marker-end="url(#a-arrow-c)"/>
+
+  <rect x="40" y="682" width="1080" height="118" rx="14" fill="#131f38" stroke="#14b8a6" stroke-opacity="0.55" stroke-width="1.5"/>
+  <text class="t lay" x="60" y="708" style="fill:#14b8a6;">存储层 · STORAGE</text>
+  <text class="m" x="60" y="730" font-size="11.5" fill="#7fd8ee">storage.Backend</text>
+  <text class="t bd" x="60" y="750">Incr · Get · Block · IsBlocked · Close</text>
+  <text class="t bd" x="60" y="768" style="font-size:10px;">供 ip_blacklist 计数封禁、data_tamper 拦截重放使用</text>
+
+  <g>
+    <rect x="470" y="702" width="200" height="78" rx="9" fill="#0b1220" stroke="#2f6f6a"/>
+    <text class="m" x="486" y="728" font-size="12" fill="#6ee7d7">Memory</text>
+    <text class="t bd" x="486" y="748" style="font-size:10px;">Mutex + map，默认选项</text>
+    <text class="t bd" x="486" y="764" style="font-size:10px;">30s 后台清理过期条目</text>
+
+    <rect x="686" y="702" width="200" height="78" rx="9" fill="#0b1220" stroke="#2f6f6a"/>
+    <text class="m" x="702" y="728" font-size="12" fill="#6ee7d7">File</text>
+    <text class="t bd" x="702" y="748" style="font-size:10px;">JSON 文件持久化</text>
+    <text class="t bd" x="702" y="764" style="font-size:10px;">Close 时落盘</text>
+
+    <rect x="902" y="702" width="200" height="78" rx="9" fill="#0b1220" stroke="#2f6f6a"/>
+    <text class="m" x="918" y="728" font-size="12" fill="#6ee7d7">Redis</text>
+    <text class="t bd" x="918" y="748" style="font-size:10px;">独立子模块 · go-redis/v9</text>
+    <text class="t bd" x="918" y="764" style="font-size:10px;">Pipeline Incr + TTL</text>
+  </g>
+
+  <!-- 图例 -->
+  <rect x="40" y="830" width="1080" height="42" rx="10" fill="#0e1729" stroke="#1e3a5f"/>
+  <line x1="60" y1="851" x2="96" y2="851" stroke="#3a5c93" stroke-width="2"/>
+  <text class="t lg" x="106" y="855">经 Engine 注册，实现 Detector 接口</text>
+  <line x1="360" y1="851" x2="396" y2="851" stroke="#00add8" stroke-width="2" stroke-dasharray="6 5"/>
+  <text class="t lg" x="406" y="855">独立中间件 / 存储依赖，不经 Engine</text>
+  <text class="t lg" x="760" y="855" style="fill:#7a8ba3;">所有检测器仅依赖 Go 标准库 regexp，无第三方依赖</text>
+
+  <text class="t" x="1120" y="888" text-anchor="end" font-size="10.5" fill="#7a8ba3">哨兵鼠 · security-go</text>
+</svg>

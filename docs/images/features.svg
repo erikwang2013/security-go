@@ -1,0 +1,221 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1160 1000" width="1160" height="1000" role="img" aria-label="security-go 功能设计图">
+  <title>security-go 功能设计</title>
+  <desc>36 个检测器按 6 大类别划分的功能清单，以及统一的严重程度分级模型。</desc>
+
+  <defs>
+    <pattern id="f-grid" width="24" height="24" patternUnits="userSpaceOnUse">
+      <path d="M24 0H0V24" fill="none" stroke="#152740" stroke-width="1"/>
+    </pattern>
+    <style>
+      .t  { font-family: system-ui, -apple-system, 'PingFang SC', 'Microsoft YaHei', 'Noto Sans CJK SC', sans-serif; }
+      .m  { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+      .ttl{ font-size: 23px; font-weight: 700; fill: #e6edf3; }
+      .sub{ font-size: 12.5px; fill: #93a3b8; }
+      .ct { font-size: 16px; font-weight: 700; }
+      .cs { font-size: 11px; fill: #93a3b8; }
+      .nm { font-size: 10.5px; fill: #7fd8ee; }
+      .ds { font-size: 10px; fill: #93a3b8; }
+      .pt { font-size: 12.5px; font-weight: 700; fill: #e6edf3; }
+      .pd { font-size: 10px; fill: #93a3b8; }
+    </style>
+  </defs>
+
+  <rect width="1160" height="1000" fill="#0b1220"/>
+  <rect width="1160" height="1000" fill="url(#f-grid)"/>
+
+  <text class="t ttl" x="40" y="52">security-go 功能设计</text>
+  <text class="t sub" x="40" y="74">36 个检测器 · 6 大攻击类别 · 4 级严重程度</text>
+  <text class="m" x="1120" y="52" text-anchor="end" font-size="11" fill="#00add8">36 detectors / 6 categories</text>
+
+  <!-- ══════ 设计原则 ══════ -->
+  <g>
+    <rect x="40" y="94" width="258" height="52" rx="10" fill="#131f38" stroke="#2f527f"/>
+    <text class="t pt" x="58" y="118">零依赖检测</text>
+    <text class="t pd" x="58" y="136">仅用 Go 标准库 regexp，无第三方依赖</text>
+
+    <rect x="314" y="94" width="258" height="52" rx="10" fill="#131f38" stroke="#2f527f"/>
+    <text class="t pt" x="332" y="118">统一接口</text>
+    <text class="t pd" x="332" y="136">每个检测器实现 Name() 与 Detect()</text>
+
+    <rect x="588" y="94" width="258" height="52" rx="10" fill="#131f38" stroke="#2f527f"/>
+    <text class="t pt" x="606" y="118">预编译正则</text>
+    <text class="t pd" x="606" y="136">var 初始化时编译，运行时零开销</text>
+
+    <rect x="862" y="94" width="258" height="52" rx="10" fill="#131f38" stroke="#2f527f"/>
+    <text class="t pt" x="880" y="118">可插拔存储</text>
+    <text class="t pd" x="880" y="136">Memory / File / Redis 三种后端</text>
+  </g>
+
+  <!-- ══════ 注入类 ══════ -->
+  <rect x="40" y="166" width="344" height="356" rx="14" fill="#e5484d" fill-opacity="0.06" stroke="#e5484d" stroke-opacity="0.4" stroke-width="1.5"/>
+  <text class="m ct" x="62" y="200" fill="#ff8b8f">injection</text>
+  <text class="t cs" x="62" y="220">注入类攻击 · 代码与查询语义注入</text>
+  <rect x="320" y="182" width="44" height="26" rx="13" fill="#e5484d" fill-opacity="0.16" stroke="#e5484d" stroke-opacity="0.5"/>
+  <text class="m" x="342" y="200" text-anchor="middle" font-size="13" font-weight="700" fill="#e5484d">10</text>
+  <line x1="62" y1="232" x2="362" y2="232" stroke="#e5484d" stroke-opacity="0.28"/>
+  <g>
+    <text class="m nm" x="62" y="258">xss</text>
+    <text class="t ds" x="192" y="258">脚本标签 / 事件处理器 / 伪协议</text>
+    <text class="m nm" x="62" y="284">sql_injection</text>
+    <text class="t ds" x="192" y="284">UNION / 盲注 / 延时函数</text>
+    <text class="m nm" x="62" y="310">command_injection</text>
+    <text class="t ds" x="192" y="310">反引号 / 管道 / 链式执行</text>
+    <text class="m nm" x="62" y="336">nosql_injection</text>
+    <text class="t ds" x="192" y="336">$ne / $where 等操作符</text>
+    <text class="m nm" x="62" y="362">ldap_injection</text>
+    <text class="t ds" x="192" y="362">过滤操作符 / 通配注入</text>
+    <text class="m nm" x="62" y="388">xpath_injection</text>
+    <text class="t ds" x="192" y="388">布尔绕过 / 函数探测</text>
+    <text class="m nm" x="62" y="414">jndi_injection</text>
+    <text class="t ds" x="192" y="414">JNDI 查找 / 混淆变体</text>
+    <text class="m nm" x="62" y="440">ssi_injection</text>
+    <text class="t ds" x="192" y="440">exec / include 指令注入</text>
+    <text class="m nm" x="62" y="466">graphql_injection</text>
+    <text class="t ds" x="192" y="466">内省查询 / 深度嵌套 DoS</text>
+    <text class="m nm" x="62" y="492">ssti</text>
+    <text class="t ds" x="192" y="492">模板表达式 / 对象遍历</text>
+  </g>
+
+  <!-- ══════ 协议与请求 ══════ -->
+  <rect x="408" y="166" width="344" height="356" rx="14" fill="#f76b15" fill-opacity="0.06" stroke="#f76b15" stroke-opacity="0.4" stroke-width="1.5"/>
+  <text class="m ct" x="430" y="200" fill="#fca36b">protocol</text>
+  <text class="t cs" x="430" y="220">协议与请求攻击 · HTTP 语义层</text>
+  <rect x="688" y="182" width="44" height="26" rx="13" fill="#f76b15" fill-opacity="0.16" stroke="#f76b15" stroke-opacity="0.5"/>
+  <text class="m" x="710" y="200" text-anchor="middle" font-size="13" font-weight="700" fill="#f76b15">9</text>
+  <line x1="430" y1="232" x2="730" y2="232" stroke="#f76b15" stroke-opacity="0.28"/>
+  <g>
+    <text class="m nm" x="430" y="258">ssrf</text>
+    <text class="t ds" x="560" y="258">内网 IP / 云元数据 / 危险协议</text>
+    <text class="m nm" x="430" y="284">xxe</text>
+    <text class="t ds" x="560" y="284">外部实体 / DOCTYPE 声明</text>
+    <text class="m nm" x="430" y="310">header_injection</text>
+    <text class="t ds" x="560" y="310">CRLF 头注入 / 响应头污染</text>
+    <text class="m nm" x="430" y="336">host_header</text>
+    <text class="t ds" x="560" y="336">Host 投毒 / 代理头伪造</text>
+    <text class="m nm" x="430" y="362">request_smuggling</text>
+    <text class="t ds" x="560" y="362">TE 与 CL 不一致 / 双重头</text>
+    <text class="m nm" x="430" y="388">open_redirect</text>
+    <text class="t ds" x="560" y="388">协议相对 URL / 伪协议跳转</text>
+    <text class="m nm" x="430" y="414">cors</text>
+    <text class="t ds" x="560" y="414">null 源 / 跨域响应头注入</text>
+    <text class="m nm" x="430" y="440">websocket</text>
+    <text class="t ds" x="560" y="440">升级头注入 / 空 Origin</text>
+    <text class="m nm" x="430" y="466">dns_rebinding</text>
+    <text class="t ds" x="560" y="466">内网 Host / 无 TLD 短主机名</text>
+  </g>
+
+  <!-- ══════ 数据与序列化 ══════ -->
+  <rect x="776" y="166" width="344" height="356" rx="14" fill="#a78bfa" fill-opacity="0.06" stroke="#a78bfa" stroke-opacity="0.4" stroke-width="1.5"/>
+  <text class="m ct" x="798" y="200" fill="#c4b0ff">data</text>
+  <text class="t cs" x="798" y="220">数据与序列化攻击 · 载荷与信封</text>
+  <rect x="1056" y="182" width="44" height="26" rx="13" fill="#a78bfa" fill-opacity="0.16" stroke="#a78bfa" stroke-opacity="0.5"/>
+  <text class="m" x="1078" y="200" text-anchor="middle" font-size="13" font-weight="700" fill="#a78bfa">5</text>
+  <line x1="798" y1="232" x2="1098" y2="232" stroke="#a78bfa" stroke-opacity="0.28"/>
+  <g>
+    <text class="m nm" x="798" y="258">deserialization</text>
+    <text class="t ds" x="936" y="258">PHP / pickle / Java / .NET 对象</text>
+    <text class="m nm" x="798" y="284">csv_injection</text>
+    <text class="t ds" x="936" y="284">公式前缀 / HYPERLINK / DDE</text>
+    <text class="m nm" x="798" y="310">mail_header</text>
+    <text class="t ds" x="936" y="310">Bcc / Cc / From 头注入</text>
+    <text class="m nm" x="798" y="336">jwt_attack</text>
+    <text class="t ds" x="936" y="336">alg:none / kid 遍历 / 空签名</text>
+    <text class="m nm" x="798" y="362">prototype_pollution</text>
+    <text class="t ds" x="936" y="362">__proto__ / constructor 键</text>
+  </g>
+  <text class="t ds" x="798" y="400" style="fill:#7a8ba3;">JWT 与反序列化先按载荷结构解码</text>
+  <text class="t ds" x="798" y="418" style="fill:#7a8ba3;">再判定；其余 data 检测器走特征匹配，</text>
+  <text class="t ds" x="798" y="436" style="fill:#7a8ba3;">命中即报，不做载荷解析。</text>
+
+  <!-- ══════ 文件与敏感数据 ══════ -->
+  <rect x="40" y="544" width="344" height="290" rx="14" fill="#f5a623" fill-opacity="0.06" stroke="#f5a623" stroke-opacity="0.4" stroke-width="1.5"/>
+  <text class="m ct" x="62" y="578" fill="#f7c063">file</text>
+  <text class="t cs" x="62" y="598">文件与敏感数据 · 存取与泄露</text>
+  <rect x="320" y="560" width="44" height="26" rx="13" fill="#f5a623" fill-opacity="0.16" stroke="#f5a623" stroke-opacity="0.5"/>
+  <text class="m" x="342" y="578" text-anchor="middle" font-size="13" font-weight="700" fill="#f5a623">3</text>
+  <line x1="62" y1="610" x2="362" y2="610" stroke="#f5a623" stroke-opacity="0.28"/>
+  <g>
+    <text class="m nm" x="62" y="636">path_traversal</text>
+    <text class="t ds" x="192" y="636">../ 跳出 / php://filter / 空字节</text>
+    <text class="m nm" x="62" y="662">upload</text>
+    <text class="t ds" x="192" y="662">扩展名白名单 / 内容标签扫描</text>
+    <text class="m nm" x="62" y="688">data_leak</text>
+    <text class="t ds" x="192" y="688">信用卡 / 密钥 / 私钥 / Token</text>
+  </g>
+  <text class="t ds" x="62" y="726" style="fill:#7a8ba3;">上传检测双管齐下：既看文件名后缀，也扫描</text>
+  <text class="t ds" x="62" y="744" style="fill:#7a8ba3;">文件内容中的可执行标签，避免改名绕过。</text>
+  <text class="t ds" x="62" y="778" style="fill:#7a8ba3;">数据泄露覆盖 12 类凭据指纹：信用卡号、</text>
+  <text class="t ds" x="62" y="796" style="fill:#7a8ba3;">AWS Key、私钥、连接串、API Token 等。</text>
+
+  <!-- ══════ HTTP 校验 ══════ -->
+  <rect x="408" y="544" width="344" height="290" rx="14" fill="#30a46c" fill-opacity="0.06" stroke="#30a46c" stroke-opacity="0.4" stroke-width="1.5"/>
+  <text class="m ct" x="430" y="578" fill="#6ecf9a">httpval</text>
+  <text class="t cs" x="430" y="598">HTTP 协议层校验 · 注册时需配置</text>
+  <rect x="688" y="560" width="44" height="26" rx="13" fill="#30a46c" fill-opacity="0.16" stroke="#30a46c" stroke-opacity="0.5"/>
+  <text class="m" x="710" y="578" text-anchor="middle" font-size="13" font-weight="700" fill="#30a46c">7</text>
+  <line x1="430" y1="610" x2="730" y2="610" stroke="#30a46c" stroke-opacity="0.28"/>
+  <g>
+    <text class="m nm" x="430" y="636">http_method</text>
+    <text class="t ds" x="560" y="636">仅允许 7 种标准方法</text>
+    <text class="m nm" x="430" y="662">body_size</text>
+    <text class="t ds" x="560" y="662">请求体上限，默认 10MB</text>
+    <text class="m nm" x="430" y="688">content_type</text>
+    <text class="t ds" x="560" y="688">MIME 类型白名单</text>
+    <text class="m nm" x="430" y="714">csrf_origin</text>
+    <text class="t ds" x="560" y="714">Origin 与 Host 一致性</text>
+    <text class="m nm" x="430" y="740">cookie_attrs</text>
+    <text class="t ds" x="560" y="740">Secure / HttpOnly / SameSite</text>
+    <text class="m nm" x="430" y="766">nested_depth</text>
+    <text class="t ds" x="560" y="766">JSON 嵌套深度，默认 32</text>
+    <text class="m nm" x="430" y="792">ip_blacklist</text>
+    <text class="t ds" x="560" y="792">超阈值自动封禁 IP</text>
+  </g>
+
+  <!-- ══════ 会话安全 ══════ -->
+  <rect x="776" y="544" width="344" height="290" rx="14" fill="#00add8" fill-opacity="0.06" stroke="#00add8" stroke-opacity="0.45" stroke-width="1.5" stroke-dasharray="8 6"/>
+  <text class="m ct" x="798" y="578" fill="#7fd8ee">session</text>
+  <text class="t cs" x="798" y="598">会话安全 · 不经 Engine 注册</text>
+  <rect x="1056" y="560" width="44" height="26" rx="13" fill="#00add8" fill-opacity="0.16" stroke="#00add8" stroke-opacity="0.5"/>
+  <text class="m" x="1078" y="578" text-anchor="middle" font-size="13" font-weight="700" fill="#00add8">2</text>
+  <line x1="798" y1="610" x2="1098" y2="610" stroke="#00add8" stroke-opacity="0.28"/>
+  <g>
+    <text class="m nm" x="798" y="636">session_guard</text>
+    <text class="t ds" x="936" y="636">token 绑定 IP / UA / 设备指纹</text>
+    <text class="m nm" x="798" y="668">data_tamper</text>
+    <text class="t ds" x="936" y="668">HMAC 参数签名与防重放</text>
+  </g>
+  <text class="t ds" x="798" y="706" style="fill:#7a8ba3;">session_guard 逐请求比对绑定信息：UA 或指纹</text>
+  <text class="t ds" x="798" y="724" style="fill:#7a8ba3;">变化判为会话劫持，IP 跨网段判为异地登录；</text>
+  <text class="t ds" x="798" y="742" style="fill:#7a8ba3;">登录失败累计触发锁定，锁定时长逐次翻倍。</text>
+  <text class="t ds" x="798" y="772" style="fill:#7a8ba3;">同 IP 失败过的不同身份数达上限时报撞库，</text>
+  <text class="t ds" x="798" y="790" style="fill:#7a8ba3;">登录成功即清零计数。</text>
+
+  <!-- ══════ 严重程度分级 ══════ -->
+  <text class="t" x="40" y="874" font-size="11.5" font-weight="700" letter-spacing="2" fill="#7a8ba3">严重程度分级 · SEVERITY</text>
+
+  <rect x="40" y="886" width="258" height="76" rx="12" fill="#e5484d" fill-opacity="0.08" stroke="#e5484d" stroke-opacity="0.45"/>
+  <circle cx="62" cy="906" r="6" fill="#e5484d"/>
+  <text class="t pt" x="78" y="911" style="fill:#ff8b8f;">Critical · 严重</text>
+  <text class="t pd" x="58" y="932">命令注入 / JNDI / SSTI / SQL 注入</text>
+  <text class="t pd" x="58" y="949">请求走私 / 反序列化 / 数据泄露 / 会话劫持</text>
+
+  <rect x="314" y="886" width="258" height="76" rx="12" fill="#f76b15" fill-opacity="0.08" stroke="#f76b15" stroke-opacity="0.45"/>
+  <circle cx="336" cy="906" r="6" fill="#f76b15"/>
+  <text class="t pt" x="352" y="911" style="fill:#fca36b;">High · 高风险</text>
+  <text class="t pd" x="332" y="932">XSS / SSRF / XXE / 路径遍历</text>
+  <text class="t pd" x="332" y="949">异地登录（跨国家升为 Critical）</text>
+
+  <rect x="588" y="886" width="258" height="76" rx="12" fill="#ffb224" fill-opacity="0.08" stroke="#ffb224" stroke-opacity="0.45"/>
+  <circle cx="610" cy="906" r="6" fill="#ffb224"/>
+  <text class="t pt" x="626" y="911" style="fill:#ffd27a;">Medium · 中风险</text>
+  <text class="t pd" x="606" y="932">弱特征命中 / 无上下文模式</text>
+  <text class="t pd" x="606" y="949">教程与正常内容中常见，需人工确认</text>
+
+  <rect x="862" y="886" width="258" height="76" rx="12" fill="#30a46c" fill-opacity="0.08" stroke="#30a46c" stroke-opacity="0.45"/>
+  <circle cx="884" cy="906" r="6" fill="#30a46c"/>
+  <text class="t pt" x="900" y="911" style="fill:#6ecf9a;">Low · 低风险</text>
+  <text class="t pd" x="880" y="932">非法 HTTP 方法</text>
+  <text class="t pd" x="880" y="949">Content-Type 不匹配</text>
+
+  <text class="t" x="1120" y="986" text-anchor="end" font-size="10.5" fill="#7a8ba3">哨兵鼠 · security-go</text>
+</svg>
