@@ -145,7 +145,7 @@ security-go/
 │   ├── file.go            #   File : persistance JSON, flush à la fermeture
 │   └── redis/             #   Redis : sous-module distinct avec son propre go.mod
 ├── all/                   # Enregistrement en un appel des 27 détecteurs sans configuration
-├── pet/                   # Mascotte du projet : SVG embarqué + bannière de démarrage
+├── pet/                   # Mascotte du projet : SVG embarqué (Calm/Watchful/Alarmed) + bannière de démarrage
 ├── docs/
 │   ├── api.md             # Référence de l'API
 │   ├── images/            # SVG d'architecture / fonctionnalités / cycle de vie
@@ -312,6 +312,32 @@ log.Println(pet.Banner())              // bannière de démarrage : texte brut a
 http.Handle("/pet.svg", pet.Handler()) // route de débogage : servie en image/svg+xml, mise en cache un jour
 svg := pet.SVG()                       // ou récupérer les octets SVG bruts
 ```
+
+La mascotte n'est pas une image statique — elle est pilotée par les **résultats de détection**. `pet.MoodOf` classe une analyse en trois humeurs, et le bouclier, le radar et la loupe se recolorent en conséquence :
+
+| Humeur | Se déclenche quand | Aspect |
+|------|-----------|------------|
+| `Calm` | l'analyse est sans correspondance | cyan (l'image statique ci-dessus) |
+| `Watchful` | quelque chose s'est déclenché, mais rien de High ni Critical | ambre |
+| `Alarmed` | au moins un High ou Critical | rouge + anneau d'alerte |
+
+<p align="center">
+  <img src="../../../pet/pet.svg" width="140" alt="Calm — cyan">
+  <img src="../../../pet/mood-watchful.svg" width="140" alt="Watchful — ambre">
+  <img src="../../../pet/mood-alarmed.svg" width="140" alt="Alarmed — rouge, avec un anneau d'alerte">
+  <br>
+  <sub><b>Calm</b> · <b>Watchful</b> · <b>Alarmed</b></sub>
+</p>
+
+Reliez-la au moteur et vous obtenez une image d'état de menace qui suit le trafic en direct :
+
+```go
+http.Handle("/pet.svg", pet.MoodHandler(func(r *http.Request) pet.Mood {
+    return pet.MoodOf(e.DetectRequest(r))
+}))
+```
+
+`MoodHandler` envoie `Cache-Control: no-store` — contrairement au `Handler` statique, sa sortie change à chaque analyse ; la mettre en cache un jour servirait une posture périmée.
 
 ### Documents associés
 

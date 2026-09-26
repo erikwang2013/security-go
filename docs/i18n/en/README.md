@@ -145,7 +145,7 @@ security-go/
 │   ├── file.go            #   File: JSON persistence, flushed on Close
 │   └── redis/             #   Redis: separate submodule with its own go.mod
 ├── all/                   # One-call registration of the 27 zero-config detectors
-├── pet/                   # Project mascot: embedded SVG + startup banner
+├── pet/                   # Project mascot: embedded SVG (Calm/Watchful/Alarmed) + startup banner
 ├── docs/
 │   ├── api.md             # API reference
 │   ├── images/            # Architecture / feature / lifecycle SVGs
@@ -312,6 +312,32 @@ log.Println(pet.Banner())              // startup banner: terminal-friendly plai
 http.Handle("/pet.svg", pet.Handler()) // debug route: served as image/svg+xml, cached a day
 svg := pet.SVG()                       // or take the raw SVG bytes
 ```
+
+The mascot is not a static image — it is driven by **detection results**. `pet.MoodOf` sorts one scan into three postures, and the shield, radar and magnifier recolour to match:
+
+| Mood | Fires when | Looks like |
+|------|-----------|------------|
+| `Calm` | the scan is clean | cyan (the static image above) |
+| `Watchful` | something fired, nothing High or Critical | amber |
+| `Alarmed` | at least one High or Critical | red, with an alert ring |
+
+<p align="center">
+  <img src="../../../pet/pet.svg" width="140" alt="Calm — cyan">
+  <img src="../../../pet/mood-watchful.svg" width="140" alt="Watchful — amber">
+  <img src="../../../pet/mood-alarmed.svg" width="140" alt="Alarmed — red, with an alert ring">
+  <br>
+  <sub><b>Calm</b> · <b>Watchful</b> · <b>Alarmed</b></sub>
+</p>
+
+Wire it to the engine and you get a threat-state image that tracks live traffic:
+
+```go
+http.Handle("/pet.svg", pet.MoodHandler(func(r *http.Request) pet.Mood {
+    return pet.MoodOf(e.DetectRequest(r))
+}))
+```
+
+`MoodHandler` sends `Cache-Control: no-store` — unlike the static `Handler`, its output changes per scan, so caching it a day would serve a stale posture.
 
 ### Related Documents
 

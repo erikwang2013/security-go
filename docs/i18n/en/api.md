@@ -266,6 +266,39 @@ http.Handle("/pet.svg", pet.Handler()) // mount on a debug route
 
 `Handler` goes through `http.ServeContent` internally, so it carries a `Content-Length` and supports `Range` and `HEAD`; a bare `w.Write` would exceed the 2 KiB sniff buffer in `net/http` and degrade to a chunked response.
 
+### Mood: driven by detection results
+
+The mascot is not a static image — its shield, radar and magnifier recolour to match the scan, so it works directly as a threat-level indicator:
+
+```go
+type Mood int
+
+const (
+    Calm     Mood = iota // the scan found nothing
+    Watchful             // hits, but none High / Critical
+    Alarmed              // at least one High or Critical, needs handling
+)
+
+func MoodOf(results []*security.Result) Mood  // classified by the most severe hit
+func SVGFor(m Mood) []byte                    // artwork for that mood; an unknown value falls back to Calm
+func MoodHandler(moodFor func(*http.Request) Mood) http.Handler
+```
+
+`MoodOf` counts only results with `Detected` set — a detector stamps `Severity` even when it finds nothing, so severity alone must not raise the alarm. The most severe hit wins, independent of result order.
+
+Wire the engine up and you get a live threat-state image:
+
+```go
+e := security.NewEngine()
+all.RegisterAll(e)
+
+http.Handle("/pet.svg", pet.MoodHandler(func(r *http.Request) pet.Mood {
+    return pet.MoodOf(e.DetectRequest(r))
+}))
+```
+
+`MoodHandler` carries `Cache-Control: no-store` — unlike the static `Handler`, its output changes with the scan, and caching it a day would serve a stale posture.
+
 ## Custom Detector Example
 
 ```go

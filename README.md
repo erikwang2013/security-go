@@ -144,7 +144,7 @@ security-go/
 │   ├── file.go            #   File：JSON 持久化，Close 时落盘
 │   └── redis/             #   Redis：独立子模块，自带 go.mod
 ├── all/                   # 一键注册 27 个零配置检测器
-├── pet/                   # 项目宠物：内嵌 SVG + 启动横幅
+├── pet/                   # 项目宠物：内嵌 SVG（含 Calm/Watchful/Alarmed 三态）+ 启动横幅
 ├── docs/
 │   ├── api.md             # API 接口文档
 │   ├── images/            # 架构设计 / 功能设计 / 生命周期 SVG
@@ -311,6 +311,32 @@ log.Println(pet.Banner())              // 启动横幅：终端友好的纯文�
 http.Handle("/pet.svg", pet.Handler()) // 调试路由：以 image/svg+xml 提供，缓存一天
 svg := pet.SVG()                       // 或直接取原始 SVG 字节
 ```
+
+宠物不是静态图片——它由**检测结果**驱动。`pet.MoodOf` 把一次扫描分成三档情绪，盾徽、雷达与放大镜随之变色：
+
+| 情绪 | 触发条件 | 形态 |
+|------|---------|------|
+| `Calm` | 扫描无命中 | 青蓝（即上方静态图） |
+| `Watchful` | 有命中，但无 High / Critical | 琥珀 |
+| `Alarmed` | 至少一个 High 或 Critical | 红色 + 告警环 |
+
+<p align="center">
+  <img src="pet/pet.svg" width="140" alt="Calm — 青蓝">
+  <img src="pet/mood-watchful.svg" width="140" alt="Watchful — 琥珀">
+  <img src="pet/mood-alarmed.svg" width="140" alt="Alarmed — 红色带告警环">
+  <br>
+  <sub><b>Calm</b> · <b>Watchful</b> · <b>Alarmed</b></sub>
+</p>
+
+接上引擎，就是一张随流量实时变化的威胁状态图：
+
+```go
+http.Handle("/pet.svg", pet.MoodHandler(func(r *http.Request) pet.Mood {
+    return pet.MoodOf(e.DetectRequest(r))
+}))
+```
+
+`MoodHandler` 带 `Cache-Control: no-store`——形态随扫描结果变化，缓存一天会返回过期状态。
 
 ### 相关文档
 

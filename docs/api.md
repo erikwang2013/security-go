@@ -266,6 +266,39 @@ http.Handle("/pet.svg", pet.Handler()) // 挂到调试路由
 
 `Handler` 内部走 `http.ServeContent`，因此带 `Content-Length` 并支持 `Range` 与 `HEAD`；直接 `w.Write` 会超出 `net/http` 的 2 KiB 嗅探缓冲从而退化为 chunked 响应。
 
+### 情绪：由检测结果驱动
+
+宠物不是静态图片——它的盾徽、雷达与放大镜会随扫描结果变色，可直接当作威胁等级的状态指示：
+
+```go
+type Mood int
+
+const (
+    Calm     Mood = iota // 扫描无命中
+    Watchful             // 有命中，但无 High / Critical
+    Alarmed              // 至少一个 High 或 Critical，需要处置
+)
+
+func MoodOf(results []*security.Result) Mood  // 按最严重的命中定级
+func SVGFor(m Mood) []byte                    // 该情绪的图形；未知取值回退 Calm
+func MoodHandler(moodFor func(*http.Request) Mood) http.Handler
+```
+
+`MoodOf` 只统计 `Detected` 为真的结果——检测器即使在未命中时也带上 `Severity`，不能仅凭严重度字段拉响警报。命中越严重优先级越高，与结果顺序无关。
+
+把引擎接上去，就是一张活的威胁状态图：
+
+```go
+e := security.NewEngine()
+all.RegisterAll(e)
+
+http.Handle("/pet.svg", pet.MoodHandler(func(r *http.Request) pet.Mood {
+    return pet.MoodOf(e.DetectRequest(r))
+}))
+```
+
+`MoodHandler` 带 `Cache-Control: no-store`——与静态的 `Handler` 不同，它的输出随扫描结果变化，缓存一天会返回过期的形态。
+
 ## 自定义检测器示例
 
 ```go

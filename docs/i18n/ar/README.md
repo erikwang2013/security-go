@@ -145,7 +145,7 @@ security-go/
 │   ├── file.go            #   File: استمرارية JSON، مع flush عند الإغلاق
 │   └── redis/             #   Redis: وحدة فرعية مستقلة بملف go.mod خاص بها
 ├── all/                   # تسجيل الكاشفات الـ 27 بلا تكوين في نداء واحد
-├── pet/                   # تميمة المشروع: SVG مُضمَّن + شعار بدء التشغيل
+├── pet/                   # تميمة المشروع: SVG مُضمَّن (بالحالات Calm/Watchful/Alarmed) + شعار بدء التشغيل
 ├── docs/
 │   ├── api.md             # مرجع واجهة API
 │   ├── images/            # رسومات SVG للبنية / الوظائف / دورة الحياة
@@ -312,6 +312,32 @@ log.Println(pet.Banner())              // شعار بدء التشغيل: نص �
 http.Handle("/pet.svg", pet.Handler()) // مسار تنقيح: يُقدَّم كـ image/svg+xml ويُخزَّن مؤقتًا ليوم واحد
 svg := pet.SVG()                       // أو خذ بايتات SVG الخام
 ```
+
+التميمة ليست صورة ثابتة — بل تُحرِّكها **نتائج الكشف**. يصنّف `pet.MoodOf` الفحص الواحد إلى ثلاث وضعيات، فيتغيّر لون الدرع والرادار والعدسة المكبِّرة تبعًا لها:
+
+| الوضعية | تُفعَّل عندما | الشكل |
+|------|-----------|------------|
+| `Calm` | يكون الفحص نظيفًا | سماوي (الصورة الثابتة أعلاه) |
+| `Watchful` | يُفعَّل شيء، لكن دون High أو Critical | كهرماني |
+| `Alarmed` | نتيجة High أو Critical واحدة على الأقل | أحمر، مع حلقة تنبيه |
+
+<p align="center">
+  <img src="../../../pet/pet.svg" width="140" alt="Calm — سماوي">
+  <img src="../../../pet/mood-watchful.svg" width="140" alt="Watchful — كهرماني">
+  <img src="../../../pet/mood-alarmed.svg" width="140" alt="Alarmed — أحمر، مع حلقة تنبيه">
+  <br>
+  <sub><b>Calm</b> · <b>Watchful</b> · <b>Alarmed</b></sub>
+</p>
+
+اربطها بمحرّك الكشف فتحصل على صورة لحالة التهديد تتبع حركة المرور الحية:
+
+```go
+http.Handle("/pet.svg", pet.MoodHandler(func(r *http.Request) pet.Mood {
+    return pet.MoodOf(e.DetectRequest(r))
+}))
+```
+
+يرسل `MoodHandler` الترويسة `Cache-Control: no-store` — فبخلاف `Handler` الثابت تتغيّر مخرجاته مع كل فحص؛ وتخزينه ليوم كامل سيقدّم وضعية قديمة.
 
 ### المستندات ذات الصلة
 

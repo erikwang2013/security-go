@@ -266,6 +266,39 @@ http.Handle("/pet.svg", pet.Handler()) // Monté sur une route de débogage
 
 En interne, `Handler` passe par `http.ServeContent` : il porte donc `Content-Length` et prend en charge `Range` et `HEAD` ; un `w.Write` direct dépasserait le tampon d'analyse de 2 Kio de `net/http` et dégénérerait en réponse chunked.
 
+### Humeur : pilotée par les résultats de détection
+
+La mascotte n'est pas une image statique — son bouclier, son radar et sa loupe changent de couleur selon le résultat de l'analyse, et servent directement d'indicateur de niveau de menace :
+
+```go
+type Mood int
+
+const (
+    Calm     Mood = iota // analyse sans correspondance
+    Watchful             // correspondances, mais aucune High / Critical
+    Alarmed              // au moins un High ou Critical, à traiter
+)
+
+func MoodOf(results []*security.Result) Mood  // classe selon la correspondance la plus grave
+func SVGFor(m Mood) []byte                    // le visuel de cette humeur ; une valeur inconnue retombe sur Calm
+func MoodHandler(moodFor func(*http.Request) Mood) http.Handler
+```
+
+`MoodOf` ne compte que les résultats dont `Detected` est vrai — un détecteur porte un `Severity` même sans correspondance, la gravité seule ne doit donc pas déclencher l'alarme. Plus la correspondance est grave, plus elle est prioritaire, indépendamment de l'ordre des résultats.
+
+Reliez le moteur et vous obtenez une carte d'état de menace vivante :
+
+```go
+e := security.NewEngine()
+all.RegisterAll(e)
+
+http.Handle("/pet.svg", pet.MoodHandler(func(r *http.Request) pet.Mood {
+    return pet.MoodOf(e.DetectRequest(r))
+}))
+```
+
+`MoodHandler` envoie `Cache-Control: no-store` — contrairement au `Handler` statique, sa sortie change avec le résultat de l'analyse ; la mettre en cache un jour renverrait une posture périmée.
+
 ## Exemple de détecteur personnalisé
 
 ```go

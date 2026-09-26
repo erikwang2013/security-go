@@ -266,6 +266,39 @@ http.Handle("/pet.svg", pet.Handler()) // monta em uma rota de depuração
 
 `Handler` usa `http.ServeContent` internamente, portanto carrega `Content-Length` e suporta `Range` e `HEAD`; um `w.Write` direto ultrapassaria o buffer de sniffing de 2 KiB do `net/http` e degradaria para uma resposta chunked.
 
+### Postura: guiada pelos resultados da detecção
+
+O mascote não é uma imagem estática — o escudo, o radar e a lupa mudam de cor conforme a varredura, então ele serve diretamente como indicador de nível de ameaça:
+
+```go
+type Mood int
+
+const (
+    Calm     Mood = iota // a varredura não encontrou nada
+    Watchful             // algo disparou, mas nada High / Critical
+    Alarmed              // pelo menos um High ou Critical, exige ação
+)
+
+func MoodOf(results []*security.Result) Mood  // classificado pela ocorrência mais severa
+func SVGFor(m Mood) []byte                    // arte da postura; valor desconhecido cai em Calm
+func MoodHandler(moodFor func(*http.Request) Mood) http.Handler
+```
+
+`MoodOf` conta apenas resultados com `Detected` verdadeiro — um detector preenche `Severity` mesmo quando não encontra nada, então a severidade sozinha não pode disparar o alarme. A ocorrência mais severa vence, independentemente da ordem dos resultados.
+
+Ligue o engine e você obtém uma imagem viva do estado de ameaça:
+
+```go
+e := security.NewEngine()
+all.RegisterAll(e)
+
+http.Handle("/pet.svg", pet.MoodHandler(func(r *http.Request) pet.Mood {
+    return pet.MoodOf(e.DetectRequest(r))
+}))
+```
+
+`MoodHandler` envia `Cache-Control: no-store` — ao contrário do `Handler` estático, sua saída muda com a varredura, e cacheá-la por um dia serviria uma postura desatualizada.
+
 ## Exemplo de detector personalizado
 
 ```go

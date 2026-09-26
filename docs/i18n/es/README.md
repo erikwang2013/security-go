@@ -145,7 +145,7 @@ security-go/
 │   ├── file.go            #   File: persistencia JSON, flush al llamar a Close
 │   └── redis/             #   Redis: submódulo aparte con su propio go.mod
 ├── all/                   # Registro en una sola llamada de los 27 detectores sin configuración
-├── pet/                   # Mascota del proyecto: SVG embebido + banner de inicio
+├── pet/                   # Mascota del proyecto: SVG embebido (con los estados Calm/Watchful/Alarmed) + banner de inicio
 ├── docs/
 │   ├── api.md             # Referencia de la API
 │   ├── images/            # SVGs de arquitectura / funcionalidades / ciclo de vida
@@ -312,6 +312,32 @@ log.Println(pet.Banner())              // banner de inicio: texto plano apto par
 http.Handle("/pet.svg", pet.Handler()) // ruta de depuración: se sirve como image/svg+xml, cacheada un día
 svg := pet.SVG()                       // o toma los bytes SVG sin procesar
 ```
+
+La mascota no es una imagen estática: la impulsan los **resultados de detección**. `pet.MoodOf` clasifica un escaneo en tres posturas, y el escudo, el radar y la lupa cambian de color en consecuencia:
+
+| Postura | Se activa cuando | Aspecto |
+|------|-----------|------------|
+| `Calm` | el escaneo está limpio | cian (la imagen estática de arriba) |
+| `Watchful` | algo se activó, pero nada High ni Critical | ámbar |
+| `Alarmed` | al menos un High o Critical | rojo, con un anillo de alerta |
+
+<p align="center">
+  <img src="../../../pet/pet.svg" width="140" alt="Calm — cian">
+  <img src="../../../pet/mood-watchful.svg" width="140" alt="Watchful — ámbar">
+  <img src="../../../pet/mood-alarmed.svg" width="140" alt="Alarmed — rojo, con un anillo de alerta">
+  <br>
+  <sub><b>Calm</b> · <b>Watchful</b> · <b>Alarmed</b></sub>
+</p>
+
+Si lo conectas al motor, obtienes una imagen del estado de amenaza que sigue el tráfico en vivo:
+
+```go
+http.Handle("/pet.svg", pet.MoodHandler(func(r *http.Request) pet.Mood {
+    return pet.MoodOf(e.DetectRequest(r))
+}))
+```
+
+`MoodHandler` envía `Cache-Control: no-store`: a diferencia del `Handler` estático, su salida cambia en cada escaneo, así que cachearla un día serviría una postura obsoleta.
 
 ### Documentación relacionada
 

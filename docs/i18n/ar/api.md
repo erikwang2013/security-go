@@ -266,6 +266,39 @@ http.Handle("/pet.svg", pet.Handler()) // يُربط بمسار تنقيح
 
 يستخدم `Handler` داخليًا `http.ServeContent`، لذا يحمل `Content-Length` ويدعم `Range` و`HEAD`؛ أما `w.Write` المباشر فيتجاوز مخزن الاستشعار 2 KiB في `net/http` ويتحوّل إلى استجابة chunked.
 
+### Mood: مدفوع بنتائج الكشف
+
+التميمة ليست صورة ثابتة — يتغيّر لون الدرع والرادار والعدسة المكبِّرة مع نتيجة الفحص، فتصلح مباشرة كمؤشر لحالة مستوى التهديد:
+
+```go
+type Mood int
+
+const (
+    Calm     Mood = iota // فحص بلا أي إصابة
+    Watchful             // توجد إصابات، لكن دون High / Critical
+    Alarmed              // نتيجة High أو Critical واحدة على الأقل، وتستلزم إجراءً
+)
+
+func MoodOf(results []*security.Result) Mood  // تصنيف حسب أشد إصابة
+func SVGFor(m Mood) []byte                    // شكل هذه الوضعية؛ والقيم غير المعروفة تعود إلى Calm
+func MoodHandler(moodFor func(*http.Request) Mood) http.Handler
+```
+
+لا يحسب `MoodOf` إلا النتائج التي تكون فيها `Detected` مضبوطة — فالكاشف يضع `Severity` حتى عندما لا يجد شيئًا، لذا لا يجوز أن ترفع درجة الخطورة وحدها الإنذار. وتفوز النتيجة الأشد بغض النظر عن ترتيب النتائج.
+
+وابطها بالمحرّك فتصبح مخططًا حيًّا لحالة التهديد:
+
+```go
+e := security.NewEngine()
+all.RegisterAll(e)
+
+http.Handle("/pet.svg", pet.MoodHandler(func(r *http.Request) pet.Mood {
+    return pet.MoodOf(e.DetectRequest(r))
+}))
+```
+
+يحمل `MoodHandler` الترويسة `Cache-Control: no-store` — فبخلاف `Handler` الثابت يتغيّر مخرجه مع نتيجة الفحص؛ وتخزينه ليوم كامل سيعيد وضعية قديمة.
+
 ## مثال على كاشف مخصص
 
 ```go

@@ -266,6 +266,39 @@ http.Handle("/pet.svg", pet.Handler()) // montar en una ruta de depuración
 
 `Handler` usa internamente `http.ServeContent`, por lo que incluye `Content-Length` y admite `Range` y `HEAD`; un `w.Write` directo supera el búfer de sondeo de 2 KiB de `net/http` y degrada a una respuesta chunked.
 
+### Mood: impulsado por los resultados de detección
+
+La mascota no es una imagen estática: el escudo, el radar y la lupa cambian de color con el resultado del escaneo, así que sirven directamente como indicador de estado del nivel de amenaza:
+
+```go
+type Mood int
+
+const (
+    Calm     Mood = iota // escaneo limpio
+    Watchful             // hay hallazgos, pero ninguno High / Critical
+    Alarmed              // al menos un High o Critical, requiere actuación
+)
+
+func MoodOf(results []*security.Result) Mood  // clasifica por el hallazgo más grave
+func SVGFor(m Mood) []byte                    // gráfico de esa postura; los valores desconocidos recaen en Calm
+func MoodHandler(moodFor func(*http.Request) Mood) http.Handler
+```
+
+`MoodOf` solo cuenta los resultados con `Detected` activado: un detector fija `Severity` aunque no encuentre nada, así que la gravedad por sí sola no debe disparar la alarma. Gana el hallazgo más grave, con independencia del orden de los resultados.
+
+Si lo conectas al motor, es un gráfico vivo del estado de amenaza:
+
+```go
+e := security.NewEngine()
+all.RegisterAll(e)
+
+http.Handle("/pet.svg", pet.MoodHandler(func(r *http.Request) pet.Mood {
+    return pet.MoodOf(e.DetectRequest(r))
+}))
+```
+
+`MoodHandler` lleva `Cache-Control: no-store`: a diferencia del `Handler` estático, su salida cambia con el resultado del escaneo; cachearla un día devolvería una postura obsoleta.
+
 ## Ejemplo de detector personalizado
 
 ```go

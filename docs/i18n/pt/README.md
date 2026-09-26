@@ -145,7 +145,7 @@ security-go/
 │   ├── file.go            #   File: persistência em JSON, flush no Close
 │   └── redis/             #   Redis: submódulo separado com go.mod próprio
 ├── all/                   # Registro dos 27 detectores zero-configuração em uma única chamada
-├── pet/                   # Mascote do projeto: SVG embutido + banner de inicialização
+├── pet/                   # Mascote do projeto: SVG embutido (Calm/Watchful/Alarmed) + banner de inicialização
 ├── docs/
 │   ├── api.md             # Referência da API
 │   ├── images/            # SVGs de arquitetura / funcionalidades / ciclo de vida
@@ -312,6 +312,32 @@ log.Println(pet.Banner())              // banner de inicialização: texto simpl
 http.Handle("/pet.svg", pet.Handler()) // rota de depuração: servida como image/svg+xml, cache de um dia
 svg := pet.SVG()                       // ou pegue os bytes SVG brutos
 ```
+
+O mascote não é uma imagem estática — ele é guiado pelos **resultados da detecção**. `pet.MoodOf` classifica uma varredura em três posturas, e o escudo, o radar e a lupa mudam de cor para acompanhar:
+
+| Postura | Dispara quando | Aparência |
+|------|-----------|------------|
+| `Calm` | a varredura não encontrou nada | ciano (a imagem estática acima) |
+| `Watchful` | algo disparou, mas nada High ou Critical | âmbar |
+| `Alarmed` | pelo menos um High ou Critical | vermelho, com um anel de alerta |
+
+<p align="center">
+  <img src="../../../pet/pet.svg" width="140" alt="Calm — ciano">
+  <img src="../../../pet/mood-watchful.svg" width="140" alt="Watchful — âmbar">
+  <img src="../../../pet/mood-alarmed.svg" width="140" alt="Alarmed — vermelho, com um anel de alerta">
+  <br>
+  <sub><b>Calm</b> · <b>Watchful</b> · <b>Alarmed</b></sub>
+</p>
+
+Ligue-o ao engine e você tem uma imagem de estado de ameaça que acompanha o tráfego ao vivo:
+
+```go
+http.Handle("/pet.svg", pet.MoodHandler(func(r *http.Request) pet.Mood {
+    return pet.MoodOf(e.DetectRequest(r))
+}))
+```
+
+`MoodHandler` envia `Cache-Control: no-store` — ao contrário do `Handler` estático, sua saída muda a cada varredura, então armazená-la em cache por um dia serviria uma postura desatualizada.
 
 ### Documentação relacionada
 

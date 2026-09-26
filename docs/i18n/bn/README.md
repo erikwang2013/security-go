@@ -145,7 +145,7 @@ security-go/
 │   ├── file.go            #   File: JSON পার্সিস্টেন্স, Close-এ flush
 │   └── redis/             #   Redis: নিজস্ব go.mod সহ আলাদা সাবমডিউল
 ├── all/                   # এক কলে ২৭টি জিরো-কনফিগ ডিটেক্টর রেজিস্টার
-├── pet/                   # প্রজেক্ট মাসকট: এমবেডেড SVG + স্টার্টআপ ব্যানার
+├── pet/                   # প্রজেক্ট মাসকট: এমবেডেড SVG (Calm/Watchful/Alarmed অবস্থাসহ) + স্টার্টআপ ব্যানার
 ├── docs/
 │   ├── api.md             # API রেফারেন্স
 │   ├── images/            # আর্কিটেকচার / বৈশিষ্ট্য / জীবনচক্রের SVG
@@ -312,6 +312,32 @@ log.Println(pet.Banner())              // স্টার্টআপ ব্য�
 http.Handle("/pet.svg", pet.Handler()) // ডিবাগ রুট: image/svg+xml হিসেবে পরিবেশিত, একদিন ক্যাশ করা
 svg := pet.SVG()                       // অথবা কাঁচা SVG বাইট নিন
 ```
+
+মাসকট কোনো স্থির ছবি নয় — এটিকে চালায় **শনাক্তকরণের ফলাফল**। `pet.MoodOf` একটি স্ক্যানকে তিনটি অবস্থায় ভাগ করে, আর সেই অনুযায়ী ঢাল, রাডার ও আতশকাচের রং বদলায়:
+
+| অবস্থা | কখন সক্রিয় হয় | দেখতে কেমন |
+|------|-----------|------------|
+| `Calm` | স্ক্যান পরিষ্কার | সায়ান (উপরের স্থির ছবি) |
+| `Watchful` | কিছু সক্রিয় হয়েছে, তবে High বা Critical নয় | অ্যাম্বার |
+| `Alarmed` | অন্তত একটি High বা Critical | লাল, সঙ্গে একটি সতর্কতা বলয় |
+
+<p align="center">
+  <img src="../../../pet/pet.svg" width="140" alt="Calm — সায়ান">
+  <img src="../../../pet/mood-watchful.svg" width="140" alt="Watchful — অ্যাম্বার">
+  <img src="../../../pet/mood-alarmed.svg" width="140" alt="Alarmed — লাল, সঙ্গে একটি সতর্কতা বলয়">
+  <br>
+  <sub><b>Calm</b> · <b>Watchful</b> · <b>Alarmed</b></sub>
+</p>
+
+ইঞ্জিনের সাথে যুক্ত করলে পাবেন লাইভ ট্রাফিক অনুসরণ করা থ্রেট-স্টেট ছবি:
+
+```go
+http.Handle("/pet.svg", pet.MoodHandler(func(r *http.Request) pet.Mood {
+    return pet.MoodOf(e.DetectRequest(r))
+}))
+```
+
+`MoodHandler` `Cache-Control: no-store` পাঠায় — স্থির `Handler`-এর বিপরীতে এর আউটপুট প্রতি স্ক্যানে বদলায়, তাই এক দিনের ক্যাশে বাসি অবস্থা দেখাবে।
 
 ### সম্পর্কিত ডকুমেন্টেশন
 

@@ -145,7 +145,7 @@ security-go/
 │   ├── file.go            #   File: JSON-Persistenz, Flush beim Close
 │   └── redis/             #   Redis: separates Untermodul mit eigener go.mod
 ├── all/                   # Einmalige Registrierung der 27 Detektoren ohne Konfiguration
-├── pet/                   # Projekt-Maskottchen: eingebettetes SVG + Startbanner
+├── pet/                   # Projekt-Maskottchen: eingebettetes SVG (mit den Zuständen Calm/Watchful/Alarmed) + Startbanner
 ├── docs/
 │   ├── api.md             # API-Referenz
 │   ├── images/            # SVGs für Architektur / Funktionen / Lebenszyklus
@@ -312,6 +312,32 @@ log.Println(pet.Banner())              // Startbanner: terminalfreundlicher Klar
 http.Handle("/pet.svg", pet.Handler()) // Debug-Route: wird als image/svg+xml ausgeliefert, einen Tag gecacht
 svg := pet.SVG()                       // oder die rohen SVG-Bytes nehmen
 ```
+
+Das Maskottchen ist kein statisches Bild — es wird von **Erkennungsergebnissen** gesteuert. `pet.MoodOf` ordnet einen Scan einer von drei Haltungen zu, und Schild, Radar und Lupe färben sich passend um:
+
+| Haltung | Ausgelöst wenn | Aussehen |
+|------|-----------|------------|
+| `Calm` | der Scan ist sauber | Cyan (das statische Bild oben) |
+| `Watchful` | etwas hat ausgelöst, nichts High oder Critical | Amber |
+| `Alarmed` | mindestens ein High oder Critical | Rot, mit Alarmring |
+
+<p align="center">
+  <img src="../../../pet/pet.svg" width="140" alt="Calm — Cyan">
+  <img src="../../../pet/mood-watchful.svg" width="140" alt="Watchful — Amber">
+  <img src="../../../pet/mood-alarmed.svg" width="140" alt="Alarmed — Rot, mit Alarmring">
+  <br>
+  <sub><b>Calm</b> · <b>Watchful</b> · <b>Alarmed</b></sub>
+</p>
+
+An die Engine angebunden erhältst du ein Bedrohungslage-Bild, das dem Live-Verkehr folgt:
+
+```go
+http.Handle("/pet.svg", pet.MoodHandler(func(r *http.Request) pet.Mood {
+    return pet.MoodOf(e.DetectRequest(r))
+}))
+```
+
+`MoodHandler` sendet `Cache-Control: no-store` — anders als der statische `Handler` ändert sich seine Ausgabe bei jedem Scan; würde man sie einen Tag cachen, käme eine veraltete Haltung zurück.
 
 ### Weitere Dokumentation
 

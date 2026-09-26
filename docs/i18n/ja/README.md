@@ -145,7 +145,7 @@ security-go/
 │   ├── file.go            #   File: JSON 永続化、Close 時にフラッシュ
 │   └── redis/             #   Redis: 独立サブモジュール、独自の go.mod
 ├── all/                   # 27 個のゼロ設定検出器を 1 回の呼び出しで登録
-├── pet/                   # プロジェクトのマスコット: 埋め込み SVG + 起動バナー
+├── pet/                   # プロジェクトのマスコット: 埋め込み SVG（Calm/Watchful/Alarmed）+ 起動バナー
 ├── docs/
 │   ├── api.md             # API リファレンス
 │   ├── images/            # アーキテクチャ / 機能 / ライフサイクル の SVG
@@ -312,6 +312,32 @@ log.Println(pet.Banner())              // 起動バナー: ターミナル向け
 http.Handle("/pet.svg", pet.Handler()) // デバッグループ: image/svg+xml として配信、1 日キャッシュ
 svg := pet.SVG()                       // または生の SVG バイトを取得
 ```
+
+マスコットは静止画ではありません — **検出結果**によって動きます。`pet.MoodOf` は 1 回のスキャンを 3 つのムードに分け、盾・レーダー・虫めがねがそれに合わせて色を変えます:
+
+| ムード | 発動条件 | 見た目 |
+|------|-----------|------------|
+| `Calm` | スキャンにヒットなし | シアン（上の静的画像） |
+| `Watchful` | ヒットはあるが、High / Critical はない | アンバー |
+| `Alarmed` | High または Critical が少なくとも 1 件 | 赤 + 警告リング |
+
+<p align="center">
+  <img src="../../../pet/pet.svg" width="140" alt="Calm — シアン">
+  <img src="../../../pet/mood-watchful.svg" width="140" alt="Watchful — アンバー">
+  <img src="../../../pet/mood-alarmed.svg" width="140" alt="Alarmed — 赤、警告リング付き">
+  <br>
+  <sub><b>Calm</b> · <b>Watchful</b> · <b>Alarmed</b></sub>
+</p>
+
+エンジンに接続すれば、トラフィックに合わせて変化する脅威状態の画像になります:
+
+```go
+http.Handle("/pet.svg", pet.MoodHandler(func(r *http.Request) pet.Mood {
+    return pet.MoodOf(e.DetectRequest(r))
+}))
+```
+
+`MoodHandler` は `Cache-Control: no-store` を伴います — 静的版の `Handler` と異なり、出力はスキャン結果に応じて変わるため、1 日キャッシュすると古い状態が返ります。
 
 ### 関連ドキュメント
 

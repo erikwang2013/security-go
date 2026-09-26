@@ -266,6 +266,39 @@ http.Handle("/pet.svg", pet.Handler()) // an eine Debug-Route hängen
 
 `Handler` verwendet intern `http.ServeContent` und liefert daher `Content-Length`; `Range` und `HEAD` werden unterstützt. Ein direktes `w.Write` überschreitet den 2-KiB-Sniff-Puffer von `net/http` und degradiert zu einer chunked-Antwort.
 
+### Mood: von Erkennungsergebnissen gesteuert
+
+Das Maskottchen ist kein statisches Bild — Schild, Radar und Lupe wechseln mit dem Scan-Ergebnis die Farbe und taugen damit direkt als Statusanzeige der Bedrohungsstufe:
+
+```go
+type Mood int
+
+const (
+    Calm     Mood = iota // sauberer Scan
+    Watchful             // Treffer, aber keine High / Critical
+    Alarmed              // mindestens ein High oder Critical, Handlungsbedarf
+)
+
+func MoodOf(results []*security.Result) Mood  // Einstufung nach dem schwersten Treffer
+func SVGFor(m Mood) []byte                    // Grafik für diese Haltung; unbekannte Werte fallen auf Calm zurück
+func MoodHandler(moodFor func(*http.Request) Mood) http.Handler
+```
+
+`MoodOf` zählt nur Ergebnisse mit gesetztem `Detected` — ein Detektor setzt `Severity` auch dann, wenn er nichts findet; die Severity allein darf also keinen Alarm auslösen. Der schwerste Treffer gewinnt, unabhängig von der Reihenfolge der Ergebnisse.
+
+An die Engine angebunden ist es eine lebende Bedrohungsstatus-Grafik:
+
+```go
+e := security.NewEngine()
+all.RegisterAll(e)
+
+http.Handle("/pet.svg", pet.MoodHandler(func(r *http.Request) pet.Mood {
+    return pet.MoodOf(e.DetectRequest(r))
+}))
+```
+
+`MoodHandler` trägt `Cache-Control: no-store` — anders als der statische `Handler` ändert sich seine Ausgabe mit dem Scan-Ergebnis; eine Tages-Cache würde eine veraltete Haltung zurückliefern.
+
 ## Beispiel für benutzerdefinierte Detektoren
 
 ```go

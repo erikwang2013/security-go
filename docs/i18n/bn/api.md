@@ -266,6 +266,39 @@ http.Handle("/pet.svg", pet.Handler()) // ডিবাগ রুটে মাউ
 
 `Handler` ভিতরে `http.ServeContent` ব্যবহার করে, তাই এতে `Content-Length` থাকে এবং `Range` ও `HEAD` সমর্থিত; সরাসরি `w.Write` করলে `net/http`-এর 2 KiB স্নিফ বাফার ছাড়িয়ে chunked রেসপন্সে পরিণত হয়।
 
+### Mood: শনাক্তকরণের ফলাফল দ্বারা চালিত
+
+মাসকট স্থির ছবি নয় — স্ক্যানের ফলে ঢাল, রাডার ও আতশকাচের রং বদলায়, তাই এটি সরাসরি হুমকির মাত্রার অবস্থা-নির্দেশক হিসেবে কাজ করে:
+
+```go
+type Mood int
+
+const (
+    Calm     Mood = iota // স্ক্যানে কোনো মিল নেই
+    Watchful             // মিল আছে, তবে High / Critical নয়
+    Alarmed              // অন্তত একটি High বা Critical, ব্যবস্থা নিতে হবে
+)
+
+func MoodOf(results []*security.Result) Mood  // সবচেয়ে তীব্র মিল অনুযায়ী স্তর নির্ধারণ
+func SVGFor(m Mood) []byte                    // এই অবস্থার ছবি; অজানা মান হলে Calm-এ ফিরে যায়
+func MoodHandler(moodFor func(*http.Request) Mood) http.Handler
+```
+
+`MoodOf` কেবল সেই ফলাফলগুলোই গোনে যেগুলোতে `Detected` সেট আছে — কোনো ডিটেক্টর কিছু না পেলেও `Severity` বসিয়ে দেয়, তাই শুধু তীব্রতা দেখে সতর্কতা তোলা যাবে না। সবচেয়ে তীব্র মিলটিই জিতে যায়, ফলাফলের ক্রম নির্বিশেষে।
+
+ইঞ্জিনের সাথে যুক্ত করলেই এটি একটি জীবন্ত হুমকি-অবস্থার চিত্র:
+
+```go
+e := security.NewEngine()
+all.RegisterAll(e)
+
+http.Handle("/pet.svg", pet.MoodHandler(func(r *http.Request) pet.Mood {
+    return pet.MoodOf(e.DetectRequest(r))
+}))
+```
+
+`MoodHandler`-এ `Cache-Control: no-store` থাকে — স্থির `Handler`-এর বিপরীতে এর আউটপুট স্ক্যানের ফলে বদলায়; এক দিনের ক্যাশে বাসি অবস্থা ফিরিয়ে দেবে।
+
 ## কাস্টম ডিটেক্টর উদাহরণ
 
 ```go

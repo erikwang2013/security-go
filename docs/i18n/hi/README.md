@@ -145,7 +145,7 @@ security-go/
 │   ├── file.go            #   File: JSON पर्सिस्टेंस, Close पर flush
 │   └── redis/             #   Redis: अलग सबमॉड्यूल, अपना go.mod
 ├── all/                   # 27 शून्य-कॉन्फ़िग डिटेक्टरों का एक-कॉल रजिस्ट्रेशन
-├── pet/                   # प्रोजेक्ट शुभंकर: एम्बेडेड SVG + स्टार्टअप बैनर
+├── pet/                   # प्रोजेक्ट शुभंकर: एम्बेडेड SVG (Calm/Watchful/Alarmed) + स्टार्टअप बैनर
 ├── docs/
 │   ├── api.md             # API संदर्भ
 │   ├── images/            # आर्किटेक्चर / फ़ीचर / जीवनचक्र SVG
@@ -312,6 +312,32 @@ log.Println(pet.Banner())              // स्टार्टअप बैन�
 http.Handle("/pet.svg", pet.Handler()) // डिबग रूट: image/svg+xml के रूप में परोसा जाता है, एक दिन का कैश
 svg := pet.SVG()                       // या कच्चे SVG बाइट्स लें
 ```
+
+मास्कोट एक स्थिर छवि नहीं है — यह **डिटेक्शन परिणामों** से संचालित होती है। `pet.MoodOf` एक स्कैन को तीन मुद्राओं में बाँटता है, और ढाल, रडार व आवर्धक लेंस उसी के अनुसार रंग बदलते हैं:
+
+| मुद्रा | कब सक्रिय होती है | रूप |
+|------|-----------|------------|
+| `Calm` | स्कैन में कोई हिट नहीं | cyan (ऊपर की स्थिर छवि) |
+| `Watchful` | कुछ हिट हुआ, पर कोई High / Critical नहीं | amber |
+| `Alarmed` | कम से कम एक High या Critical | लाल + अलर्ट रिंग |
+
+<p align="center">
+  <img src="../../../pet/pet.svg" width="140" alt="Calm — cyan">
+  <img src="../../../pet/mood-watchful.svg" width="140" alt="Watchful — amber">
+  <img src="../../../pet/mood-alarmed.svg" width="140" alt="Alarmed — लाल, अलर्ट रिंग सहित">
+  <br>
+  <sub><b>Calm</b> · <b>Watchful</b> · <b>Alarmed</b></sub>
+</p>
+
+इंजन से जोड़ें, और यह लाइव ट्रैफ़िक के साथ बदलती खतरा-स्थिति की छवि बन जाती है:
+
+```go
+http.Handle("/pet.svg", pet.MoodHandler(func(r *http.Request) pet.Mood {
+    return pet.MoodOf(e.DetectRequest(r))
+}))
+```
+
+`MoodHandler` में `Cache-Control: no-store` रहता है — स्थिर `Handler` से अलग, इसका आउटपुट स्कैन परिणाम के साथ बदलता है; एक दिन का कैश पुरानी स्थिति लौटाएगा।
 
 ### संबंधित दस्तावेज़
 

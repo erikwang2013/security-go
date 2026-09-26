@@ -145,7 +145,7 @@ security-go/
 │   ├── file.go            #   File: JSON 영속화, Close 시 flush
 │   └── redis/             #   Redis: 자체 go.mod를 가진 별도 서브모듈
 ├── all/                   # 27개 무설정 감지기를 한 번에 등록
-├── pet/                   # 프로젝트 마스코트: 내장 SVG + 시작 배너
+├── pet/                   # 프로젝트 마스코트: 내장 SVG(Calm/Watchful/Alarmed) + 시작 배너
 ├── docs/
 │   ├── api.md             # API 레퍼런스
 │   ├── images/            # 아키텍처 / 기능 / 수명 주기 SVG
@@ -312,6 +312,32 @@ log.Println(pet.Banner())              // 시작 배너: 터미널 친화적 일
 http.Handle("/pet.svg", pet.Handler()) // 디버그 라우트: image/svg+xml로 제공, 1일 캐시
 svg := pet.SVG()                       // 또는 원시 SVG 바이트를 그대로
 ```
+
+마스코트는 정적 이미지가 아닙니다——**탐지 결과**가 형태를 결정합니다. `pet.MoodOf`는 한 번의 스캔을 세 가지 태세로 분류하고, 방패·레이더·돋보기가 그에 맞춰 색을 바꿉니다:
+
+| 태세 | 발동 조건 | 형태 |
+|------|-----------|------------|
+| `Calm` | 스캔에 아무것도 걸리지 않음 | 청록(위의 정적 이미지) |
+| `Watchful` | 무언가 걸렸지만 High / Critical은 없음 | 호박색 |
+| `Alarmed` | 하나 이상의 High 또는 Critical | 빨강 + 경보 링 |
+
+<p align="center">
+  <img src="../../../pet/pet.svg" width="140" alt="Calm — 청록">
+  <img src="../../../pet/mood-watchful.svg" width="140" alt="Watchful — 호박색">
+  <img src="../../../pet/mood-alarmed.svg" width="140" alt="Alarmed — 빨강 + 경보 링">
+  <br>
+  <sub><b>Calm</b> · <b>Watchful</b> · <b>Alarmed</b></sub>
+</p>
+
+엔진에 연결하면 트래픽에 따라 실시간으로 바뀌는 위협 상태 이미지가 됩니다:
+
+```go
+http.Handle("/pet.svg", pet.MoodHandler(func(r *http.Request) pet.Mood {
+    return pet.MoodOf(e.DetectRequest(r))
+}))
+```
+
+`MoodHandler`는 `Cache-Control: no-store`를 보냅니다——정적 `Handler`와 달리 출력이 스캔마다 바뀌므로, 하루 동안 캐시하면 지난 태세가 그대로 제공됩니다.
 
 ### 관련 문서
 

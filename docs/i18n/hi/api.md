@@ -266,6 +266,39 @@ http.Handle("/pet.svg", pet.Handler()) // डिबग रूट पर मा�
 
 `Handler` भीतर से `http.ServeContent` का उपयोग करता है, इसलिए `Content-Length` के साथ आता है और `Range` व `HEAD` का समर्थन करता है; सीधा `w.Write` `net/http` के 2 KiB स्निफ़ बफ़र से अधिक होकर chunked प्रतिक्रिया में बदल जाता है।
 
+### मुद्रा: डिटेक्शन परिणामों से संचालित
+
+मास्कोट स्थिर चित्र नहीं है — इसकी ढाल, रडार और आवर्धक लेंस स्कैन परिणाम के अनुसार रंग बदलते हैं, और सीधे खतरे के स्तर के संकेतक का काम करते हैं:
+
+```go
+type Mood int
+
+const (
+    Calm     Mood = iota // स्कैन में कोई हिट नहीं
+    Watchful             // हिट हैं, पर कोई High / Critical नहीं
+    Alarmed              // कम से कम एक High या Critical, संभालना आवश्यक
+)
+
+func MoodOf(results []*security.Result) Mood  // सबसे गंभीर हिट से स्तर तय
+func SVGFor(m Mood) []byte                    // उस मुद्रा का चित्र; अज्ञात मान पर Calm पर वापस
+func MoodHandler(moodFor func(*http.Request) Mood) http.Handler
+```
+
+`MoodOf` केवल उन परिणामों को गिनता है जिनमें `Detected` सही है — डिटेक्टर बिना हिट के भी `Severity` रखता है, इसलिए केवल गंभीरता से अलार्म नहीं बजना चाहिए। जो हिट जितनी गंभीर है उसकी प्राथमिकता उतनी ऊँची, परिणामों के क्रम से स्वतंत्र।
+
+इंजन जोड़िए, और यह एक जीवंत खतरा-स्थिति चित्र बन जाता है:
+
+```go
+e := security.NewEngine()
+all.RegisterAll(e)
+
+http.Handle("/pet.svg", pet.MoodHandler(func(r *http.Request) pet.Mood {
+    return pet.MoodOf(e.DetectRequest(r))
+}))
+```
+
+`MoodHandler` में `Cache-Control: no-store` रहता है — स्थिर `Handler` से अलग, इसका आउटपुट स्कैन परिणाम के साथ बदलता है; एक दिन का कैश पुरानी स्थिति लौटाएगा।
+
 ## कस्टम डिटेक्टर उदाहरण
 
 ```go

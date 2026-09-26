@@ -145,7 +145,7 @@ security-go/
 │   ├── file.go            #   File: persistensi JSON, flush saat Close
 │   └── redis/             #   Redis: submodul terpisah dengan go.mod sendiri
 ├── all/                   # Registrasi sekali panggil untuk 27 detektor tanpa konfigurasi
-├── pet/                   # Maskot proyek: SVG tertanam + banner startup
+├── pet/                   # Maskot proyek: SVG tertanam (Calm/Watchful/Alarmed) + banner startup
 ├── docs/
 │   ├── api.md             # Referensi API
 │   ├── images/            # SVG arsitektur / fitur / siklus hidup
@@ -312,6 +312,32 @@ log.Println(pet.Banner())              // banner startup: teks polos yang ramah 
 http.Handle("/pet.svg", pet.Handler()) // rute debug: disajikan sebagai image/svg+xml, di-cache sehari
 svg := pet.SVG()                       // atau ambil byte SVG mentah
 ```
+
+Maskot bukan gambar statis — ia digerakkan oleh **hasil deteksi**. `pet.MoodOf` membagi satu pemindaian ke dalam tiga postur, dan perisai, radar, serta kaca pembesar ikut berubah warna:
+
+| Postur | Terpicu saat | Bentuk |
+|------|-----------|------------|
+| `Calm` | pemindaian tanpa hit | cyan (gambar statis di atas) |
+| `Watchful` | ada hit, tetapi tidak ada High / Critical | amber |
+| `Alarmed` | setidaknya satu High atau Critical | merah + cincin peringatan |
+
+<p align="center">
+  <img src="../../../pet/pet.svg" width="140" alt="Calm — cyan">
+  <img src="../../../pet/mood-watchful.svg" width="140" alt="Watchful — amber">
+  <img src="../../../pet/mood-alarmed.svg" width="140" alt="Alarmed — merah, dengan cincin peringatan">
+  <br>
+  <sub><b>Calm</b> · <b>Watchful</b> · <b>Alarmed</b></sub>
+</p>
+
+Sambungkan ke engine, dan hasilnya gambar status ancaman yang berubah mengikuti lalu lintas:
+
+```go
+http.Handle("/pet.svg", pet.MoodHandler(func(r *http.Request) pet.Mood {
+    return pet.MoodOf(e.DetectRequest(r))
+}))
+```
+
+`MoodHandler` membawa `Cache-Control: no-store` — berbeda dari `Handler` statis, keluarannya berubah mengikuti hasil pemindaian; cache sehari akan mengembalikan bentuk yang kedaluwarsa.
 
 ### Dokumentasi Terkait
 

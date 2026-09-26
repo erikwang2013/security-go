@@ -266,6 +266,39 @@ http.Handle("/pet.svg", pet.Handler()) // Dipasang ke rute debug
 
 Di dalamnya `Handler` memakai `http.ServeContent`, sehingga membawa `Content-Length` serta mendukung `Range` dan `HEAD`; `w.Write` langsung akan melewati buffer sniff 2 KiB milik `net/http` dan berubah menjadi respons chunked.
 
+### Postur: digerakkan oleh hasil deteksi
+
+Maskot bukan gambar statis — perisai, radar, dan kaca pembesarnya berubah warna mengikuti hasil pemindaian, dan bisa langsung dipakai sebagai indikator tingkat ancaman:
+
+```go
+type Mood int
+
+const (
+    Calm     Mood = iota // pemindaian tanpa hit
+    Watchful             // ada hit, tetapi tidak ada High / Critical
+    Alarmed              // setidaknya satu High atau Critical, perlu ditindak
+)
+
+func MoodOf(results []*security.Result) Mood  // menilai dari hit paling parah
+func SVGFor(m Mood) []byte                    // gambar postur tersebut; nilai tak dikenal kembali ke Calm
+func MoodHandler(moodFor func(*http.Request) Mood) http.Handler
+```
+
+`MoodOf` hanya menghitung hasil dengan `Detected` benar — detektor tetap membawa `Severity` meski tidak menemukan apa pun, jadi tingkat keparahan saja tidak boleh memicu alarm. Semakin parah hitnya semakin tinggi prioritasnya, tidak bergantung pada urutan hasil.
+
+Sambungkan engine, dan jadilah gambar status ancaman yang hidup:
+
+```go
+e := security.NewEngine()
+all.RegisterAll(e)
+
+http.Handle("/pet.svg", pet.MoodHandler(func(r *http.Request) pet.Mood {
+    return pet.MoodOf(e.DetectRequest(r))
+}))
+```
+
+`MoodHandler` membawa `Cache-Control: no-store` — berbeda dari `Handler` statis, keluarannya berubah mengikuti hasil pemindaian; cache sehari akan mengembalikan bentuk yang kedaluwarsa.
+
 ## Contoh Detektor Kustom
 
 ```go

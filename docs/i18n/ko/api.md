@@ -266,6 +266,39 @@ http.Handle("/pet.svg", pet.Handler()) // 디버그 라우트에 연결
 
 `Handler`는 내부적으로 `http.ServeContent`를 사용하므로 `Content-Length`를 포함하고 `Range`와 `HEAD`를 지원합니다. 직접 `w.Write`를 호출하면 `net/http`의 2 KiB 스니핑 버퍼를 넘겨 chunked 응답으로 퇴화합니다.
 
+### 태세: 탐지 결과가 결정하는 형태
+
+마스코트는 정적 이미지가 아닙니다——방패·레이더·돋보기가 스캔 결과에 따라 색을 바꾸므로, 그대로 위협 수준 지표로 쓸 수 있습니다:
+
+```go
+type Mood int
+
+const (
+    Calm     Mood = iota // 스캔에 아무것도 걸리지 않음
+    Watchful             // 무언가 걸렸지만 High / Critical은 없음
+    Alarmed              // 하나 이상의 High 또는 Critical, 대응 필요
+)
+
+func MoodOf(results []*security.Result) Mood  // 가장 심각한 적중으로 판정
+func SVGFor(m Mood) []byte                    // 해당 태세의 그래픽; 알 수 없는 값은 Calm으로 폴백
+func MoodHandler(moodFor func(*http.Request) Mood) http.Handler
+```
+
+`MoodOf`는 `Detected`가 참인 결과만 집계합니다——감지기는 아무것도 찾지 못해도 `Severity`를 채우므로, 심각도 필드만으로 경보를 울려서는 안 됩니다. 가장 심각한 적중이 우선하며 결과 순서와 무관합니다.
+
+엔진을 연결하면 살아 있는 위협 상태 이미지가 됩니다:
+
+```go
+e := security.NewEngine()
+all.RegisterAll(e)
+
+http.Handle("/pet.svg", pet.MoodHandler(func(r *http.Request) pet.Mood {
+    return pet.MoodOf(e.DetectRequest(r))
+}))
+```
+
+`MoodHandler`는 `Cache-Control: no-store`를 붙입니다——정적 `Handler`와 달리 출력이 스캔 결과에 따라 바뀌므로, 하루 동안 캐시하면 지난 형태가 제공됩니다.
+
 ## 사용자 정의 감지기 예시
 
 ```go

@@ -266,6 +266,39 @@ http.Handle("/pet.svg", pet.Handler()) // デバッグループにマウント
 
 `Handler` は内部的に `http.ServeContent` を通すため `Content-Length` を備え、`Range` と `HEAD` に対応します。直接 `w.Write` すると `net/http` の 2 KiB スニッフバッファを超え、chunked レスポンスに退化します。
 
+### ムード: 検出結果によって変化
+
+マスコットは静的画像ではありません — 盾・レーダー・虫めがねがスキャン結果に応じて色を変え、脅威レベルの状態表示としてそのまま使えます:
+
+```go
+type Mood int
+
+const (
+    Calm     Mood = iota // スキャンにヒットなし
+    Watchful             // ヒットはあるが、High / Critical はない
+    Alarmed              // High または Critical が少なくとも 1 件、要対応
+)
+
+func MoodOf(results []*security.Result) Mood  // 最も深刻なヒットで判定
+func SVGFor(m Mood) []byte                    // そのムードの画像。未知の値は Calm にフォールバック
+func MoodHandler(moodFor func(*http.Request) Mood) http.Handler
+```
+
+`MoodOf` は `Detected` が真の結果だけを数えます — 検出器はヒットがなくても `Severity` を持つため、深刻度フィールドだけで警報を鳴らしてはいけません。ヒットが深刻なほど優先度が高く、結果の順序には依存しません。
+
+エンジンに接続すれば、生きた脅威状態の画像になります:
+
+```go
+e := security.NewEngine()
+all.RegisterAll(e)
+
+http.Handle("/pet.svg", pet.MoodHandler(func(r *http.Request) pet.Mood {
+    return pet.MoodOf(e.DetectRequest(r))
+}))
+```
+
+`MoodHandler` は `Cache-Control: no-store` を伴います — 静的版の `Handler` と異なり、出力はスキャン結果に応じて変わるため、1 日キャッシュすると古い状態が返ります。
+
 ## カスタム検出器の例
 
 ```go

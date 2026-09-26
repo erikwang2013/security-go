@@ -266,6 +266,39 @@ http.Handle("/pet.svg", pet.Handler()) // вешается на отладочн
 
 Внутри `Handler` используется `http.ServeContent`, поэтому ответ несёт `Content-Length` и поддерживает `Range` и `HEAD`; прямой `w.Write` превысил бы 2 KiB буфер сниффинга `net/http` и выродился бы в chunked-ответ.
 
+### Поза: определяется результатами обнаружения
+
+Талисман — не статичная картинка: щит, радар и лупа меняют цвет по результатам проверки, поэтому он сам служит индикатором уровня угрозы:
+
+```go
+type Mood int
+
+const (
+    Calm     Mood = iota // проверка ничего не нашла
+    Watchful             // что-то сработало, но ничего High / Critical
+    Alarmed              // хотя бы один High или Critical, требует реакции
+)
+
+func MoodOf(results []*security.Result) Mood  // определяется самым серьёзным попаданием
+func SVGFor(m Mood) []byte                    // графика для этой позы; неизвестное значение откатывается к Calm
+func MoodHandler(moodFor func(*http.Request) Mood) http.Handler
+```
+
+`MoodOf` учитывает только результаты с `Detected` — детектор проставляет `Severity` даже когда ничего не нашёл, поэтому одна лишь серьёзность не должна поднимать тревогу. Побеждает самое серьёзное попадание, независимо от порядка результатов.
+
+Подключите движок — и получите живую картину состояния угрозы:
+
+```go
+e := security.NewEngine()
+all.RegisterAll(e)
+
+http.Handle("/pet.svg", pet.MoodHandler(func(r *http.Request) pet.Mood {
+    return pet.MoodOf(e.DetectRequest(r))
+}))
+```
+
+`MoodHandler` добавляет `Cache-Control: no-store` — в отличие от статичного `Handler`, его вывод меняется от проверки к проверке, и суточное кеширование отдавало бы устаревшую позу.
+
 ## Пример собственного детектора
 
 ```go
