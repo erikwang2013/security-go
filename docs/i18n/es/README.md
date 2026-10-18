@@ -4,11 +4,10 @@
 
 Paquete de detección de ataques escrito en Go que cubre **36 detectores**, **6 categorías principales de ataques** y **3 backends de almacenamiento conectables**. Interfaz unificada + patrón de registro (registry), biblioteca de detección pura, adaptable a cualquier framework HTTP de Go.
 
-<p align="center">
-  <img src="../../../pet/pet.svg" width="190" alt="Sentinel Gopher">
-  <br>
-  <sub>Mascota del proyecto <b>Sentinel Gopher</b> (哨兵鼠) — un gopher de Go montando guardia con un escudo.<br>El <b>36</b> del escudo es el número de detectores; la lupa representa el escaneo en cada petición.</sub>
-</p>
+![Sentinel Gopher](../../../pet/pet.svg)
+
+Mascota del proyecto **Sentinel Gopher** (哨兵鼠) — un gopher de Go montando guardia con un escudo.  
+El **36** del escudo es el número de detectores; la lupa representa el escaneo en cada petición.
 
 [Arquitectura](#arquitectura-de-diseño) · [Funcionalidades](#funcionalidades-implementadas) · [Ciclo de vida](#ciclo-de-vida) · [Estructura del proyecto](#estructura-del-proyecto) · [La mascota](#la-mascota)
 
@@ -321,13 +320,9 @@ La mascota no es una imagen estática: la impulsan los **resultados de detecció
 | `Watchful` | algo se activó, pero nada High ni Critical | ámbar |
 | `Alarmed` | al menos un High o Critical | rojo, con un anillo de alerta |
 
-<p align="center">
-  <img src="../../../pet/pet.svg" width="140" alt="Calm — cian">
-  <img src="../../../pet/mood-watchful.svg" width="140" alt="Watchful — ámbar">
-  <img src="../../../pet/mood-alarmed.svg" width="140" alt="Alarmed — rojo, con un anillo de alerta">
-  <br>
-  <sub><b>Calm</b> · <b>Watchful</b> · <b>Alarmed</b></sub>
-</p>
+![Calm — cian](../../../pet/pet.svg) ![Watchful — ámbar](../../../pet/mood-watchful.svg) ![Alarmed — rojo, con un anillo de alerta](../../../pet/mood-alarmed.svg)
+
+**Calm** · **Watchful** · **Alarmed**
 
 Si lo conectas al motor, obtienes una imagen del estado de amenaza que sigue el tráfico en vivo:
 

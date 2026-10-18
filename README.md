@@ -4,11 +4,10 @@
 
 Go 语言编写的攻击检测包，覆盖 **36 个检测器**、**6 大攻击类别**、**3 种可插拔存储后端**。统一接口 + 注册表模式，纯检测库，适配任何 Go HTTP 框架。
 
-<p align="center">
-  <img src="pet/pet.svg" width="190" alt="哨兵鼠 — 项目宠物">
-  <br>
-  <sub>项目宠物 <b>哨兵鼠</b>（Sentinel Gopher）—— 一只持盾巡检的 Go 地鼠。<br>盾牌上的 <b>36</b> 是检测器数量，放大镜是逐请求扫描。</sub>
-</p>
+![哨兵鼠 — 项目宠物](pet/pet.svg)
+
+项目宠物 **哨兵鼠**（Sentinel Gopher）—— 一只持盾巡检的 Go 地鼠。  
+盾牌上的 **36** 是检测器数量，放大镜是逐请求扫描。
 
 [设计架构](#设计架构) · [功能设计](#实现功能) · [生命周期](#生命周期) · [项目结构](#项目结构) · [项目宠物](#项目宠物)
 
@@ -320,13 +319,9 @@ svg := pet.SVG()                       // 或直接取原始 SVG 字节
 | `Watchful` | 有命中，但无 High / Critical | 琥珀 |
 | `Alarmed` | 至少一个 High 或 Critical | 红色 + 告警环 |
 
-<p align="center">
-  <img src="pet/pet.svg" width="140" alt="Calm — 青蓝">
-  <img src="pet/mood-watchful.svg" width="140" alt="Watchful — 琥珀">
-  <img src="pet/mood-alarmed.svg" width="140" alt="Alarmed — 红色带告警环">
-  <br>
-  <sub><b>Calm</b> · <b>Watchful</b> · <b>Alarmed</b></sub>
-</p>
+![Calm — 青蓝](pet/pet.svg) ![Watchful — 琥珀](pet/mood-watchful.svg) ![Alarmed — 红色带告警环](pet/mood-alarmed.svg)
+
+**Calm** · **Watchful** · **Alarmed**
 
 接上引擎，就是一张随流量实时变化的威胁状态图：
 
@@ -420,10 +415,15 @@ Copyright (c) 2026 erik <erik@erik.xyz> — https://erik.xyz
 <!-- pet-expressions:start -->
 ## 项目宠物表情形态 · 哨兵鼠
 
-<table align="center">
-<tr><td align="center"><img src="pet/expressions/smile.svg" width="88" alt="笑"><br><b>笑</b><br><code>:emoji-smile:</code></td><td align="center"><img src="pet/expressions/joy.svg" width="88" alt="欢乐"><br><b>欢乐</b><br><code>:emoji-joy:</code></td><td align="center"><img src="pet/expressions/cry.svg" width="88" alt="哭"><br><b>哭</b><br><code>:emoji-cry:</code></td><td align="center"><img src="pet/expressions/depressed.svg" width="88" alt="沮丧"><br><b>沮丧</b><br><code>:emoji-depressed:</code></td><td align="center"><img src="pet/expressions/terrified.svg" width="88" alt="惊恐"><br><b>惊恐</b><br><code>:emoji-terrified:</code></td><td align="center"><img src="pet/expressions/angry.svg" width="88" alt="愤怒"><br><b>愤怒</b><br><code>:emoji-angry:</code></td></tr>
-<tr><td align="center"><img src="pet/expressions/coquettish.svg" width="88" alt="撒娇"><br><b>撒娇</b><br><code>:emoji-coquettish:</code></td><td align="center"><img src="pet/expressions/cute.svg" width="88" alt="卖萌"><br><b>卖萌</b><br><code>:emoji-cute:</code></td><td align="center"><img src="pet/expressions/pleasing.svg" width="88" alt="讨好"><br><b>讨好</b><br><code>:emoji-pleasing:</code></td><td align="center"><img src="pet/expressions/knocking.svg" width="88" alt="敲打"><br><b>敲打</b><br><code>:emoji-knocking:</code></td><td align="center"><img src="pet/expressions/facepalm.svg" width="88" alt="捂脸"><br><b>捂脸</b><br><code>:emoji-facepalm:</code></td><td align="center"><img src="pet/expressions/tongue.svg" width="88" alt="吐舌头"><br><b>吐舌头</b><br><code>:emoji-tongue:</code></td></tr>
-</table>
+| **笑** | **欢乐** | **哭** | **沮丧** | **惊恐** | **愤怒** |
+|:---:|:---:|:---:|:---:|:---:|:---:|
+| ![笑](pet/expressions/smile.svg) | ![欢乐](pet/expressions/joy.svg) | ![哭](pet/expressions/cry.svg) | ![沮丧](pet/expressions/depressed.svg) | ![惊恐](pet/expressions/terrified.svg) | ![愤怒](pet/expressions/angry.svg) |
+| `:emoji-smile:` | `:emoji-joy:` | `:emoji-cry:` | `:emoji-depressed:` | `:emoji-terrified:` | `:emoji-angry:` |
+
+| **撒娇** | **卖萌** | **讨好** | **敲打** | **捂脸** | **吐舌头** |
+|:---:|:---:|:---:|:---:|:---:|:---:|
+| ![撒娇](pet/expressions/coquettish.svg) | ![卖萌](pet/expressions/cute.svg) | ![讨好](pet/expressions/pleasing.svg) | ![敲打](pet/expressions/knocking.svg) | ![捂脸](pet/expressions/facepalm.svg) | ![吐舌头](pet/expressions/tongue.svg) |
+| `:emoji-coquettish:` | `:emoji-cute:` | `:emoji-pleasing:` | `:emoji-knocking:` | `:emoji-facepalm:` | `:emoji-tongue:` |
 
 > 12 种彩色动态形态：笑 / 欢乐 / 哭 / 沮丧 / 惊恐 / 愤怒 / 撒娇 / 卖萌 / 讨好 / 敲打 / 捂脸 / 吐舌头。每个 SVG 自带表情、情绪特效与整体动效，并遵循 `prefers-reduced-motion`。
 <!-- pet-expressions:end -->

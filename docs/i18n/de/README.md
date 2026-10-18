@@ -4,11 +4,10 @@
 
 Ein in Go geschriebenes Paket zur Angriffserkennung mit **36 Detektoren**, **6 Angriffskategorien** und **3 steckbaren Speicher-Backends**. Einheitliche Schnittstelle + Registry-Muster, reine Erkennungsbibliothek, passend für jedes Go-HTTP-Framework.
 
-<p align="center">
-  <img src="../../../pet/pet.svg" width="190" alt="Sentinel Gopher">
-  <br>
-  <sub>Projekt-Maskottchen <b>Sentinel Gopher</b> (哨兵鼠) — ein Go-Gopher, der mit einem Schild Wache hält.<br>Die <b>36</b> auf dem Schild ist die Anzahl der Detektoren; die Lupe steht für den Scan bei jeder Anfrage.</sub>
-</p>
+![Sentinel Gopher](../../../pet/pet.svg)
+
+Projekt-Maskottchen **Sentinel Gopher** (哨兵鼠) — ein Go-Gopher, der mit einem Schild Wache hält.  
+Die **36** auf dem Schild ist die Anzahl der Detektoren; die Lupe steht für den Scan bei jeder Anfrage.
 
 [Architektur](#architektur) · [Funktionen](#implementierte-funktionen) · [Lebenszyklus](#lebenszyklus) · [Projektstruktur](#projektstruktur) · [Das Maskottchen](#das-maskottchen)
 
@@ -321,13 +320,9 @@ Das Maskottchen ist kein statisches Bild — es wird von **Erkennungsergebnissen
 | `Watchful` | etwas hat ausgelöst, nichts High oder Critical | Amber |
 | `Alarmed` | mindestens ein High oder Critical | Rot, mit Alarmring |
 
-<p align="center">
-  <img src="../../../pet/pet.svg" width="140" alt="Calm — Cyan">
-  <img src="../../../pet/mood-watchful.svg" width="140" alt="Watchful — Amber">
-  <img src="../../../pet/mood-alarmed.svg" width="140" alt="Alarmed — Rot, mit Alarmring">
-  <br>
-  <sub><b>Calm</b> · <b>Watchful</b> · <b>Alarmed</b></sub>
-</p>
+![Calm — Cyan](../../../pet/pet.svg) ![Watchful — Amber](../../../pet/mood-watchful.svg) ![Alarmed — Rot, mit Alarmring](../../../pet/mood-alarmed.svg)
+
+**Calm** · **Watchful** · **Alarmed**
 
 An die Engine angebunden erhältst du ein Bedrohungslage-Bild, das dem Live-Verkehr folgt:
 

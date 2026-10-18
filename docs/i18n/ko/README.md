@@ -4,11 +4,9 @@
 
 Go 언어로 작성된 공격 탐지 패키지로, **36개의 감지기**, **6대 공격 카테고리**, **3가지 플러그형 저장 백엔드**를 지원합니다. 통합 인터페이스 + 등록소 패턴을 사용하는 순수 탐지 라이브러리로, 모든 Go HTTP 프레임워크에 적용할 수 있습니다.
 
-<p align="center">
-  <img src="../../../pet/pet.svg" width="190" alt="Sentinel Gopher">
-  <br>
-  <sub>프로젝트 마스코트 Sentinel Gopher(哨兵鼠) — 방패를 들고 파수를 서는 Go 고퍼. 방패의 36은 감지기 수이고, 돋보기는 요청별 스캔입니다.</sub>
-</p>
+![Sentinel Gopher](../../../pet/pet.svg)
+
+프로젝트 마스코트 Sentinel Gopher(哨兵鼠) — 방패를 들고 파수를 서는 Go 고퍼. 방패의 36은 감지기 수이고, 돋보기는 요청별 스캔입니다.
 
 [설계 아키텍처](#설계-아키텍처) · [구현 기능](#구현-기능) · [수명 주기](#수명-주기) · [프로젝트 구조](#프로젝트-구조) · [마스코트](#마스코트)
 
@@ -321,13 +319,9 @@ svg := pet.SVG()                       // 또는 원시 SVG 바이트를 그대�
 | `Watchful` | 무언가 걸렸지만 High / Critical은 없음 | 호박색 |
 | `Alarmed` | 하나 이상의 High 또는 Critical | 빨강 + 경보 링 |
 
-<p align="center">
-  <img src="../../../pet/pet.svg" width="140" alt="Calm — 청록">
-  <img src="../../../pet/mood-watchful.svg" width="140" alt="Watchful — 호박색">
-  <img src="../../../pet/mood-alarmed.svg" width="140" alt="Alarmed — 빨강 + 경보 링">
-  <br>
-  <sub><b>Calm</b> · <b>Watchful</b> · <b>Alarmed</b></sub>
-</p>
+![Calm — 청록](../../../pet/pet.svg) ![Watchful — 호박색](../../../pet/mood-watchful.svg) ![Alarmed — 빨강 + 경보 링](../../../pet/mood-alarmed.svg)
+
+**Calm** · **Watchful** · **Alarmed**
 
 엔진에 연결하면 트래픽에 따라 실시간으로 바뀌는 위협 상태 이미지가 됩니다:
 

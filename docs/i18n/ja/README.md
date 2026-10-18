@@ -4,11 +4,9 @@
 
 Go 言語で書かれた攻撃検出パッケージ。**36 個の検出器**、**6 大攻撃カテゴリ**、**3 種類のプラグ可能なストレージバックエンド**をカバーします。統一インターフェース + レジストリパターンを採用した純粋な検出ライブラリで、あらゆる Go HTTP フレームワークに適合します。
 
-<p align="center">
-  <img src="../../../pet/pet.svg" width="190" alt="Sentinel Gopher">
-  <br>
-  <sub>プロジェクトのマスコット Sentinel Gopher（哨兵鼠）— 盾を構えて見張りに立つ Go ゴーファー。盾の 36 は検出器の数、虫めがねはリクエストごとのスキャンを表します。</sub>
-</p>
+![Sentinel Gopher](../../../pet/pet.svg)
+
+プロジェクトのマスコット Sentinel Gopher（哨兵鼠）— 盾を構えて見張りに立つ Go ゴーファー。盾の 36 は検出器の数、虫めがねはリクエストごとのスキャンを表します。
 
 [設計アーキテクチャ](#設計アーキテクチャ) · [機能](#実装機能) · [ライフサイクル](#ライフサイクル) · [プロジェクト構成](#プロジェクト構成) · [マスコット](#マスコット)
 
@@ -321,13 +319,9 @@ svg := pet.SVG()                       // または生の SVG バイトを取得
 | `Watchful` | ヒットはあるが、High / Critical はない | アンバー |
 | `Alarmed` | High または Critical が少なくとも 1 件 | 赤 + 警告リング |
 
-<p align="center">
-  <img src="../../../pet/pet.svg" width="140" alt="Calm — シアン">
-  <img src="../../../pet/mood-watchful.svg" width="140" alt="Watchful — アンバー">
-  <img src="../../../pet/mood-alarmed.svg" width="140" alt="Alarmed — 赤、警告リング付き">
-  <br>
-  <sub><b>Calm</b> · <b>Watchful</b> · <b>Alarmed</b></sub>
-</p>
+![Calm — シアン](../../../pet/pet.svg) ![Watchful — アンバー](../../../pet/mood-watchful.svg) ![Alarmed — 赤、警告リング付き](../../../pet/mood-alarmed.svg)
+
+**Calm** · **Watchful** · **Alarmed**
 
 エンジンに接続すれば、トラフィックに合わせて変化する脅威状態の画像になります:
 

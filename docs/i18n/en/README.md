@@ -4,11 +4,9 @@
 
 An attack detection package written in Go, covering **36 detectors**, **6 major attack categories**, and **3 pluggable storage backends**. Unified interface + registry pattern; a pure detection library that adapts to any Go HTTP framework.
 
-<p align="center">
-  <img src="../../../pet/pet.svg" width="190" alt="Sentinel Gopher">
-  <br>
-  <sub>Project mascot Sentinel Gopher(哨兵鼠) — a Go gopher standing sentinel with a shield. The 36 on the shield is the detector count; the magnifier is the per-request scan.</sub>
-</p>
+![Sentinel Gopher](../../../pet/pet.svg)
+
+Project mascot Sentinel Gopher(哨兵鼠) — a Go gopher standing sentinel with a shield. The 36 on the shield is the detector count; the magnifier is the per-request scan.
 
 [Architecture](#architecture) · [Features](#features) · [Lifecycle](#lifecycle) · [Project Layout](#project-layout) · [The Mascot](#the-mascot)
 
@@ -321,13 +319,9 @@ The mascot is not a static image — it is driven by **detection results**. `pet
 | `Watchful` | something fired, nothing High or Critical | amber |
 | `Alarmed` | at least one High or Critical | red, with an alert ring |
 
-<p align="center">
-  <img src="../../../pet/pet.svg" width="140" alt="Calm — cyan">
-  <img src="../../../pet/mood-watchful.svg" width="140" alt="Watchful — amber">
-  <img src="../../../pet/mood-alarmed.svg" width="140" alt="Alarmed — red, with an alert ring">
-  <br>
-  <sub><b>Calm</b> · <b>Watchful</b> · <b>Alarmed</b></sub>
-</p>
+![Calm — cyan](../../../pet/pet.svg) ![Watchful — amber](../../../pet/mood-watchful.svg) ![Alarmed — red, with an alert ring](../../../pet/mood-alarmed.svg)
+
+**Calm** · **Watchful** · **Alarmed**
 
 Wire it to the engine and you get a threat-state image that tracks live traffic:
 

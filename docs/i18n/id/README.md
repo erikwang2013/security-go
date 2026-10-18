@@ -4,11 +4,9 @@
 
 Pustaka deteksi serangan yang ditulis dalam bahasa Go, mencakup **36 detektor**, **6 kategori serangan utama**, dan **3 backend penyimpanan yang dapat dipasang**. Antarmuka terpadu + pola registry, murni pustaka deteksi, cocok untuk kerangka HTTP Go mana pun.
 
-<p align="center">
-  <img src="../../../pet/pet.svg" width="190" alt="Sentinel Gopher">
-  <br>
-  <sub>Maskot proyek Sentinel Gopher (哨兵鼠) — gopher Go yang berdiri berjaga dengan perisai. Angka 36 pada perisai adalah jumlah detektor; kaca pembesar melambangkan pemindaian pada setiap permintaan.</sub>
-</p>
+![Sentinel Gopher](../../../pet/pet.svg)
+
+Maskot proyek Sentinel Gopher (哨兵鼠) — gopher Go yang berdiri berjaga dengan perisai. Angka 36 pada perisai adalah jumlah detektor; kaca pembesar melambangkan pemindaian pada setiap permintaan.
 
 [Arsitektur](#arsitektur-desain) · [Fitur](#fitur-yang-diimplementasikan) · [Siklus Hidup](#siklus-hidup) · [Struktur Proyek](#struktur-proyek) · [Maskot](#maskot)
 
@@ -321,13 +319,9 @@ Maskot bukan gambar statis — ia digerakkan oleh **hasil deteksi**. `pet.MoodOf
 | `Watchful` | ada hit, tetapi tidak ada High / Critical | amber |
 | `Alarmed` | setidaknya satu High atau Critical | merah + cincin peringatan |
 
-<p align="center">
-  <img src="../../../pet/pet.svg" width="140" alt="Calm — cyan">
-  <img src="../../../pet/mood-watchful.svg" width="140" alt="Watchful — amber">
-  <img src="../../../pet/mood-alarmed.svg" width="140" alt="Alarmed — merah, dengan cincin peringatan">
-  <br>
-  <sub><b>Calm</b> · <b>Watchful</b> · <b>Alarmed</b></sub>
-</p>
+![Calm — cyan](../../../pet/pet.svg) ![Watchful — amber](../../../pet/mood-watchful.svg) ![Alarmed — merah, dengan cincin peringatan](../../../pet/mood-alarmed.svg)
+
+**Calm** · **Watchful** · **Alarmed**
 
 Sambungkan ke engine, dan hasilnya gambar status ancaman yang berubah mengikuti lalu lintas:
 
