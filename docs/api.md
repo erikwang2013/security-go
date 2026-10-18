@@ -299,6 +299,44 @@ http.Handle("/pet.svg", pet.MoodHandler(func(r *http.Request) pet.Mood {
 
 `MoodHandler` 带 `Cache-Control: no-store`——与静态的 `Handler` 不同，它的输出随扫描结果变化，缓存一天会返回过期的形态。
 
+### 表情形态：内嵌到代码
+
+12 种表情形态同样以 `go:embed` 内嵌，可按 slug 取图、解析名称，或挂载为静态图片路由：
+
+```go
+type Expression int
+
+const (
+    Smile Expression = iota
+    Joy
+    Cry
+    Depressed
+    Terrified
+    Angry
+    Coquettish
+    Cute
+    Pleasing
+    Knocking
+    Facepalm
+    Tongue
+)
+
+func Expressions() []Expression                   // 按展示顺序返回全部 12 种形态
+func (e Expression) String() string               // 稳定 slug，如 "smile"
+func ExpressionOf(name string) (Expression, bool) // slug → 形态；未知名称返回 false
+func SVGForExpression(e Expression) []byte        // 该形态的图形；未知取值回退 Smile
+func ExpressionHandler() http.Handler
+```
+
+`ExpressionHandler` 按请求路径的最后一段取图，`.svg` 后缀可选：
+
+```go
+http.Handle("/pet/", pet.ExpressionHandler())
+// GET /pet/smile.svg、/pet/joy、/pet/facepalm.svg ……
+```
+
+未知名称返回 404；响应为静态内容，缓存一天。`ExpressionOf` 只接受精确的小写 slug。
+
 ## 自定义检测器示例
 
 ```go

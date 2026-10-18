@@ -5,7 +5,9 @@
 // for startup logs.
 //
 // The mascot is a Go gopher on sentinel duty — shield reading 36 for the
-// detector count, magnifier for the per-request scan.
+// detector count, magnifier for the per-request scan. Three mood postures
+// (mood.go) report threat level, and twelve animated expression forms
+// (expression.go) are available by name; every SVG is embedded with go:embed.
 //
 //	http.Handle("/pet.svg", pet.Handler())  // serve the SVG
 //	log.Println(pet.Banner())               // print at startup

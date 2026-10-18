@@ -333,6 +333,18 @@ http.Handle("/pet.svg", pet.MoodHandler(func(r *http.Request) pet.Mood {
 
 `MoodHandler` 带 `Cache-Control: no-store`——形态随扫描结果变化，缓存一天会返回过期状态。
 
+#### 表情形态：内嵌到代码
+
+12 种表情形态也全部 `go:embed` 进 `pet` 包，可以按名称直接取图，或挂成一个静态图片路由：
+
+```go
+svg := pet.SVGForExpression(pet.Smile)        // Smile、Joy、Cry……共 12 种
+e, ok := pet.ExpressionOf("smile")            // slug → 形态；未知名称 ok=false
+http.Handle("/pet/", pet.ExpressionHandler()) // /pet/smile.svg、/pet/joy.svg……
+```
+
+`pet.Expressions()` 按展示顺序返回全部形态；`ExpressionHandler` 接受带或不带 `.svg` 的路径末段，未知名称返回 404，响应缓存一天；`(pet.Expression).String()` 返回稳定 slug。
+
 ### 相关文档
 
 - [API 接口文档](docs/api.md) — 核心类型、Detector/Engine 接口、存储后端接口、HTTP 校验器
@@ -425,7 +437,7 @@ Copyright (c) 2026 erik <erik@erik.xyz> — https://erik.xyz
 | ![撒娇](pet/expressions/coquettish.svg) | ![卖萌](pet/expressions/cute.svg) | ![讨好](pet/expressions/pleasing.svg) | ![敲打](pet/expressions/knocking.svg) | ![捂脸](pet/expressions/facepalm.svg) | ![吐舌头](pet/expressions/tongue.svg) |
 | `:emoji-coquettish:` | `:emoji-cute:` | `:emoji-pleasing:` | `:emoji-knocking:` | `:emoji-facepalm:` | `:emoji-tongue:` |
 
-> 12 种彩色动态形态：笑 / 欢乐 / 哭 / 沮丧 / 惊恐 / 愤怒 / 撒娇 / 卖萌 / 讨好 / 敲打 / 捂脸 / 吐舌头。每个 SVG 自带表情、情绪特效与整体动效，并遵循 `prefers-reduced-motion`。
+> 12 种彩色动态形态：笑 / 欢乐 / 哭 / 沮丧 / 惊恐 / 愤怒 / 撒娇 / 卖萌 / 讨好 / 敲打 / 捂脸 / 吐舌头。每个 SVG 自带表情、情绪特效与整体动效，并遵循 `prefers-reduced-motion`。这些 SVG 均已内嵌进 `pet` 包：`pet.Expressions()` 列出全部形态，`pet.ExpressionHandler()` 可直接提供图片。
 <!-- pet-expressions:end -->
 
 <!-- assets-license:start -->
