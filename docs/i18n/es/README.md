@@ -118,9 +118,9 @@ El ciclo completo de una petición, desde la entrada y pasando por la detección
 
 | Backend | Descripción |
 |------|------|
-| **Memory** | `sync.Mutex` + map, limpieza automática de entradas caducadas cada 30s |
+| **Memory** | `sync.RWMutex` + map, limpieza automática de entradas caducadas cada 30s |
 | **File** | Persistencia en archivos JSON, flush al llamar a Close |
-| **Redis** | Submódulo independiente, Pipeline Incr + TTL, requiere `go-redis/v9` |
+| **Redis** | Submódulo independiente, Lua Incr + TTL, requiere `go-redis/v9` |
 
 ## Estructura del proyecto
 

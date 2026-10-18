@@ -96,7 +96,7 @@ The full loop of a request, from entry through detection to graded handling (inc
 | **Deserialization** | `O:number:` / `C:number:` serialized objects, `unserialize()`, magic methods; covers PHP / pickle / Java / .NET payloads |
 | **CSV Injection** | `=cmd\|`, `@SUM(`, `+`/`-` formula prefixes, `HYPERLINK`/`DDE` |
 | **Mail Header Injection** | Bcc/Cc/From/To injection, MIME multipart, boundary params |
-| **JWT Attack** | `alg: none` bypass, `kid` path traversal, empty signature detection (structural decode) |
+| **JWT Attack** | `alg: none` bypass, `kid` path traversal, empty signature detection (structural decode; token is extracted from Authorization / Cookie envelopes) |
 | **Prototype Pollution** | `__proto__`/`constructor` keys, `__defineGetter__`/`__defineSetter__` |
 
 ### File & Sensitive Data (3)
@@ -118,9 +118,11 @@ The full loop of a request, from entry through detection to graded handling (inc
 
 | Backend | Description |
 |---------|-------------|
-| **Memory** | `sync.Mutex` + map, 30s TTL cleanup |
-| **File** | JSON persistence, auto-save every 30s + flush on Close |
-| **Redis** | Separate sub-module, Pipeline Incr + TTL, requires `go-redis/v9` |
+| **Memory** | `sync.RWMutex` + map, 30s TTL cleanup; `Close` stops the reaper |
+| **File** | JSON persistence, atomic write every 30s (temp file + rename) + flush on Close |
+| **Redis** | Separate sub-module, Lua Incr + TTL set on the first hit, requires `go-redis/v9` |
+
+The window starts at the first `Incr`; after it expires the next increment starts from 1. `Get` has no window argument, so it uses the window recorded by `Incr`. All three backends share this rule, and Memory/File expire each record by its own window instead of a fixed five-minute ceiling.
 
 ## Project Layout
 

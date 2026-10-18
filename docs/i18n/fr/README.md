@@ -117,9 +117,9 @@ Le cycle complet d'une requête, de l'entrée à la détection puis au traitemen
 
 | Backend | Description |
 |------|------|
-| **Memory** | `sync.Mutex` + map, nettoyage automatique des entrées expirées toutes les 30 s |
+| **Memory** | `sync.RWMutex` + map, nettoyage automatique des entrées expirées toutes les 30 s |
 | **File** | Persistance dans un fichier JSON, flush à la fermeture |
-| **Redis** | Sous-module indépendant, Pipeline Incr + TTL, nécessite `go-redis/v9` |
+| **Redis** | Sous-module indépendant, Lua Incr + TTL, nécessite `go-redis/v9` |
 
 ## Structure du projet
 

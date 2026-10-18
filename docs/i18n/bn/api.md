@@ -94,9 +94,9 @@ type Backend interface {
 
 | ব্যাকএন্ড | বর্ণনা |
 |-----------|--------|
-| `storage.NewMemory() *Memory` | মেমোরি ইমপ্লিমেন্টেশন, `sync.Mutex` + map, 30s পর মেয়াদোত্তীর্ণ এন্ট্রি স্বয়ংক্রিয় পরিষ্কার |
+| `storage.NewMemory() *Memory` | মেমোরি ইমপ্লিমেন্টেশন, `sync.RWMutex` + map, 30s পর মেয়াদোত্তীর্ণ এন্ট্রি স্বয়ংক্রিয় পরিষ্কার |
 | `storage.NewFile(path) (*File, error)` | JSON ফাইল পার্সিস্টেন্স, 30s পর স্বয়ংক্রিয় সেভ + Close করার সময় flush |
-| `redis.New(addr, password string, db int) *Backend` | Redis সাবমডিউল, Pipeline Incr + TTL, `go-redis/v9` প্রয়োজন |
+| `redis.New(addr, password string, db int) *Backend` | Redis সাবমডিউল, Lua Incr + TTL, `go-redis/v9` প্রয়োজন |
 
 ## HTTP ভ্যালিডেটর
 

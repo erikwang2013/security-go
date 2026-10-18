@@ -34,6 +34,14 @@ func TestExpressionsInDisplayOrder(t *testing.T) {
 	}
 }
 
+func TestExpressionStringUnknown(t *testing.T) {
+	for _, e := range []Expression{-1, 99} {
+		if got := e.String(); got != "unknown" {
+			t.Errorf("Expression(%d).String() = %q, want %q", int(e), got, "unknown")
+		}
+	}
+}
+
 func TestExpressionOfResolvesSlugs(t *testing.T) {
 	for _, e := range Expressions() {
 		got, ok := ExpressionOf(e.String())

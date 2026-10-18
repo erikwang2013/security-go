@@ -117,9 +117,9 @@ O ciclo completo de uma requisição, da entrada à detecção até o tratamento
 
 | Backend | Descrição |
 |------|------|
-| **Memory** | `sync.Mutex` + map, limpeza automática de entradas expiradas a cada 30s |
+| **Memory** | `sync.RWMutex` + map, limpeza automática de entradas expiradas a cada 30s |
 | **File** | Persistência em arquivo JSON, flush no Close |
-| **Redis** | Submódulo independente, Pipeline Incr + TTL, requer `go-redis/v9` |
+| **Redis** | Submódulo independente, Lua Incr + TTL, requer `go-redis/v9` |
 
 ## Estrutura do projeto
 

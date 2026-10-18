@@ -68,7 +68,7 @@
   <text class="t st" x="446" y="161">逐检测器扫描</text>
   <line x1="420" y1="178" x2="556" y2="178" stroke="#1e3a5f"/>
   <text class="m sm" x="420" y="198">DetectAll(input)</text>
-  <text class="t sd" x="420" y="220">遍历注册表 34 个检测器</text>
+  <text class="t sd" x="420" y="220">遍历注册表 27 个检测器</text>
   <text class="t sd" x="420" y="238">预编译正则，零开销</text>
 
   <!-- 阶段 4 -->

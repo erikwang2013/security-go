@@ -94,9 +94,11 @@ type Backend interface {
 
 | 后端 | 说明 |
 |------|------|
-| `storage.NewMemory() *Memory` | 内存实现，`sync.Mutex` + map，30s 自动清理过期条目 |
-| `storage.NewFile(path) (*File, error)` | JSON 文件持久化，30s 自动保存 + Close 时 flush |
-| `redis.New(addr, password string, db int) *Backend` | `storage/redis` 子模块，Pipeline Incr + TTL，需 `go-redis/v9` |
+| `storage.NewMemory() *Memory` | 内存实现，`sync.RWMutex` + map，30s 清理过期条目；`Close` 停止后台清理 |
+| `storage.NewFile(path) (*File, error)` | JSON 文件持久化，每 30s 自动保存（临时文件 + rename 原子落盘）+ Close 时 flush |
+| `redis.New(addr, password string, db int) *Backend` | `storage/redis` 子模块，Lua 原子 Incr，首次计数时设置窗口 TTL，需 `go-redis/v9` |
+
+计数窗口从首次 `Incr` 起算，过期后下一次 `Incr` 重新从 1 开始；`Get` 没有窗口参数，按记录中的窗口判断是否返回 0。三个后端的窗口语义一致；`Memory` 与 `File` 按每条记录自己的窗口过期，不再使用固定的 5 分钟上限。
 
 ## HTTP 校验器
 

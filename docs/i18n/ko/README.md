@@ -117,9 +117,9 @@ Go 언어로 작성된 공격 탐지 패키지로, **36개의 감지기**, **6�
 
 | 백엔드 | 설명 |
 |------|------|
-| **Memory** | `sync.Mutex` + map, 30초마다 만료 항목 자동 정리 |
+| **Memory** | `sync.RWMutex` + map, 30초마다 만료 항목 자동 정리 |
 | **File** | JSON 파일 영속화, Close 시 flush |
-| **Redis** | 독립 서브모듈, Pipeline Incr + TTL, `go-redis/v9` 필요 |
+| **Redis** | 독립 서브모듈, Lua Incr + TTL, `go-redis/v9` 필요 |
 
 ## 프로젝트 구조
 

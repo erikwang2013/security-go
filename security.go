@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/url"
 	"regexp"
+	"sync"
 )
 
 // Severity represents the severity level of a detection result.
@@ -33,8 +34,10 @@ type Detector interface {
 	Detect(input string) *Result
 }
 
-// Engine manages detector registration and orchestration.
+// Engine manages detector registration and orchestration. It is safe for
+// concurrent use: Register may run while requests are being scanned.
 type Engine struct {
+	mu        sync.RWMutex
 	detectors map[string]Detector
 }
 
@@ -43,8 +46,11 @@ func NewEngine() *Engine {
 	return &Engine{detectors: make(map[string]Detector)}
 }
 
-// Register adds a detector to the engine.
+// Register adds a detector to the engine. A later detector with the same
+// Name replaces the earlier one.
 func (e *Engine) Register(d Detector) {
+	e.mu.Lock()
+	defer e.mu.Unlock()
 	e.detectors[d.Name()] = d
 }
 
@@ -60,14 +66,21 @@ func FirstMatch(input string, patterns []*regexp.Regexp) (string, bool) {
 
 // Detect runs a named detector against input.
 func (e *Engine) Detect(name, input string) *Result {
-	if d, ok := e.detectors[name]; ok {
+	e.mu.RLock()
+	d, ok := e.detectors[name]
+	e.mu.RUnlock()
+	if ok {
 		return d.Detect(input)
 	}
 	return nil
 }
 
-// DetectAll runs all registered detectors against input.
+// DetectAll runs all registered detectors against input. The read lock is
+// held for the whole scan, so a concurrent Register waits instead of racing
+// the map.
 func (e *Engine) DetectAll(input string) []*Result {
+	e.mu.RLock()
+	defer e.mu.RUnlock()
 	var results []*Result
 	for _, d := range e.detectors {
 		if r := d.Detect(input); r != nil && r.Detected {

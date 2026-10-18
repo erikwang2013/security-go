@@ -117,9 +117,9 @@ Go 言語で書かれた攻撃検出パッケージ。**36 個の検出器**、*
 
 | バックエンド | 説明 |
 |------|------|
-| **Memory** | `sync.Mutex` + map、30 秒ごとに期限切れエントリを自動クリーンアップ |
+| **Memory** | `sync.RWMutex` + map、30 秒ごとに期限切れエントリを自動クリーンアップ |
 | **File** | JSON ファイル永続化、Close 時に flush |
-| **Redis** | 独立サブモジュール、Pipeline Incr + TTL、`go-redis/v9` が必要 |
+| **Redis** | 独立サブモジュール、Lua Incr + TTL、`go-redis/v9` が必要 |
 
 ## プロジェクト構成
 

@@ -94,9 +94,9 @@ Implementasi:
 
 | Backend | Keterangan |
 |------|------|
-| `storage.NewMemory() *Memory` | Implementasi memori, `sync.Mutex` + map, pembersihan otomatis entri kedaluwarsa setiap 30 detik |
+| `storage.NewMemory() *Memory` | Implementasi memori, `sync.RWMutex` + map, pembersihan otomatis entri kedaluwarsa setiap 30 detik |
 | `storage.NewFile(path) (*File, error)` | Persistensi file JSON, penyimpanan otomatis setiap 30 detik + flush saat Close |
-| `redis.New(addr, password string, db int) *Backend` | Submodul Redis, Pipeline Incr + TTL, memerlukan `go-redis/v9` |
+| `redis.New(addr, password string, db int) *Backend` | Submodul Redis, Lua Incr + TTL, memerlukan `go-redis/v9` |
 
 ## Validator HTTP
 

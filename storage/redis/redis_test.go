@@ -60,6 +60,50 @@ func TestIncrWindowExpiry(t *testing.T) {
 	}
 }
 
+// The window starts at the first increment; later increments must not push
+// the expiry out. Memory and File reset at the same point, so Redis has to
+// agree or the same policy behaves differently per backend.
+func TestIncrWindowDoesNotSlide(t *testing.T) {
+	b, s := newTestBackend(t)
+	defer b.Close()
+
+	if _, err := b.Incr("ip:1.2.3.4", 30*time.Second); err != nil {
+		t.Fatal(err)
+	}
+	s.FastForward(20 * time.Second)
+	if count, err := b.Incr("ip:1.2.3.4", 30*time.Second); err != nil || count != 2 {
+		t.Fatalf("second increment = %d, %v; want 2, nil", count, err)
+	}
+	s.FastForward(11 * time.Second) // past the original 30s window
+
+	count, err := b.Incr("ip:1.2.3.4", 30*time.Second)
+	if err != nil || count != 1 {
+		t.Fatalf("increment after the window = %d, %v; want 1, nil", count, err)
+	}
+}
+
+func TestIncrNegativeWindow(t *testing.T) {
+	b, _ := newTestBackend(t)
+	defer b.Close()
+
+	if count, err := b.Incr("k", -time.Second); err != nil || count != 1 {
+		t.Fatalf("negative window = %d, %v; want 1, nil", count, err)
+	}
+	if count, err := b.Incr("k", time.Minute); err != nil || count != 1 {
+		t.Fatalf("increment after a zero-length window = %d, %v; want 1, nil", count, err)
+	}
+}
+
+func TestIncrClosedClient(t *testing.T) {
+	b, _ := newTestBackend(t)
+	if err := b.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := b.Incr("k", time.Minute); err == nil {
+		t.Fatal("expected an error from a closed client")
+	}
+}
+
 func TestBlockAndIsBlocked(t *testing.T) {
 	b, s := newTestBackend(t)
 	defer b.Close()

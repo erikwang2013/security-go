@@ -94,9 +94,9 @@ type Backend interface {
 
 | الواجهة الخلفية | الوصف |
 |------|------|
-| `storage.NewMemory() *Memory` | تنفيذ بالذاكرة، `sync.Mutex` + map، تنظيف تلقائي للعناصر المنتهية كل 30 ثانية |
+| `storage.NewMemory() *Memory` | تنفيذ بالذاكرة، `sync.RWMutex` + map، تنظيف تلقائي للعناصر المنتهية كل 30 ثانية |
 | `storage.NewFile(path) (*File, error)` | استمرارية عبر ملفات JSON، حفظ تلقائي كل 30 ثانية + flush عند Close |
-| `redis.New(addr, password string, db int) *Backend` | وحدة Redis الفرعية، Pipeline Incr + TTL، يتطلب `go-redis/v9` |
+| `redis.New(addr, password string, db int) *Backend` | وحدة Redis الفرعية، Lua Incr + TTL، يتطلب `go-redis/v9` |
 
 ## مُدقّقات HTTP
 

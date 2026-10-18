@@ -118,9 +118,9 @@ Der vollständige Kreislauf einer Anfrage, vom Eingang über die Erkennung bis z
 
 | Backend | Beschreibung |
 |---------|--------------|
-| **Memory** | `sync.Mutex` + map, automatische Bereinigung abgelaufener Einträge nach 30 s |
+| **Memory** | `sync.RWMutex` + map, automatische Bereinigung abgelaufener Einträge nach 30 s |
 | **File** | JSON-Datei-Persistenz, flush bei Close |
-| **Redis** | Eigenständiges Untermodul, Pipeline Incr + TTL, erfordert `go-redis/v9` |
+| **Redis** | Eigenständiges Untermodul, Lua Incr + TTL, erfordert `go-redis/v9` |
 
 ## Projektstruktur
 

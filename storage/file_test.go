@@ -179,3 +179,46 @@ func TestFileCloseCreatesFile(t *testing.T) {
 		t.Fatalf("expected data file to exist after Close, got %v", err)
 	}
 }
+
+// Get has no window argument; the window recorded by Incr is the only expiry
+// it can apply, matching Memory.
+func TestFileGetHonorsWindow(t *testing.T) {
+	f, _ := NewFile(filepath.Join(t.TempDir(), "data.json"))
+	defer f.Close()
+
+	if _, err := f.Incr("ip", 10*time.Millisecond); err != nil {
+		t.Fatal(err)
+	}
+	time.Sleep(25 * time.Millisecond)
+
+	if got, _ := f.Get("ip"); got != 0 {
+		t.Fatalf("Get after the window = %d, want 0", got)
+	}
+}
+
+// saveLocked used a hard-coded 5-minute ceiling. A record with a longer
+// window (Signer asks for 10 minutes) was discarded on save even though it
+// was still live.
+func TestFileSaveHonorsRecordedWindow(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "data.json")
+	f, _ := NewFile(path)
+	if _, err := f.Incr("ip", 10*time.Minute); err != nil {
+		t.Fatal(err)
+	}
+	f.mu.Lock()
+	f.records["ip"].WindowStart = time.Now().Add(-6 * time.Minute)
+	f.mu.Unlock()
+	if err := f.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	reopened, err := NewFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer reopened.Close()
+
+	if got, _ := reopened.Get("ip"); got != 1 {
+		t.Fatalf("record inside its 10m window was dropped on save: Get = %d, want 1", got)
+	}
+}

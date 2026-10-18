@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"regexp"
 	"strings"
+	"sync"
 	"testing"
 )
 
@@ -237,4 +238,25 @@ func TestCollectRequestInputsNilURL(t *testing.T) {
 	if len(inputs) != 1 || inputs[0] != "X-Custom: v" {
 		t.Fatalf("expected header only, got %+v", inputs)
 	}
+}
+
+// An Engine is shared by every request handler; registering a detector while
+// traffic is being scanned must not race on the map.
+func TestEngineConcurrentRegisterAndDetect(t *testing.T) {
+	e := NewEngine()
+	e.Register(&mockDetector{name: "seed"})
+
+	var wg sync.WaitGroup
+	for i := 0; i < 8; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for j := 0; j < 200; j++ {
+				e.Register(&mockDetector{name: "mock"})
+				e.DetectAll("attack")
+				e.Detect("mock", "attack")
+			}
+		}()
+	}
+	wg.Wait()
 }

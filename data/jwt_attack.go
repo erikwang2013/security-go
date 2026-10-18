@@ -5,12 +5,18 @@ package data
 import (
 	"encoding/base64"
 	"encoding/json"
+	"regexp"
 	"strings"
 
 	"github.com/erikwang2013/security-go"
 )
 
-// JWTAttack detects JWT-based attacks without using regex.
+// jwtTokenPattern finds a token inside the "Key: value" / "name=value"
+// envelopes DetectRequest produces. A bare token matches too; a two-part
+// input without a third segment is left untouched.
+var jwtTokenPattern = regexp.MustCompile(`[A-Za-z0-9_-]+={0,2}\.[A-Za-z0-9_-]+={0,2}\.[A-Za-z0-9_-]*={0,2}`)
+
+// JWTAttack detects JWT-based attacks without parsing the signature.
 type JWTAttack struct{}
 
 // Name returns the detector name.
@@ -23,6 +29,9 @@ func (j *JWTAttack) Name() string {
 //   - kid containing path traversal (../ or ..\)
 //   - three parts with empty signature
 func (j *JWTAttack) Detect(input string) *security.Result {
+	if token := jwtTokenPattern.FindString(input); token != "" {
+		input = token
+	}
 	parts := strings.Split(strings.TrimSpace(input), ".")
 	if len(parts) < 2 {
 		return &security.Result{Name: j.Name(), Detected: false}

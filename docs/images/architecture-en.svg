@@ -117,7 +117,7 @@
 
   <!-- ══════ detector layer ══════ -->
   <text class="t lay" x="40" y="366">DETECTOR LAYER</text>
-  <text class="t bd" x="228" y="366" style="font-size:10.5px;">34 dispatched via the Engine</text>
+  <text class="t bd" x="228" y="366" style="font-size:10.5px;">27 dispatched via the Engine</text>
 
   <!-- injection -->
   <rect x="40" y="396" width="144" height="256" rx="12" fill="#e5484d" fill-opacity="0.07" stroke="#e5484d" stroke-opacity="0.45" stroke-width="1.5"/>
@@ -211,18 +211,18 @@
   <g>
     <rect x="470" y="702" width="200" height="78" rx="9" fill="#0b1220" stroke="#2f6f6a"/>
     <text class="m" x="486" y="728" font-size="12" fill="#6ee7d7">Memory</text>
-    <text class="t bd" x="486" y="748" style="font-size:10px;">Mutex + map, the default</text>
+    <text class="t bd" x="486" y="748" style="font-size:10px;">RWMutex + map, the default</text>
     <text class="t bd" x="486" y="764" style="font-size:10px;">30s background reap</text>
 
     <rect x="686" y="702" width="200" height="78" rx="9" fill="#0b1220" stroke="#2f6f6a"/>
     <text class="m" x="702" y="728" font-size="12" fill="#6ee7d7">File</text>
-    <text class="t bd" x="702" y="748" style="font-size:10px;">JSON file persistence</text>
+    <text class="t bd" x="702" y="748" style="font-size:10px;">JSON persistence · atomic writes</text>
     <text class="t bd" x="702" y="764" style="font-size:10px;">flushed on Close</text>
 
     <rect x="902" y="702" width="200" height="78" rx="9" fill="#0b1220" stroke="#2f6f6a"/>
     <text class="m" x="918" y="728" font-size="12" fill="#6ee7d7">Redis</text>
     <text class="t bd" x="918" y="748" style="font-size:10px;">Separate submodule · go-redis/v9</text>
-    <text class="t bd" x="918" y="764" style="font-size:10px;">Pipeline Incr + TTL</text>
+    <text class="t bd" x="918" y="764" style="font-size:10px;">Lua atomic Incr + TTL</text>
   </g>
 
   <!-- legend -->

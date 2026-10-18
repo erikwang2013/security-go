@@ -115,3 +115,22 @@ func TestJWTNonJSONHeader(t *testing.T) {
 		t.Error("should not detect non-JSON header")
 	}
 }
+
+// DetectRequest hands headers and cookies over as "Key: value" / "name=value".
+// The token has to be found inside that envelope, or JWT attacks arriving in
+// an Authorization header are never seen by the engine.
+func TestJWTInsideAuthorizationHeader(t *testing.T) {
+	d := &JWTAttack{}
+	token := "eyJhbGciOiJub25lIiwidHlwIjoiSldUIn0.eyJzdWIiOiIxMjM0NTY3ODkwIn0."
+	if r := d.Detect("Authorization: Bearer " + token); !r.Detected {
+		t.Error("should detect alg:none inside an Authorization header")
+	}
+}
+
+func TestJWTInsideCookie(t *testing.T) {
+	d := &JWTAttack{}
+	token := "eyJhbGciOiJub25lIiwidHlwIjoiSldUIn0.eyJzdWIiOiIxMjM0NTY3ODkwIn0."
+	if r := d.Detect("session=" + token); !r.Detected {
+		t.Error("should detect alg:none inside a cookie pair")
+	}
+}

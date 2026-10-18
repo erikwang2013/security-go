@@ -117,9 +117,9 @@ The full loop of a request, from entry through detection to graded handling (inc
 
 | Backend | Description |
 |------|------|
-| **Memory** | `sync.Mutex` + map, auto-cleans expired entries every 30s |
+| **Memory** | `sync.RWMutex` + map, auto-cleans expired entries every 30s |
 | **File** | JSON file persistence, flushes on Close |
-| **Redis** | Standalone submodule, Pipeline Incr + TTL, requires `go-redis/v9` |
+| **Redis** | Standalone submodule, Lua Incr + TTL, requires `go-redis/v9` |
 
 ## Project Layout
 

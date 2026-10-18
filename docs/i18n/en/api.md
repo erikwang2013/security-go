@@ -94,9 +94,11 @@ Implementations:
 
 | Backend | Description |
 |------|------|
-| `storage.NewMemory() *Memory` | In-memory implementation, `sync.Mutex` + map, auto-cleans expired entries every 30s |
-| `storage.NewFile(path) (*File, error)` | JSON file persistence, auto-save every 30s + flush on Close |
-| `redis.New(addr, password string, db int) *Backend` | Redis submodule, Pipeline Incr + TTL, requires `go-redis/v9` |
+| `storage.NewMemory() *Memory` | In-memory implementation, `sync.RWMutex` + map, cleans expired entries every 30s; `Close` stops the reaper |
+| `storage.NewFile(path) (*File, error)` | JSON file persistence, atomic write every 30s (temp file + rename) + flush on Close |
+| `redis.New(addr, password string, db int) *Backend` | Redis submodule, Lua Incr + TTL set on the first hit, requires `go-redis/v9` |
+
+The counting window starts at the first `Incr`; once it expires the next increment begins at 1. `Get` has no window argument, so it uses the window recorded by `Incr`. Memory and File expire each record by its own window rather than a fixed five-minute ceiling.
 
 ## HTTP Validators
 

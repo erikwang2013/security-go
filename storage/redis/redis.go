@@ -12,6 +12,17 @@ import (
 
 const blockedPrefix = "blocked:"
 
+// incrWindowScript increments the counter and sets the window on the first
+// increment only. Expiring on every call made the window slide: a client that
+// kept failing never saw its count reset, unlike Memory and File.
+var incrWindowScript = redis.NewScript(`
+local n = redis.call('INCR', KEYS[1])
+if n == 1 then
+  redis.call('PEXPIRE', KEYS[1], ARGV[1])
+end
+return n
+`)
+
 // Backend is a Redis-backed storage backend.
 type Backend struct {
 	client *redis.Client
@@ -30,15 +41,15 @@ func New(addr, password string, db int) *Backend {
 var _ storage.Backend = (*Backend)(nil)
 
 func (r *Backend) Incr(key string, window time.Duration) (int, error) {
-	ctx := context.Background()
-	pipe := r.client.Pipeline()
-	incr := pipe.Incr(ctx, key)
-	pipe.Expire(ctx, key, window)
-	_, err := pipe.Exec(ctx)
+	ms := window.Milliseconds()
+	if ms < 0 {
+		ms = 0
+	}
+	n, err := incrWindowScript.Run(context.Background(), r.client, []string{key}, ms).Int()
 	if err != nil {
 		return 0, err
 	}
-	return int(incr.Val()), nil
+	return n, nil
 }
 
 func (r *Backend) Get(key string) (int, error) {

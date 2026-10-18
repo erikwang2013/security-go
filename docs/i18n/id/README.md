@@ -117,9 +117,9 @@ Siklus lengkap sebuah permintaan, dari masuk hingga deteksi lalu penanganan bert
 
 | Backend | Keterangan |
 |------|------|
-| **Memory** | `sync.Mutex` + map, pembersihan otomatis entri kedaluwarsa setiap 30 detik |
+| **Memory** | `sync.RWMutex` + map, pembersihan otomatis entri kedaluwarsa setiap 30 detik |
 | **File** | Persistensi file JSON, flush saat Close |
-| **Redis** | Submodul terpisah, Pipeline Incr + TTL, memerlukan `go-redis/v9` |
+| **Redis** | Submodul terpisah, Lua Incr + TTL, memerlukan `go-redis/v9` |
 
 ## Struktur Proyek
 

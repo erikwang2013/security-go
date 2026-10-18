@@ -94,9 +94,9 @@ type Backend interface {
 
 | バックエンド | 説明 |
 |------|------|
-| `storage.NewMemory() *Memory` | メモリ実装、`sync.Mutex` + map、30 秒ごとに期限切れエントリを自動クリーンアップ |
+| `storage.NewMemory() *Memory` | メモリ実装、`sync.RWMutex` + map、30 秒ごとに期限切れエントリを自動クリーンアップ |
 | `storage.NewFile(path) (*File, error)` | JSON ファイル永続化、30 秒ごとに自動保存 + Close 時に flush |
-| `redis.New(addr, password string, db int) *Backend` | Redis サブモジュール、Pipeline Incr + TTL、`go-redis/v9` が必要 |
+| `redis.New(addr, password string, db int) *Backend` | Redis サブモジュール、Lua Incr + TTL、`go-redis/v9` が必要 |
 
 ## HTTP バリデータ
 

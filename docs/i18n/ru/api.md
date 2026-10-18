@@ -94,9 +94,9 @@ type Backend interface {
 
 | Бэкенд | Описание |
 |------|------|
-| `storage.NewMemory() *Memory` | реализация в памяти, `sync.Mutex` + map, автоматическая очистка устаревших записей каждые 30 с |
+| `storage.NewMemory() *Memory` | реализация в памяти, `sync.RWMutex` + map, автоматическая очистка устаревших записей каждые 30 с |
 | `storage.NewFile(path) (*File, error)` | JSON-персистентность на диск, автосохранение каждые 30 с + flush при Close |
-| `redis.New(addr, password string, db int) *Backend` | подмодуль Redis, Pipeline Incr + TTL, требуется `go-redis/v9` |
+| `redis.New(addr, password string, db int) *Backend` | подмодуль Redis, Lua Incr + TTL, требуется `go-redis/v9` |
 
 ## HTTP-валидаторы
 

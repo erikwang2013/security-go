@@ -107,43 +107,45 @@
 				
 				<option value="file25">github.com/erikwang2013/security-go/injection/xss.go (100.0%)</option>
 				
-				<option value="file26">github.com/erikwang2013/security-go/pet/mood.go (100.0%)</option>
+				<option value="file26">github.com/erikwang2013/security-go/pet/expression.go (100.0%)</option>
 				
-				<option value="file27">github.com/erikwang2013/security-go/pet/pet.go (100.0%)</option>
+				<option value="file27">github.com/erikwang2013/security-go/pet/mood.go (100.0%)</option>
 				
-				<option value="file28">github.com/erikwang2013/security-go/protocol/cors.go (100.0%)</option>
+				<option value="file28">github.com/erikwang2013/security-go/pet/pet.go (100.0%)</option>
 				
-				<option value="file29">github.com/erikwang2013/security-go/protocol/dns_rebinding.go (100.0%)</option>
+				<option value="file29">github.com/erikwang2013/security-go/protocol/cors.go (100.0%)</option>
 				
-				<option value="file30">github.com/erikwang2013/security-go/protocol/header_injection.go (100.0%)</option>
+				<option value="file30">github.com/erikwang2013/security-go/protocol/dns_rebinding.go (100.0%)</option>
 				
-				<option value="file31">github.com/erikwang2013/security-go/protocol/host_header.go (100.0%)</option>
+				<option value="file31">github.com/erikwang2013/security-go/protocol/header_injection.go (100.0%)</option>
 				
-				<option value="file32">github.com/erikwang2013/security-go/protocol/open_redirect.go (100.0%)</option>
+				<option value="file32">github.com/erikwang2013/security-go/protocol/host_header.go (100.0%)</option>
 				
-				<option value="file33">github.com/erikwang2013/security-go/protocol/request_smuggling.go (100.0%)</option>
+				<option value="file33">github.com/erikwang2013/security-go/protocol/open_redirect.go (100.0%)</option>
 				
-				<option value="file34">github.com/erikwang2013/security-go/protocol/ssrf.go (100.0%)</option>
+				<option value="file34">github.com/erikwang2013/security-go/protocol/request_smuggling.go (100.0%)</option>
 				
-				<option value="file35">github.com/erikwang2013/security-go/protocol/websocket.go (100.0%)</option>
+				<option value="file35">github.com/erikwang2013/security-go/protocol/ssrf.go (100.0%)</option>
 				
-				<option value="file36">github.com/erikwang2013/security-go/protocol/xxe.go (100.0%)</option>
+				<option value="file36">github.com/erikwang2013/security-go/protocol/websocket.go (100.0%)</option>
 				
-				<option value="file37">github.com/erikwang2013/security-go/security.go (100.0%)</option>
+				<option value="file37">github.com/erikwang2013/security-go/protocol/xxe.go (100.0%)</option>
 				
-				<option value="file38">github.com/erikwang2013/security-go/session/bruteforce.go (88.0%)</option>
+				<option value="file38">github.com/erikwang2013/security-go/security.go (100.0%)</option>
 				
-				<option value="file39">github.com/erikwang2013/security-go/session/lockout.go (97.0%)</option>
+				<option value="file39">github.com/erikwang2013/security-go/session/bruteforce.go (88.0%)</option>
 				
-				<option value="file40">github.com/erikwang2013/security-go/session/store.go (82.9%)</option>
+				<option value="file40">github.com/erikwang2013/security-go/session/lockout.go (97.0%)</option>
 				
-				<option value="file41">github.com/erikwang2013/security-go/session/tamper.go (97.8%)</option>
+				<option value="file41">github.com/erikwang2013/security-go/session/store.go (82.9%)</option>
 				
-				<option value="file42">github.com/erikwang2013/security-go/session/tracker.go (84.0%)</option>
+				<option value="file42">github.com/erikwang2013/security-go/session/tamper.go (97.8%)</option>
 				
-				<option value="file43">github.com/erikwang2013/security-go/storage/file.go (90.8%)</option>
+				<option value="file43">github.com/erikwang2013/security-go/session/tracker.go (84.0%)</option>
 				
-				<option value="file44">github.com/erikwang2013/security-go/storage/memory.go (76.9%)</option>
+				<option value="file44">github.com/erikwang2013/security-go/storage/file.go (82.8%)</option>
+				
+				<option value="file45">github.com/erikwang2013/security-go/storage/memory.go (95.7%)</option>
 				
 				</select>
 			</div>
@@ -375,16 +377,22 @@ package data
 import (
         "encoding/base64"
         "encoding/json"
+        "regexp"
         "strings"
 
         "github.com/erikwang2013/security-go"
 )
 
-// JWTAttack detects JWT-based attacks without using regex.
+// jwtTokenPattern finds a token inside the "Key: value" / "name=value"
+// envelopes DetectRequest produces. A bare token matches too; a two-part
+// input without a third segment is left untouched.
+var jwtTokenPattern = regexp.MustCompile(`[A-Za-z0-9_-]+={0,2}\.[A-Za-z0-9_-]+={0,2}\.[A-Za-z0-9_-]*={0,2}`)
+
+// JWTAttack detects JWT-based attacks without parsing the signature.
 type JWTAttack struct{}
 
 // Name returns the detector name.
-func (j *JWTAttack) Name() string <span class="cov10" title="13">{
+func (j *JWTAttack) Name() string <span class="cov10" title="15">{
         return "jwt_attack"
 }</span>
 
@@ -392,24 +400,27 @@ func (j *JWTAttack) Name() string <span class="cov10" title="13">{
 //   - alg: "none" in header
 //   - kid containing path traversal (../ or ..\)
 //   - three parts with empty signature
-func (j *JWTAttack) Detect(input string) *security.Result <span class="cov10" title="13">{
-        parts := strings.Split(strings.TrimSpace(input), ".")
+func (j *JWTAttack) Detect(input string) *security.Result <span class="cov10" title="15">{
+        if token := jwtTokenPattern.FindString(input); token != "" </span><span class="cov8" title="11">{
+                input = token
+        }</span>
+        <span class="cov10" title="15">parts := strings.Split(strings.TrimSpace(input), ".")
         if len(parts) &lt; 2 </span><span class="cov3" title="2">{
                 return &amp;security.Result{Name: j.Name(), Detected: false}
         }</span>
 
-        <span class="cov9" title="11">headerJSON, err := base64.RawURLEncoding.DecodeString(strings.TrimRight(parts[0], "="))
+        <span class="cov9" title="13">headerJSON, err := base64.RawURLEncoding.DecodeString(strings.TrimRight(parts[0], "="))
         if err != nil </span><span class="cov1" title="1">{
                 return &amp;security.Result{Name: j.Name(), Detected: false}
         }</span>
 
-        <span class="cov9" title="10">var header map[string]interface{}
+        <span class="cov9" title="12">var header map[string]interface{}
         if err := json.Unmarshal(headerJSON, &amp;header); err != nil </span><span class="cov1" title="1">{
                 return &amp;security.Result{Name: j.Name(), Detected: false}
         }</span>
 
         // Check alg: "none"
-        <span class="cov8" title="9">if alg, ok := header["alg"].(string); ok &amp;&amp; strings.EqualFold(alg, "none") </span><span class="cov4" title="3">{
+        <span class="cov8" title="11">if alg, ok := header["alg"].(string); ok &amp;&amp; strings.EqualFold(alg, "none") </span><span class="cov6" title="5">{
                 return &amp;security.Result{
                         Name:     j.Name(),
                         Detected: true,
@@ -423,7 +434,7 @@ func (j *JWTAttack) Detect(input string) *security.Result <span class="cov10" ti
         }</span>
 
         // Check kid for path traversal
-        <span class="cov7" title="6">if kid, ok := header["kid"].(string); ok &amp;&amp; (strings.Contains(kid, "../") || strings.Contains(kid, `..\`)) </span><span class="cov3" title="2">{
+        <span class="cov6" title="6">if kid, ok := header["kid"].(string); ok &amp;&amp; (strings.Contains(kid, "../") || strings.Contains(kid, `..\`)) </span><span class="cov3" title="2">{
                 return &amp;security.Result{
                         Name:     j.Name(),
                         Detected: true,
@@ -1848,6 +1859,157 @@ import (
         "bytes"
         _ "embed"
         "net/http"
+        "path"
+        "strings"
+        "time"
+)
+
+// Expression identifies one of the mascot's animated expression forms.
+// The zero value is Smile.
+type Expression int
+
+const (
+        Smile Expression = iota
+        Joy
+        Cry
+        Depressed
+        Terrified
+        Angry
+        Coquettish
+        Cute
+        Pleasing
+        Knocking
+        Facepalm
+        Tongue
+)
+
+//go:embed expressions/smile.svg
+var smileSVG []byte
+
+//go:embed expressions/joy.svg
+var joySVG []byte
+
+//go:embed expressions/cry.svg
+var crySVG []byte
+
+//go:embed expressions/depressed.svg
+var depressedSVG []byte
+
+//go:embed expressions/terrified.svg
+var terrifiedSVG []byte
+
+//go:embed expressions/angry.svg
+var angrySVG []byte
+
+//go:embed expressions/coquettish.svg
+var coquettishSVG []byte
+
+//go:embed expressions/cute.svg
+var cuteSVG []byte
+
+//go:embed expressions/pleasing.svg
+var pleasingSVG []byte
+
+//go:embed expressions/knocking.svg
+var knockingSVG []byte
+
+//go:embed expressions/facepalm.svg
+var facepalmSVG []byte
+
+//go:embed expressions/tongue.svg
+var tongueSVG []byte
+
+// expressionArts is indexed by Expression: the order is both the display
+// order and the slug set accepted by ExpressionOf and ExpressionHandler.
+var expressionArts = [...]struct {
+        slug string
+        svg  []byte
+}{
+        {"smile", smileSVG},
+        {"joy", joySVG},
+        {"cry", crySVG},
+        {"depressed", depressedSVG},
+        {"terrified", terrifiedSVG},
+        {"angry", angrySVG},
+        {"coquettish", coquettishSVG},
+        {"cute", cuteSVG},
+        {"pleasing", pleasingSVG},
+        {"knocking", knockingSVG},
+        {"facepalm", facepalmSVG},
+        {"tongue", tongueSVG},
+}
+
+// Expressions returns every expression form in display order. The returned
+// slice is a fresh copy and may be modified by the caller.
+func Expressions() []Expression <span class="cov3" title="4">{
+        out := make([]Expression, len(expressionArts))
+        for i := range expressionArts </span><span class="cov7" title="48">{
+                out[i] = Expression(i)
+        }</span>
+        <span class="cov3" title="4">return out</span>
+}
+
+// String returns the stable lower-case slug for e, e.g. "smile". An
+// unrecognised value returns "unknown".
+func (e Expression) String() string <span class="cov7" title="52">{
+        if e &lt; 0 || int(e) &gt;= len(expressionArts) </span><span class="cov2" title="2">{
+                return "unknown"
+        }</span>
+        <span class="cov7" title="50">return expressionArts[e].slug</span>
+}
+
+// ExpressionOf resolves a slug such as "smile" to an Expression. The match is
+// exact. It reports false when the slug is unknown.
+func ExpressionOf(name string) (Expression, bool) <span class="cov6" title="20">{
+        for i := range expressionArts </span><span class="cov10" title="162">{
+                if expressionArts[i].slug == name </span><span class="cov5" title="14">{
+                        return Expression(i), true
+                }</span>
+        }
+        <span class="cov4" title="6">return Smile, false</span>
+}
+
+// SVGForExpression returns the artwork for e. An unrecognised value falls
+// back to Smile. Like SVG, the slice is shared and must not be modified by
+// the caller.
+func SVGForExpression(e Expression) []byte <span class="cov7" title="30">{
+        if e &lt; 0 || int(e) &gt;= len(expressionArts) </span><span class="cov1" title="1">{
+                return expressionArts[Smile].svg
+        }</span>
+        <span class="cov6" title="29">return expressionArts[e].svg</span>
+}
+
+// ExpressionHandler serves expression artwork by the last path segment of the
+// request URL: "/pet/smile.svg" and "/pet/smile" both serve Smile. The ".svg"
+// suffix is optional. Unknown names return 404. Responses are cacheable for a
+// day, matching Handler.
+//
+// Mount it on its own prefix; any leading path segments are ignored:
+//
+//        http.Handle("/pet/", pet.ExpressionHandler())
+func ExpressionHandler() http.Handler <span class="cov1" title="1">{
+        return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) </span><span class="cov3" title="4">{
+                name := strings.TrimSuffix(path.Base(r.URL.Path), ".svg")
+                e, ok := ExpressionOf(name)
+                if !ok </span><span class="cov2" title="2">{
+                        http.NotFound(w, r)
+                        return
+                }</span>
+                <span class="cov2" title="2">w.Header().Set("Content-Type", "image/svg+xml; charset=utf-8")
+                w.Header().Set("Cache-Control", "public, max-age=86400")
+                http.ServeContent(w, r, e.String()+".svg", time.Time{}, bytes.NewReader(SVGForExpression(e)))</span>
+        })
+}
+</pre>
+		
+		<pre class="file" id="file27" style="display: none">// Copyright (c) 2026 erik &lt;erik@erik.xyz&gt; — https://erik.xyz
+
+package pet
+
+import (
+        "bytes"
+        _ "embed"
+        "net/http"
         "time"
 
         "github.com/erikwang2013/security-go"
@@ -1921,14 +2083,16 @@ func MoodHandler(moodFor func(*http.Request) Mood) http.Handler <span class="cov
 }
 </pre>
 		
-		<pre class="file" id="file27" style="display: none">// Copyright (c) 2026 erik &lt;erik@erik.xyz&gt; — https://erik.xyz
+		<pre class="file" id="file28" style="display: none">// Copyright (c) 2026 erik &lt;erik@erik.xyz&gt; — https://erik.xyz
 
 // Package pet carries the project mascot, 哨兵鼠 (Sentinel Gopher), as a
 // build-time asset: raw SVG for serving over HTTP, and a plain-text banner
 // for startup logs.
 //
 // The mascot is a Go gopher on sentinel duty — shield reading 36 for the
-// detector count, magnifier for the per-request scan.
+// detector count, magnifier for the per-request scan. Three mood postures
+// (mood.go) report threat level, and twelve animated expression forms
+// (expression.go) are available by name; every SVG is embedded with go:embed.
 //
 //        http.Handle("/pet.svg", pet.Handler())  // serve the SVG
 //        log.Println(pet.Banner())               // print at startup
@@ -1977,7 +2141,7 @@ const banner = `        .--------.
 `
 </pre>
 		
-		<pre class="file" id="file28" style="display: none">// Copyright (c) 2026 erik &lt;erik@erik.xyz&gt; — https://erik.xyz
+		<pre class="file" id="file29" style="display: none">// Copyright (c) 2026 erik &lt;erik@erik.xyz&gt; — https://erik.xyz
 
 package protocol
 
@@ -2016,7 +2180,7 @@ func (d *CORS) Detect(input string) *security.Result <span class="cov10" title="
 }
 </pre>
 		
-		<pre class="file" id="file29" style="display: none">// Copyright (c) 2026 erik &lt;erik@erik.xyz&gt; — https://erik.xyz
+		<pre class="file" id="file30" style="display: none">// Copyright (c) 2026 erik &lt;erik@erik.xyz&gt; — https://erik.xyz
 
 package protocol
 
@@ -2057,7 +2221,7 @@ func (d *DNSRebinding) Detect(input string) *security.Result <span class="cov10"
 }
 </pre>
 		
-		<pre class="file" id="file30" style="display: none">// Copyright (c) 2026 erik &lt;erik@erik.xyz&gt; — https://erik.xyz
+		<pre class="file" id="file31" style="display: none">// Copyright (c) 2026 erik &lt;erik@erik.xyz&gt; — https://erik.xyz
 
 package protocol
 
@@ -2097,7 +2261,7 @@ func (d *HeaderInjection) Detect(input string) *security.Result <span class="cov
 }
 </pre>
 		
-		<pre class="file" id="file31" style="display: none">// Copyright (c) 2026 erik &lt;erik@erik.xyz&gt; — https://erik.xyz
+		<pre class="file" id="file32" style="display: none">// Copyright (c) 2026 erik &lt;erik@erik.xyz&gt; — https://erik.xyz
 
 package protocol
 
@@ -2136,7 +2300,7 @@ func (d *HostHeader) Detect(input string) *security.Result <span class="cov10" t
 }
 </pre>
 		
-		<pre class="file" id="file32" style="display: none">// Copyright (c) 2026 erik &lt;erik@erik.xyz&gt; — https://erik.xyz
+		<pre class="file" id="file33" style="display: none">// Copyright (c) 2026 erik &lt;erik@erik.xyz&gt; — https://erik.xyz
 
 package protocol
 
@@ -2177,7 +2341,7 @@ func (d *OpenRedirect) Detect(input string) *security.Result <span class="cov10"
 }
 </pre>
 		
-		<pre class="file" id="file33" style="display: none">// Copyright (c) 2026 erik &lt;erik@erik.xyz&gt; — https://erik.xyz
+		<pre class="file" id="file34" style="display: none">// Copyright (c) 2026 erik &lt;erik@erik.xyz&gt; — https://erik.xyz
 
 package protocol
 
@@ -2218,7 +2382,7 @@ func (d *RequestSmuggling) Detect(input string) *security.Result <span class="co
 }
 </pre>
 		
-		<pre class="file" id="file34" style="display: none">// Copyright (c) 2026 erik &lt;erik@erik.xyz&gt; — https://erik.xyz
+		<pre class="file" id="file35" style="display: none">// Copyright (c) 2026 erik &lt;erik@erik.xyz&gt; — https://erik.xyz
 
 package protocol
 
@@ -2262,7 +2426,7 @@ func (d *SSRF) Detect(input string) *security.Result <span class="cov10" title="
 }
 </pre>
 		
-		<pre class="file" id="file35" style="display: none">// Copyright (c) 2026 erik &lt;erik@erik.xyz&gt; — https://erik.xyz
+		<pre class="file" id="file36" style="display: none">// Copyright (c) 2026 erik &lt;erik@erik.xyz&gt; — https://erik.xyz
 
 package protocol
 
@@ -2304,7 +2468,7 @@ func (d *WebSocket) Detect(input string) *security.Result <span class="cov10" ti
 }
 </pre>
 		
-		<pre class="file" id="file36" style="display: none">// Copyright (c) 2026 erik &lt;erik@erik.xyz&gt; — https://erik.xyz
+		<pre class="file" id="file37" style="display: none">// Copyright (c) 2026 erik &lt;erik@erik.xyz&gt; — https://erik.xyz
 
 package protocol
 
@@ -2346,7 +2510,7 @@ func (d *XXE) Detect(input string) *security.Result <span class="cov10" title="1
 }
 </pre>
 		
-		<pre class="file" id="file37" style="display: none">// Copyright (c) 2026 erik &lt;erik@erik.xyz&gt; — https://erik.xyz
+		<pre class="file" id="file38" style="display: none">// Copyright (c) 2026 erik &lt;erik@erik.xyz&gt; — https://erik.xyz
 
 package security
 
@@ -2354,6 +2518,7 @@ import (
         "net/http"
         "net/url"
         "regexp"
+        "sync"
 )
 
 // Severity represents the severity level of a detection result.
@@ -2381,86 +2546,98 @@ type Detector interface {
         Detect(input string) *Result
 }
 
-// Engine manages detector registration and orchestration.
+// Engine manages detector registration and orchestration. It is safe for
+// concurrent use: Register may run while requests are being scanned.
 type Engine struct {
+        mu        sync.RWMutex
         detectors map[string]Detector
 }
 
 // NewEngine creates a new Engine.
-func NewEngine() *Engine <span class="cov7" title="10">{
+func NewEngine() *Engine <span class="cov3" title="11">{
         return &amp;Engine{detectors: make(map[string]Detector)}
 }</span>
 
-// Register adds a detector to the engine.
-func (e *Engine) Register(d Detector) <span class="cov8" title="12">{
+// Register adds a detector to the engine. A later detector with the same
+// Name replaces the earlier one.
+func (e *Engine) Register(d Detector) <span class="cov9" title="1613">{
+        e.mu.Lock()
+        defer e.mu.Unlock()
         e.detectors[d.Name()] = d
 }</span>
 
 // FirstMatch returns the first pattern that matches input and its source string.
-func FirstMatch(input string, patterns []*regexp.Regexp) (string, bool) <span class="cov4" title="3">{
-        for _, p := range patterns </span><span class="cov4" title="3">{
+func FirstMatch(input string, patterns []*regexp.Regexp) (string, bool) <span class="cov2" title="3">{
+        for _, p := range patterns </span><span class="cov2" title="3">{
                 if p.MatchString(input) </span><span class="cov1" title="1">{
                         return p.String(), true
                 }</span>
         }
-        <span class="cov2" title="2">return "", false</span>
+        <span class="cov1" title="2">return "", false</span>
 }
 
 // Detect runs a named detector against input.
-func (e *Engine) Detect(name, input string) *Result <span class="cov5" title="5">{
-        if d, ok := e.detectors[name]; ok </span><span class="cov4" title="4">{
+func (e *Engine) Detect(name, input string) *Result <span class="cov9" title="1605">{
+        e.mu.RLock()
+        d, ok := e.detectors[name]
+        e.mu.RUnlock()
+        if ok </span><span class="cov9" title="1604">{
                 return d.Detect(input)
         }</span>
         <span class="cov1" title="1">return nil</span>
 }
 
-// DetectAll runs all registered detectors against input.
-func (e *Engine) DetectAll(input string) []*Result <span class="cov9" title="20">{
+// DetectAll runs all registered detectors against input. The read lock is
+// held for the whole scan, so a concurrent Register waits instead of racing
+// the map.
+func (e *Engine) DetectAll(input string) []*Result <span class="cov9" title="1620">{
+        e.mu.RLock()
+        defer e.mu.RUnlock()
         var results []*Result
-        for _, d := range e.detectors </span><span class="cov10" title="23">{
-                if r := d.Detect(input); r != nil &amp;&amp; r.Detected </span><span class="cov7" title="11">{
+        for _, d := range e.detectors </span><span class="cov10" title="3223">{
+                if r := d.Detect(input); r != nil &amp;&amp; r.Detected </span><span class="cov9" title="3211">{
                         results = append(results, r)
                 }</span>
         }
-        <span class="cov9" title="20">return results</span>
+        <span class="cov9" title="1620">return results</span>
 }
 
 // DetectRequest runs all registered detectors against an HTTP request.
 // Each input is also scanned URL-decoded: `%3Cscript%3E`-style encoded
 // payloads must not bypass detection.
-func (e *Engine) DetectRequest(r *http.Request) []*Result <span class="cov5" title="5">{
+func (e *Engine) DetectRequest(r *http.Request) []*Result <span class="cov2" title="5">{
         var results []*Result
-        for _, input := range collectRequestInputs(r) </span><span class="cov8" title="16">{
+        for _, input := range collectRequestInputs(r) </span><span class="cov4" title="16">{
                 results = append(results, e.DetectAll(input)...)
                 if dec, err := url.QueryUnescape(input); err == nil &amp;&amp; dec != input </span><span class="cov1" title="1">{
                         results = append(results, e.DetectAll(dec)...)
                 }</span>
         }
-        <span class="cov5" title="5">return results</span>
+        <span class="cov2" title="5">return results</span>
 }
 
-func collectRequestInputs(r *http.Request) []string <span class="cov6" title="8">{
-        if r == nil </span><span class="cov2" title="2">{
+func collectRequestInputs(r *http.Request) []string <span class="cov3" title="8">{
+        if r == nil </span><span class="cov1" title="2">{
                 return nil
         }</span>
-        <span class="cov6" title="6">var inputs []string
-        if r.URL != nil </span><span class="cov5" title="5">{
+        <span class="cov2" title="6">var inputs []string
+        if r.URL != nil </span><span class="cov2" title="5">{
                 inputs = append(inputs, r.URL.String())
                 inputs = append(inputs, r.URL.Query().Encode())
         }</span>
-        <span class="cov6" title="6">for key, vals := range r.Header </span><span class="cov7" title="10">{
-                for _, v := range vals </span><span class="cov7" title="11">{
+        <span class="cov2" title="6">for key, vals := range r.Header </span><span class="cov3" title="10">{
+                for _, v := range vals </span><span class="cov3" title="11">{
                         inputs = append(inputs, key+": "+v)
                 }</span>
         }
-        <span class="cov6" title="6">for _, c := range r.Cookies() </span><span class="cov4" title="3">{
+        <span class="cov2" title="6">for _, c := range r.Cookies() </span><span class="cov2" title="3">{
                 inputs = append(inputs, c.Name+"="+c.Value)
         }</span>
-        <span class="cov6" title="6">return inputs</span>
+        <span class="cov2" title="6">return inputs</span>
 }
 </pre>
 		
-		<pre class="file" id="file38" style="display: none">// Copyright (c) 2026 erik &lt;erik@erik.xyz&gt; — https://erik.xyz
+		<pre class="file" id="file39" style="display: none">// Copyright (c) 2026 erik &lt;erik@erik.xyz&gt; — https://erik.xyz
 
 package session
 
@@ -2703,7 +2880,7 @@ func (t *Tracker) stuffingLimit() int <span class="cov8" title="35">{
 }
 </pre>
 		
-		<pre class="file" id="file39" style="display: none">// Copyright (c) 2026 erik &lt;erik@erik.xyz&gt; — https://erik.xyz
+		<pre class="file" id="file40" style="display: none">// Copyright (c) 2026 erik &lt;erik@erik.xyz&gt; — https://erik.xyz
 
 package session
 
@@ -2794,7 +2971,7 @@ func (t *Tracker) lockoutDuration() time.Duration <span class="cov6" title="19">
 }
 </pre>
 		
-		<pre class="file" id="file40" style="display: none">// Copyright (c) 2026 erik &lt;erik@erik.xyz&gt; — https://erik.xyz
+		<pre class="file" id="file41" style="display: none">// Copyright (c) 2026 erik &lt;erik@erik.xyz&gt; — https://erik.xyz
 
 // Package session detects token-session abuse: a stolen token replayed from
 // another client (客户端被劫持), a login from an unseen network (异地登录) and
@@ -2907,7 +3084,7 @@ func (m *MemoryStore) reap(interval time.Duration) <span class="cov7" title="53"
 }
 </pre>
 		
-		<pre class="file" id="file41" style="display: none">// Copyright (c) 2026 erik &lt;erik@erik.xyz&gt; — https://erik.xyz
+		<pre class="file" id="file42" style="display: none">// Copyright (c) 2026 erik &lt;erik@erik.xyz&gt; — https://erik.xyz
 
 package session
 
@@ -3048,7 +3225,7 @@ func canonical(params map[string]string) string <span class="cov9" title="28">{
 }
 </pre>
 		
-		<pre class="file" id="file42" style="display: none">// Copyright (c) 2026 erik &lt;erik@erik.xyz&gt; — https://erik.xyz
+		<pre class="file" id="file43" style="display: none">// Copyright (c) 2026 erik &lt;erik@erik.xyz&gt; — https://erik.xyz
 
 package session
 
@@ -3479,22 +3656,24 @@ func deny(name, reason, message string, severity security.Severity) *security.Re
 }</span>
 </pre>
 		
-		<pre class="file" id="file43" style="display: none">// Copyright (c) 2026 erik &lt;erik@erik.xyz&gt; — https://erik.xyz
+		<pre class="file" id="file44" style="display: none">// Copyright (c) 2026 erik &lt;erik@erik.xyz&gt; — https://erik.xyz
 
 package storage
 
 import (
         "encoding/json"
         "os"
+        "path/filepath"
         "sync"
         "time"
 )
 
 type record struct {
-        Key         string    `json:"key"`
-        Count       int       `json:"count"`
-        WindowStart time.Time `json:"window_start"`
-        BlockUntil  time.Time `json:"block_until,omitempty"`
+        Key         string        `json:"key"`
+        Count       int           `json:"count"`
+        WindowStart time.Time     `json:"window_start"`
+        Window      time.Duration `json:"window,omitempty"`
+        BlockUntil  time.Time     `json:"block_until,omitempty"`
 }
 
 // File is a file-based persistent storage backend.
@@ -3509,43 +3688,50 @@ type File struct {
 
 // NewFile creates or loads a file-based storage backend with periodic
 // auto-save every 30 seconds to prevent data loss on crash.
-func NewFile(path string) (*File, error) <span class="cov3" title="9">{
+func NewFile(path string) (*File, error) <span class="cov3" title="12">{
         f := &amp;File{path: path, records: make(map[string]*record), done: make(chan struct{})}
         data, err := os.ReadFile(path)
-        if err == nil </span><span class="cov1" title="2">{
+        if err == nil </span><span class="cov2" title="3">{
                 var loaded []record
-                if json.Unmarshal(data, &amp;loaded) == nil </span><span class="cov1" title="1">{
-                        for _, r := range loaded </span><span class="cov2" title="3">{
+                if json.Unmarshal(data, &amp;loaded) == nil </span><span class="cov1" title="2">{
+                        for _, r := range loaded </span><span class="cov2" title="4">{
                                 f.records[r.Key] = &amp;r
                         }</span>
                 }
         }
-        <span class="cov3" title="9">go f.autoSave(30 * time.Second)
+        <span class="cov3" title="12">go f.autoSave(30 * time.Second)
         return f, nil</span>
 }
 
-func (f *File) Incr(key string, window time.Duration) (int, error) <span class="cov10" title="2010">{
+func (f *File) Incr(key string, window time.Duration) (int, error) <span class="cov10" title="2012">{
         f.mu.Lock()
         defer f.mu.Unlock()
         now := time.Now()
         r, ok := f.records[key]
-        if !ok || now.Sub(r.WindowStart) &gt; window </span><span class="cov3" title="8">{
-                f.records[key] = &amp;record{Key: key, Count: 1, WindowStart: now}
+        if !ok || now.Sub(r.WindowStart) &gt; window </span><span class="cov3" title="10">{
+                f.records[key] = &amp;record{Key: key, Count: 1, WindowStart: now, Window: window}
                 f.dirty = true
                 return 1, nil
         }</span>
         <span class="cov9" title="2002">r.Count++
+        r.Window = window
         f.dirty = true
         return r.Count, nil</span>
 }
 
-func (f *File) Get(key string) (int, error) <span class="cov3" title="6">{
+func (f *File) Get(key string) (int, error) <span class="cov3" title="8">{
         f.mu.RLock()
         defer f.mu.RUnlock()
-        if r, ok := f.records[key]; ok </span><span class="cov2" title="4">{
-                return r.Count, nil
+        r, ok := f.records[key]
+        if !ok </span><span class="cov1" title="2">{
+                return 0, nil
         }</span>
-        <span class="cov1" title="2">return 0, nil</span>
+        // Get has no window argument, so the window recorded by Incr decides
+        // whether the counter is still live.
+        <span class="cov3" title="6">if r.Window &gt; 0 &amp;&amp; time.Since(r.WindowStart) &gt; r.Window </span><span class="cov1" title="1">{
+                return 0, nil
+        }</span>
+        <span class="cov2" title="5">return r.Count, nil</span>
 }
 
 func (f *File) Block(key string, duration time.Duration) error <span class="cov1" title="2">{
@@ -3569,42 +3755,82 @@ func (f *File) IsBlocked(key string) (bool, error) <span class="cov2" title="5">
         <span class="cov1" title="2">return false, nil</span>
 }
 
-func (f *File) Close() error <span class="cov3" title="9">{
+func (f *File) Close() error <span class="cov3" title="12">{
         f.mu.Lock()
         defer f.mu.Unlock()
-        if !f.closed </span><span class="cov3" title="9">{
+        if !f.closed </span><span class="cov3" title="12">{
                 close(f.done)
                 f.closed = true
         }</span>
-        <span class="cov3" title="9">return f.saveLocked()</span>
+        <span class="cov3" title="12">return f.saveLocked()</span>
 }
 
-func (f *File) saveLocked() error <span class="cov3" title="9">{
+func (f *File) saveLocked() error <span class="cov3" title="12">{
         now := time.Now()
         var out []record
-        for k, r := range f.records </span><span class="cov3" title="12">{
+        for k, r := range f.records </span><span class="cov4" title="15">{
                 blockAlive := !r.BlockUntil.IsZero() &amp;&amp; now.Before(r.BlockUntil)
-                windowAlive := !r.WindowStart.IsZero() &amp;&amp; now.Sub(r.WindowStart) &lt;= 5*time.Minute
-                // ponytail: 5-min ceiling assumes windows &lt;= 5min (matches memory.go); store window per record if longer needed
-                if !blockAlive &amp;&amp; !windowAlive </span><span class="cov1" title="1">{
+                windowAlive := !r.WindowStart.IsZero() &amp;&amp; now.Sub(r.WindowStart) &lt;= recordWindow(r)
+                if !blockAlive &amp;&amp; !windowAlive </span><span class="cov1" title="2">{
                         delete(f.records, k)
                         continue</span>
                 }
-                <span class="cov3" title="11">out = append(out, *r)</span>
+                <span class="cov4" title="13">out = append(out, *r)</span>
         }
-        <span class="cov3" title="9">data, err := json.Marshal(out)
+        <span class="cov3" title="12">data, err := json.Marshal(out)
         if err != nil </span><span class="cov0" title="0">{
                 return err
         }</span>
-        <span class="cov3" title="9">return os.WriteFile(f.path, data, 0644)</span>
+        // Write to a sibling temp file and rename, so a crash mid-write cannot
+        // truncate the live file: NewFile treats unreadable JSON as empty, which
+        // would silently drop every ban and counter.
+        <span class="cov3" title="12">tmp, err := os.CreateTemp(filepath.Dir(f.path), ".security-go-*.tmp")
+        if err != nil </span><span class="cov1" title="1">{
+                return err
+        }</span>
+        <span class="cov3" title="11">name := tmp.Name()
+        defer func() </span><span class="cov3" title="11">{
+                if name != "" </span><span class="cov0" title="0">{
+                        os.Remove(name)
+                }</span>
+        }()
+        <span class="cov3" title="11">if err := tmp.Chmod(0644); err != nil </span><span class="cov0" title="0">{
+                tmp.Close()
+                return err
+        }</span>
+        <span class="cov3" title="11">if _, err := tmp.Write(data); err != nil </span><span class="cov0" title="0">{
+                tmp.Close()
+                return err
+        }</span>
+        <span class="cov3" title="11">if err := tmp.Sync(); err != nil </span><span class="cov0" title="0">{
+                tmp.Close()
+                return err
+        }</span>
+        <span class="cov3" title="11">if err := tmp.Close(); err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+        <span class="cov3" title="11">if err := os.Rename(name, f.path); err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+        <span class="cov3" title="11">name = ""
+        return nil</span>
 }
 
-func (f *File) autoSave(interval time.Duration) <span class="cov3" title="9">{
+// recordWindow returns the TTL stored with a counter. Files written before the
+// field existed carry no window; keep their historic five-minute retirement.
+func recordWindow(r *record) time.Duration <span class="cov3" title="12">{
+        if r.Window &gt; 0 </span><span class="cov3" title="12">{
+                return r.Window
+        }</span>
+        <span class="cov0" title="0">return 5 * time.Minute</span>
+}
+
+func (f *File) autoSave(interval time.Duration) <span class="cov3" title="12">{
         ticker := time.NewTicker(interval)
         defer ticker.Stop()
-        for </span><span class="cov3" title="9">{
+        for </span><span class="cov3" title="12">{
                 select </span>{
-                case &lt;-f.done:<span class="cov3" title="9">
+                case &lt;-f.done:<span class="cov3" title="12">
                         return</span>
                 case &lt;-ticker.C:<span class="cov0" title="0">
                         f.mu.Lock()
@@ -3617,7 +3843,7 @@ func (f *File) autoSave(interval time.Duration) <span class="cov3" title="9">{
 }
 </pre>
 		
-		<pre class="file" id="file44" style="display: none">// Copyright (c) 2026 erik &lt;erik@erik.xyz&gt; — https://erik.xyz
+		<pre class="file" id="file45" style="display: none">// Copyright (c) 2026 erik &lt;erik@erik.xyz&gt; — https://erik.xyz
 
 package storage
 
@@ -3629,6 +3855,7 @@ import (
 type event struct {
         count       int
         windowStart time.Time
+        window      time.Duration
 }
 
 type blocked struct {
@@ -3640,48 +3867,58 @@ type Memory struct {
         mu      sync.RWMutex
         events  map[string]*event
         blocked map[string]*blocked
+        done    chan struct{}
+        closed  sync.Once
 }
 
 // NewMemory creates a new in-memory storage backend.
-func NewMemory() *Memory <span class="cov8" title="4">{
+func NewMemory() *Memory <span class="cov10" title="7">{
         m := &amp;Memory{
                 events:  make(map[string]*event),
                 blocked: make(map[string]*blocked),
+                done:    make(chan struct{}),
         }
         go m.reap(30 * time.Second)
         return m
 }</span>
 
-func (m *Memory) Incr(key string, window time.Duration) (int, error) <span class="cov10" title="5">{
+func (m *Memory) Incr(key string, window time.Duration) (int, error) <span class="cov10" title="7">{
         m.mu.Lock()
         defer m.mu.Unlock()
         now := time.Now()
         ev, ok := m.events[key]
-        if !ok || now.Sub(ev.windowStart) &gt; window </span><span class="cov8" title="4">{
-                m.events[key] = &amp;event{count: 1, windowStart: now}
+        if !ok || now.Sub(ev.windowStart) &gt; window </span><span class="cov9" title="6">{
+                m.events[key] = &amp;event{count: 1, windowStart: now, window: window}
                 return 1, nil
         }</span>
         <span class="cov1" title="1">ev.count++
+        ev.window = window
         return ev.count, nil</span>
 }
 
-func (m *Memory) Get(key string) (int, error) <span class="cov4" title="2">{
+func (m *Memory) Get(key string) (int, error) <span class="cov7" title="4">{
         m.mu.RLock()
         defer m.mu.RUnlock()
-        if ev, ok := m.events[key]; ok </span><span class="cov1" title="1">{
-                return ev.count, nil
+        ev, ok := m.events[key]
+        if !ok </span><span class="cov1" title="1">{
+                return 0, nil
         }</span>
-        <span class="cov1" title="1">return 0, nil</span>
+        // Get has no window argument, so the window recorded by Incr decides
+        // whether the counter is still live.
+        <span class="cov6" title="3">if ev.window &gt; 0 &amp;&amp; time.Since(ev.windowStart) &gt; ev.window </span><span class="cov1" title="1">{
+                return 0, nil
+        }</span>
+        <span class="cov4" title="2">return ev.count, nil</span>
 }
 
-func (m *Memory) Block(key string, duration time.Duration) error <span class="cov1" title="1">{
+func (m *Memory) Block(key string, duration time.Duration) error <span class="cov4" title="2">{
         m.mu.Lock()
         defer m.mu.Unlock()
         m.blocked[key] = &amp;blocked{until: time.Now().Add(duration)}
         return nil
 }</span>
 
-func (m *Memory) IsBlocked(key string) (bool, error) <span class="cov7" title="3">{
+func (m *Memory) IsBlocked(key string) (bool, error) <span class="cov6" title="3">{
         m.mu.RLock()
         defer m.mu.RUnlock()
         if b, ok := m.blocked[key]; ok </span><span class="cov4" title="2">{
@@ -3690,25 +3927,40 @@ func (m *Memory) IsBlocked(key string) (bool, error) <span class="cov7" title="3
         <span class="cov1" title="1">return false, nil</span>
 }
 
-func (m *Memory) Close() error <span class="cov8" title="4">{ return nil }</span>
+// Close stops the background reaper. The backend must not be used afterwards.
+func (m *Memory) Close() error <span class="cov10" title="7">{
+        m.closed.Do(func() </span><span class="cov10" title="7">{ close(m.done) }</span>)
+        <span class="cov10" title="7">return nil</span>
+}
 
-func (m *Memory) reap(interval time.Duration) <span class="cov8" title="4">{
+func (m *Memory) reap(interval time.Duration) <span class="cov10" title="7">{
         ticker := time.NewTicker(interval)
         defer ticker.Stop()
-        for range ticker.C </span><span class="cov0" title="0">{
-                now := time.Now()
-                m.mu.Lock()
-                for k, v := range m.events </span><span class="cov0" title="0">{
-                        if now.Sub(v.windowStart) &gt; 5*time.Minute </span><span class="cov0" title="0">{
-                                delete(m.events, k)
-                        }</span>
+        for </span><span class="cov10" title="7">{
+                select </span>{
+                case &lt;-m.done:<span class="cov10" title="7">
+                        return</span>
+                case &lt;-ticker.C:<span class="cov0" title="0">
+                        m.reapOnce(time.Now())</span>
                 }
-                <span class="cov0" title="0">for k, v := range m.blocked </span><span class="cov0" title="0">{
-                        if now.After(v.until) </span><span class="cov0" title="0">{
-                                delete(m.blocked, k)
-                        }</span>
-                }
-                <span class="cov0" title="0">m.mu.Unlock()</span>
+        }
+}
+
+// reapOnce drops entries whose own window has elapsed. Each counter carries
+// the window it was created with: a fixed five-minute deadline dropped
+// longer-lived entries (Signer's replay nonces live for 2*MaxSkew = 10m).
+func (m *Memory) reapOnce(now time.Time) <span class="cov4" title="2">{
+        m.mu.Lock()
+        defer m.mu.Unlock()
+        for k, v := range m.events </span><span class="cov1" title="1">{
+                if now.Sub(v.windowStart) &gt; v.window </span><span class="cov0" title="0">{
+                        delete(m.events, k)
+                }</span>
+        }
+        <span class="cov4" title="2">for k, v := range m.blocked </span><span class="cov1" title="1">{
+                if now.After(v.until) </span><span class="cov1" title="1">{
+                        delete(m.blocked, k)
+                }</span>
         }
 }
 </pre>

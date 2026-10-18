@@ -74,3 +74,59 @@ func TestMemoryGet(t *testing.T) {
 		t.Fatalf("expected 1 for existing key")
 	}
 }
+
+// A counter older than its own window must read as zero even before the
+// reaper runs: Get has no window argument, so the window recorded by Incr is
+// the only expiry it can use.
+func TestMemoryGetHonorsWindow(t *testing.T) {
+	m := NewMemory()
+	defer m.Close()
+
+	if _, err := m.Incr("k", 10*time.Millisecond); err != nil {
+		t.Fatal(err)
+	}
+	time.Sleep(25 * time.Millisecond)
+
+	if got, _ := m.Get("k"); got != 0 {
+		t.Fatalf("Get after the window = %d, want 0", got)
+	}
+}
+
+// The reaper previously dropped every entry after a hard-coded 5 minutes,
+// even when Incr was given a longer window. Signer requests 10 minutes by
+// default, so its nonces vanished halfway through their replay window.
+func TestMemoryReapHonorsRecordedWindow(t *testing.T) {
+	m := NewMemory()
+	defer m.Close()
+
+	if _, err := m.Incr("k", 10*time.Minute); err != nil {
+		t.Fatal(err)
+	}
+	m.mu.Lock()
+	m.events["k"].windowStart = time.Now().Add(-6 * time.Minute)
+	m.mu.Unlock()
+
+	m.reapOnce(time.Now())
+
+	if got, _ := m.Get("k"); got != 1 {
+		t.Fatalf("entry inside its 10m window was reaped: Get = %d, want 1", got)
+	}
+}
+
+func TestMemoryReapDropsExpiredBlocks(t *testing.T) {
+	m := NewMemory()
+	defer m.Close()
+
+	if err := m.Block("bad", 10*time.Millisecond); err != nil {
+		t.Fatal(err)
+	}
+	time.Sleep(25 * time.Millisecond)
+	m.reapOnce(time.Now())
+
+	m.mu.RLock()
+	_, ok := m.blocked["bad"]
+	m.mu.RUnlock()
+	if ok {
+		t.Error("expired block entry was not reaped")
+	}
+}

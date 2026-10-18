@@ -94,9 +94,9 @@ Implementações:
 
 | Backend | Descrição |
 |------|------|
-| `storage.NewMemory() *Memory` | Implementação em memória, `sync.Mutex` + map, limpeza automática de entradas expiradas a cada 30s |
+| `storage.NewMemory() *Memory` | Implementação em memória, `sync.RWMutex` + map, limpeza automática de entradas expiradas a cada 30s |
 | `storage.NewFile(path) (*File, error)` | Persistência em arquivo JSON, salvamento automático a cada 30s + flush no Close |
-| `redis.New(addr, password string, db int) *Backend` | Submódulo Redis, Pipeline Incr + TTL, requer `go-redis/v9` |
+| `redis.New(addr, password string, db int) *Backend` | Submódulo Redis, Lua Incr + TTL, requer `go-redis/v9` |
 
 ## Validadores HTTP
 

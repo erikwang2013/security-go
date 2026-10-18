@@ -96,7 +96,7 @@ Go 语言编写的攻击检测包，覆盖 **36 个检测器**、**6 大攻击�
 | **反序列化** | `O:数字:` / `C:数字:` 序列化对象、`unserialize()`、魔术方法（`__wakeup`/`__destruct`）；覆盖 PHP / pickle / Java / .NET 四类载荷 |
 | **CSV 注入** | `=cmd\|`、`@SUM(`、`+`/`-` 公式前缀、`HYPERLINK`/`DDE` |
 | **邮件头注入** | Bcc/Cc/From/To 注入、MIME multipart、boundary 参数 |
-| **JWT 攻击** | `alg: none` 绕过、`kid` 路径遍历、空签名检测（结构解码分析） |
+| **JWT 攻击** | `alg: none` 绕过、`kid` 路径遍历、空签名检测（结构解码分析；可从 Authorization / Cookie 中提取 token） |
 | **原型污染** | `__proto__`/`constructor` 键、`__defineGetter__`/`__defineSetter__` |
 
 ### 文件与敏感数据 (3)
@@ -118,9 +118,9 @@ Go 语言编写的攻击检测包，覆盖 **36 个检测器**、**6 大攻击�
 
 | 后端 | 说明 |
 |------|------|
-| **Memory** | `sync.Mutex` + map，30s 自动清理过期条目 |
-| **File** | JSON 文件持久化，每 30s 自动保存 + Close 时 flush |
-| **Redis** | 独立子模块，Pipeline Incr + TTL，需 `go-redis/v9` |
+| **Memory** | `sync.RWMutex` + map，30s 清理过期条目；`Close` 停止后台清理 |
+| **File** | JSON 文件持久化，每 30s 原子写入（临时文件 + rename）+ Close 时 flush |
+| **Redis** | 独立子模块，Lua 原子 Incr + 首次计数设置 TTL，需 `go-redis/v9` |
 
 ## 项目结构
 

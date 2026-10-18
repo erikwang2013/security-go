@@ -94,9 +94,9 @@ type Backend interface {
 
 | 백엔드 | 설명 |
 |------|------|
-| `storage.NewMemory() *Memory` | 메모리 구현, `sync.Mutex` + map, 30초마다 만료 항목 자동 정리 |
+| `storage.NewMemory() *Memory` | 메모리 구현, `sync.RWMutex` + map, 30초마다 만료 항목 자동 정리 |
 | `storage.NewFile(path) (*File, error)` | JSON 파일 영속화, 30초마다 자동 저장 + Close 시 flush |
-| `redis.New(addr, password string, db int) *Backend` | Redis 서브모듈, Pipeline Incr + TTL, `go-redis/v9` 필요 |
+| `redis.New(addr, password string, db int) *Backend` | Redis 서브모듈, Lua Incr + TTL, `go-redis/v9` 필요 |
 
 ## HTTP 검증기
 
